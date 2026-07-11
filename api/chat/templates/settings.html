@@ -1,0 +1,81 @@
+<div class="appearance-view">
+    <h1 style="display:none">Настройки внешнего вида</h1>
+    <!-- ОСНОВНЫЕ НАСТРОЙКИ -->
+    <div class="appearance-grid">
+        <div class="appearance-column">
+            <div class="bento-card" id="card-appearance-info">
+                <div class="card-header-flex">
+                    <h3 class="card-title intelligence-title-accent">Внешний вид</h3>
+                </div>
+                <div class="settings-form">
+                    <div class="flex-between">
+                        <div class="setting-item">
+                            <p class="intelligence-cover-subtitle">Персонализация виджета</p>
+                            <p class="intelligence-cover-note">Настройте стиль под ваш бренд<br>и создайте уникальный опыт</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- ВИДЖЕТ -->
+            {% include 'settings/widget_card.html' %}
+            <!-- ОБЛАКО -->
+            {% include 'settings/welcome_card.html' %}
+            <!-- КНОПКА ЗАКРЫТЬ ОБЛАКО -->
+            {% include 'settings/welcome_close_card.html' %}
+            <!-- ОКНО -->
+            {% include 'settings/window_card.html' %}
+            <!-- ШАПКА -->
+            {% include 'settings/window_header_card.html' %}
+            <!-- КНОПКИ ШАПКИ -->
+            {% include 'settings/header_btns_card.html' %}
+            <!-- ФУТЕР -->
+            {% include 'settings/footer_card.html' %}
+        </div>
+        <div class="appearance-column">
+            <!-- ЧАТ -->
+            {% include 'settings/chat_card.html' %}
+            <!-- БОТ -->
+            {% include 'settings/msg_bot_card.html' %}
+            <!-- ПОЛЬЗОВАТЕЛЬ -->
+            {% include 'settings/msg_user_card.html' %}
+            <!-- ОПЕРАТОР -->
+            {% include 'settings/msg_operator_card.html' %}
+            <!-- ИЗОБРАЖЕНИЯ -->
+            {% include 'settings/media_card.html' %}
+            <!-- ВЛОЖЕНИЯ -->
+            {% include 'settings/attachments_card.html' %}
+            <!-- УВЕДОМЛЕНИЯ -->
+            {% include 'settings/alert_card.html' %}
+        </div>
+        <div class="appearance-column">
+            <!-- КНОПКИ ИНТЕРАКТИВНЫЕ -->
+            {% include 'settings/inline_buttons_card.html' %}
+            <!-- ПОЛЕ ВВОДА -->
+            {% include 'settings/input_card.html' %}
+            <!-- КНОПКА ВЛОЖЕНИЯ -->
+            {% include 'settings/btn_attach_card.html' %}
+            <!-- КНОПКА МИКРОФОНА -->
+            {% include 'settings/btn_mic_card.html' %}
+            <!-- КНОПКА ЗАПИСИ -->
+            {% include 'settings/btn_record_card.html' %}
+            <!-- КНОПКА ПАУЗЫ -->
+            {% include 'settings/btn_stop_card.html' %}
+            <!-- КНОПКА ОТПРАВКИ -->
+            {% include 'settings/btn_send_card.html' %}
+        </div>
+    </div>
+    <!-- Модальное окно подтверждения -->
+    <div class="confirm-modal-overlay" id="confirm-modal-overlay">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </div>
+            <div class="confirm-modal-title" id="confirm-modal-title"></div>
+            <div class="confirm-modal-text" id="confirm-modal-text"></div>
+            <div class="confirm-modal-actions">
+                <button class="confirm-btn confirm-btn-no" id="confirm-btn-no">Отмена</button>
+                <button class="confirm-btn confirm-btn-yes" id="confirm-btn-yes">Сбросить</button>
+            </div>
+        </div>
+    </div>
+</div>

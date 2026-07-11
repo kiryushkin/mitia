@@ -1,0 +1,251 @@
+<div class="dialogs-view appearance-view">
+    <h1 class="visually-hidden">Диалоги и управление чатами</h1>
+    <div class="appearance-grid">
+        <div class="appearance-column" id="dialogs-filter-column">
+            <div class="bento-card" id="card-dialogs-filters">
+                <div class="card-header-flex">
+                    <div class="card-title-group" id="mobile-filter-toggle">
+                        <div class="collapse-icon mobile-only-icon"></div>
+                        <div>
+                            <h3 class="card-title intelligence-title-accent">Диалоги</h3>
+                            <p class="card-subtitle">Управление выборкой и групповыми действиями по обращениям</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-form">
+                    <div class="setting-item" id="dialogs-operator-name-setting">
+                        <div class="flex-between-compact">
+                            <label class="subtitle-card">Имя оператора</label>
+                            <div class="char-counter" data-for="dialogs-operator-name-input"><span>0</span> / 40</div>
+                        </div>
+                        <input type="text" id="dialogs-operator-name-input" class="hex-input-full" maxlength="40" placeholder="Например: Дмитрий" spellcheck="false">
+                    </div>
+                    <div class="setting-item" id="dialogs-manage-params">
+                        <div class="batch-controls-inline">
+                            <button class="btn btn-outline btn-sm" id="btn-toggle-select" title="Точечный выбор диалогов">Выбрать</button>
+                            <button class="btn btn-outline btn-sm" id="btn-batch-select-all">Выделить все</button>
+                            <div class="dropdown-menu-container" id="batch-status-dropdown-container">
+                                <button class="btn btn-outline btn-sm" id="btn-batch-status">Переместить</button>
+                                <div class="dropdown-menu batch-dropdown" id="batch-status-dropdown">
+                                    <button class="dropdown-item" data-status="lead">Лид</button>
+                                    <button class="dropdown-item" data-status="application">Заявка</button>
+                                    <button class="dropdown-item" data-status="spam">Спам</button>
+                                    <button class="dropdown-item" data-status="archive">Архив</button>
+                                    <div class="dropdown-divider-styled"></div>
+                                    <button class="dropdown-item danger" id="btn-batch-delete">Удалить</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="batch-selected-label" class="batch-selected-label">Выбрано: 0</div>
+                    </div>
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold white">Фильтры</h3>
+                        <button class="icon-btn-sm" id="btn-reset-filters" title="Сбросить фильтры">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                        </button>
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Поиск</label>
+                        <div class="search-group">
+                            <div class="search-box">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <input type="text" id="dialogs-search" placeholder="Поиск...">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Статус</label>
+                        <div class="filters-buttons" id="status-buttons">
+                            <button class="filter-btn" data-filter="unread">Не прочитано</button>
+                            <button class="filter-btn" data-filter="read">Прочитано</button>
+                            <button class="filter-btn" data-filter="lead">Лиды</button>
+                            <button class="filter-btn" data-filter="application">Заявки</button>
+                            <button class="filter-btn" data-filter="spam">Спам</button>
+                            <button class="filter-btn" data-filter="archive">Архив</button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Режим</label>
+                        <div class="filters-buttons" id="mode-buttons">
+                            <button class="filter-btn" data-mode="operator">Оператор</button>
+                            <button class="filter-btn" data-mode="assistant">Ассистент</button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Ресурс</label>
+                        <div class="filters-buttons" id="platform-buttons">
+                            <button class="filter-btn" data-platform="web">Веб-сайт</button>
+                            <button class="filter-btn" data-platform="telegram">Telegram</button>
+                            <button class="filter-btn" data-platform="max">Max</button>
+                            <button class="filter-btn" data-platform="vk">Вконтакте</button>
+                            <button class="filter-btn" data-platform="email">Email</button>
+                            <button class="filter-btn" data-platform="avito">Avito</button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Дата</label>
+                        <div class="calendar-single" id="calendar-single"></div>
+                        <div class="date-range-info" id="date-range-info"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-card" id="card-dialogs-stats">
+                <div class="card-header-flex">
+                    <div>
+                        <h3 class="card-title">Сводка</h3>
+                        <p class="card-subtitle">Показатели по текущим фильтрам и диапазону дат</p>
+                    </div>
+                </div>
+                <div class="settings-form">
+                    <div class="dialogs-stats" id="dialogs-stats"></div>
+                </div>
+            </div>
+        </div>
+        <div class="appearance-column" id="dialogs-profile-column" style="display: none;">
+            <div id="client-profile-card-container"></div>
+        </div>
+        <div class="appearance-column" id="dialogs-list-column">
+            <div class="vizitka-container-grid" id="dialogs-container">
+            </div>
+        </div>
+        <div class="appearance-column" id="dialog-section-column" style="display: none; position: relative;">
+            <div class="dialog-full-view-card">
+                <div class="dialog-main-content">
+                    <div class="dialog-card-header">
+                        <div class="header-left">
+                            <div class="active-dialog-user-info"></div>
+                        </div>
+                        <div class="header-right">
+                        </div>
+                    </div>
+                    <div class="dialog-messages-container" id="modal-messages-container">
+                    </div>
+                    <div class="dialog-footer">
+                        <div id="operator-attached-files" class="attached-files-preview"></div>
+                        <div class="operator-input-wrapper">
+                            <button class="attach-btn" id="operator-attach-btn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                            </button>
+                            <input type="file" id="operator-file-input" style="display: none" multiple>
+                            <input type="text" id="operator-input" placeholder="Напишите ответ...">
+                            <div class="operator-actions-group">
+                                <button class="action-btn-circle" id="operator-mic-btn">
+                                    <svg class="mic-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                                </button>
+                                <button class="action-btn-circle" id="send-operator-msg" style="display: none;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <template id="tmpl-dialog-card">
+        <div class="dialog-vizitka">
+            <label class="dialog-select-round" style="display: none;">
+                <input type="checkbox" class="dialog-checkbox">
+                <span class="checkmark"></span>
+            </label>
+            <div class="vizitka-top">
+                <div class="vizitka-info-block">
+                    <div class="platform-info"></div>
+                    <span class="vizitka-date"></span>
+                </div>
+                <div class="vizitka-status-dot"></div>
+            </div>
+            <div class="email-sender-container">
+                <div class="sender-avatar-wrapper" style="display: none;">
+                    <img src="" class="sender-avatar-img">
+                </div>
+                <div class="sender-info-main">
+                    <div class="sender-name"></div>
+                    <div class="sender-email"></div>
+                    <div class="sender-phone"></div>
+                    <div class="sender-archive-reason" style="display: none;"></div>
+                </div>
+            </div>
+            <div class="vizitka-bottom">
+                <div class="vizitka-count-box">
+                    <span class="count-total" title="Всего сообщений">0</span>
+                    <span class="count-user" title="От пользователя">0</span>
+                    <span class="count-ai" title="От ИИ">0</span>
+                    <span class="count-operator" title="От оператора">0</span>
+                </div>
+                <span class="intent-tag">Анализ...</span>
+            </div>
+        </div>
+    </template>
+    <template id="tmpl-chat-modal">
+    </template>
+    <template id="tmpl-client-profile">
+        <div class="client-profile-card">
+            <div class="profile-main-info">
+                <div class="sidebar-top-nav">
+                    <button class="btn-back-to-list" onclick="window.closeActiveDialog?.()" title="Назад к списку">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    </button>
+                    <div class="dropdown-menu-container">
+                        <button class="btn-close-edit" id="btn-cancel-profile" style="display: none;" title="Отменить изменения">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                        <button class="menu-dots-btn" id="chat-menu-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                        </button>
+                        <div class="dropdown-menu" id="chat-dropdown-menu">
+                            <button class="dropdown-item" id="btn-edit-profile">Редактировать</button>
+                            <div class="dropdown-divider-styled"></div>
+                            <button class="dropdown-item" id="btn-make-lead">Сделать лидом</button>
+                            <button class="dropdown-item" id="btn-make-app">Сделать заявкой</button>
+                            <button class="dropdown-item" id="btn-make-spam">В спам</button>
+                            <button class="dropdown-item" id="btn-archive-session">В архив</button>
+                            <button class="dropdown-item" id="btn-manage-close-reasons">Причины закрытия</button>
+                            <button class="dropdown-item danger" id="btn-delete-session">Удалить</button>
+                            <div class="dropdown-divider-styled"></div>
+                            <button class="dropdown-item" onclick="this.parentElement.classList.remove('show')">Отмена</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="profile-avatar-container" class="profile-avatar-wrapper"></div>
+                <div class="contact-group-wrapper">
+                    <div class="flex-between group-header">
+                        <h3 class="subtitle-card-bold">Контакты</h3>
+                        <button type="button" class="action-btn-circle sm" id="btn-add-any-contact">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                    </div>
+                    <div class="settings-form" id="profile-contacts-container">
+                    </div>
+                </div>
+                <div class="sidebar-mode-toggle-row">
+                    <span class="mode-label">ИИ-ассистент</span>
+                    <label class="mitya-switch">
+                        <input type="checkbox" id="chat-mode-toggle">
+                        <span class="mitya-slider round"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </template>
+    <template id="tmpl-contact-field">
+        <div class="setting-item contact-row-item" data-key="">
+            <div class="contact-view-mode">
+                <label class="subtitle-card field-label">Контакт</label>
+                <div class="contact-value-text"></div>
+            </div>
+            <div class="contact-edit-mode" style="display: none;">
+                <label class="subtitle-card field-label-edit">Контакт</label>
+                <div class="flex-row-gap-10">
+                    <input type="text" class="hex-input-full contact-input" value="" placeholder="">
+                    <button type="button" class="action-btn-circle sm btn-danger btn-remove-field">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+

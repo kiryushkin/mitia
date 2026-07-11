@@ -1,0 +1,572 @@
+<div class="prompts-view appearance-view">
+    <h1 style="display:none">Настройки интеллекта и базы знаний</h1>
+    <div class="appearance-grid">
+        <div class="appearance-column">
+
+            <div class="bento-card" id="card-intelligence-guide">
+                <div class="intelligence-orb-bg" aria-hidden="true">
+                    <canvas id="intelligence-orb-canvas" width="400" height="400"></canvas>
+                </div>
+                <div class="card-header-flex">
+                    <h3 class="card-title intelligence-title-accent">Интеллект</h3>
+                </div>
+                <div class="settings-form">
+                    <div class="flex-between">
+                        <div class="setting-item">
+                            <p class="intelligence-cover-subtitle">База знаний ассистента</p>
+                            <p class="intelligence-cover-note">Точные данные — уверенные ответы<br>и больше заявок.</p>
+                        </div>
+                    </div>
+
+                    <div class="setting-divider"></div>
+
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Личность</h3>
+                    </div>
+
+                    <div class="settings-form-mini">
+                        <div class="setting-item-compact">
+                            <div class="flex-between-compact">
+                                <label class="subtitle-card">Имя</label>
+                                <div class="char-counter" data-for="prompt-bot-name"><span>0</span> / 40</div>
+                            </div>
+                            <input type="text" id="prompt-bot-name" class="hex-input-full" data-setting="bot_settings.bot_name" placeholder="Например: Митя" maxlength="40" spellcheck="false">
+                        </div>
+
+                        <div class="setting-item-compact">
+                            <div class="flex-between-compact">
+                                <label class="subtitle-card">Должность</label>
+                                <div class="char-counter" data-for="prompt-bot-role"><span>0</span> / 60</div>
+                            </div>
+                            <input type="text" id="prompt-bot-role" class="hex-input-full" data-setting="bot_settings.bot_role" placeholder="Например: ИИ-ассистент" maxlength="60" spellcheck="false">
+                        </div>
+
+                        <div class="setting-item-compact">
+                            <div class="flex-between-compact">
+                                <label class="subtitle-card">Приветствие</label>
+                                <div class="char-counter" data-for="prompt-welcome-msg"><span>0</span> / 200</div>
+                            </div>
+                            <textarea id="prompt-welcome-msg" spellcheck="false" class="hex-input-full" data-setting="welcome_msg" placeholder="Например: Здравствуйте! Чем могу помочь?" maxlength="200"></textarea>
+                        </div>
+
+                        <div class="setting-item-compact">
+                            <label class="subtitle-card">Обращение</label>
+                            <input type="hidden" id="dna-addressing" data-setting="bot_settings.dna_addressing" value="formal">
+                            <div class="type-switcher" id="dna-addressing-switcher">
+                                <button class="type-btn active" data-dna-val="formal">На «Вы»</button>
+                                <button class="type-btn" data-dna-val="informal">На «Ты»</button>
+                            </div>
+                        </div>
+
+                        <div class="setting-item-compact">
+                            <label class="subtitle-card">Общение</label>
+                            <input type="hidden" id="dna-tone" data-setting="bot_settings.dna_tone" value="strict">
+                            <div class="type-switcher" id="dna-tone-switcher">
+                                <button class="type-btn active" data-dna-val="strict">Деловой</button>
+                                <button class="type-btn" data-dna-val="soft">Дружеский</button>
+                            </div>
+                        </div>
+
+                        <div class="setting-item-compact">
+                            <label class="subtitle-card">Речь</label>
+                            <input type="hidden" id="dna-language" data-setting="bot_settings.dna_language" value="simple">
+                            <div class="type-switcher" id="dna-language-switcher">
+                                <button class="type-btn active" data-dna-val="simple">Общедоступно</button>
+                                <button class="type-btn" data-dna-val="expert">Экспертно</button>
+                            </div>
+                        </div>
+
+                        <div class="setting-item-compact">
+                            <label class="subtitle-card">Ответы</label>
+                            <input type="hidden" id="dna-length" data-setting="bot_settings.dna_length" value="short">
+                            <div class="type-switcher" id="dna-length-switcher">
+                                <button class="type-btn active" data-dna-val="short">Коротко</button>
+                                <button class="type-btn" data-dna-val="long">Подробно</button>
+                            </div>
+                        </div>
+
+                        <div class="setting-item-compact">
+                            <label class="subtitle-card">Активность</label>
+                            <input type="hidden" id="dna-proactive" data-setting="bot_settings.dna_proactive" value="reactive">
+                            <div class="type-switcher" id="dna-proactive-switcher">
+                                <button class="type-btn active" data-dna-val="reactive">Сдержанный</button>
+                                <button class="type-btn" data-dna-val="active">Инициативный</button>
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <label class="subtitle-card">Креативность</label>
+                            <div class="range-with-val">
+                                <input type="range" id="dna-temp-input" min="1" max="100" step="1" class="range-input">
+                                <span class="range-value" id="dna-temp-val"></span>
+                            </div>
+                        </div>
+
+                        <div class="setting-item-compact">
+                            <label class="subtitle-card">Приоритет</label>
+                            <input type="hidden" id="dna-focus" data-setting="bot_settings.dna_focus" value="facts">
+                            <div class="type-switcher" id="dna-focus-switcher">
+                                <button class="type-btn active" data-dna-val="facts">Данные</button>
+                                <button class="type-btn" data-dna-val="client">Клиент</button>
+                            </div>
+                        </div>
+
+                        <div class="setting-item-compact">
+                            <label class="subtitle-card">Модель ИИ</label>
+                            <input type="hidden" id="prompt-ai-model" data-setting="bot_settings.ai_model" value="gigachat">
+                            <div class="type-switcher" id="ai-model-switcher">
+                                <button class="type-btn" data-dna-val="yandexgpt" title="YandexGPT Pro — высокая точность и отличный русский язык">YandexGPT</button>
+                                <button class="type-btn active" data-dna-val="gigachat" title="GigaChat Max — максимальный интеллект от Сбера">GigaChat</button>
+                            </div>
+                        </div>
+
+                        <div class="setting-item-compact">
+                            <div class="flex-between">
+                                <label class="subtitle-card">Использовать эмодзи</label>
+                                <label class="switch sm-switch">
+                                    <input type="checkbox" id="dna-emojis" data-setting="bot_settings.dna_emojis">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-item">
+                            <div class="flex-between">
+                                <h3 class="subtitle-card-bold">Голосовой ответ</h3>
+                                <label class="switch">
+                                    <input type="checkbox" id="prompt-tts-enabled" data-setting="bot_settings.enable_tts">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-item" id="prompt-voice-group">
+                            <label class="subtitle-card">Выбор голоса</label>
+                            <input type="hidden" id="prompt-voice-input" data-setting="bot_settings.tts_voice" value="Nec_24000">
+                            <div class="voice-selector">
+                                <button class="voice-btn" data-voice-val="Nec_24000">
+                                    <span>Женский</span>
+                                    <div class="play-sample-icon" onclick="event.stopPropagation(); if(!this.closest('.voice-btn').classList.contains('disabled')) window.playVoiceSample('Nec_24000')" title="Прослушать">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                    </div>
+                                </button>
+                                <button class="voice-btn" data-voice-val="Bys_24000">
+                                    <span>Мужской</span>
+                                    <div class="play-sample-icon" onclick="event.stopPropagation(); if(!this.closest('.voice-btn').classList.contains('disabled')) window.playVoiceSample('Bys_24000')" title="Прослушать">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+               
+
+            <div class="bento-card" id="card-ai-unavailable">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Резервный ответ</h3>
+                </div>
+                <div class="settings-form">
+                    <div class="setting-item">
+                        <div class="flex-between-compact">
+                            <label class="subtitle-card">Сообщение при недоступности ассистента</label>
+                            <div class="char-counter" data-for="prompt-ai-unavailable"><span>0</span> / 1000</div>
+                        </div>
+                        <textarea id="prompt-ai-unavailable" class="hex-input-full ai-unavailable-textarea" data-setting="bot_settings.ai_unavailable_message" placeholder="Например: Я передал ваш вопрос оператору, он ответит вам в ближайшее время." maxlength="1000" spellcheck="false"></textarea>
+                        <p class="input-hint ai-unavailable-hint">Это сообщение отправится пользователю, если ассистент временно не сможет ответить или на балансе не хватит средств.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-card" id="card-prompt-personality">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Регламент</h3>
+                </div>
+                <div class="settings-form">
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Файл</h3>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" id="prompt-knowledge-file-toggle" data-setting="bot_settings.enable_knowledge_file">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div id="prompt-knowledge-file-group" class="settings-form-mini">
+                        <div class="setting-item">
+                            <label class="subtitle-card">Загрузить документ</label>
+                            <div class="color-input-group">
+                                <div id="knowledge-file-preview" class="img-upload-preview" onclick="document.getElementById('knowledge-file-upload').click()">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="placeholder-icon"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                                    <button id="knowledge-file-remove-btn" class="avatar-remove-btn hidden" onclick="event.stopPropagation(); window.removeKnowledgeFile()">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="upload-info">
+                                    <span class="upload-hint" id="knowledge-file-name">PDF, DOCX, XLSX, TXT. Макс. вес: 5МБ</span>
+                                </div>
+                                <input type="file" id="knowledge-file-upload" hidden accept=".pdf,.docx,.doc,.txt,.xls,.xlsx,.csv,text/plain">
+                                <input type="hidden" id="knowledge-file-url-hidden" data-setting="bot_settings.knowledge_file_url">
+                                <input type="hidden" id="knowledge-file-name-hidden" data-setting="bot_settings.knowledge_file_name">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Информация</h3>
+                    </div>
+                    <div class="settings-form-mini">
+                        <div class="setting-item">
+                            <label class="subtitle-card">Публичное название</label>
+                            <input type="text" class="hex-input-full" data-setting="contacts.company_name" placeholder="Например: Mitia">
+                        </div>
+                        <div class="setting-item">
+                            <div class="flex-between-compact">
+                                <label class="subtitle-card">О компании / проекте</label>
+                                <div class="char-counter" data-for="prompt-personality"><span>0</span> / 3000</div>
+                            </div>
+                            <textarea id="prompt-personality" class="hex-input-full" data-setting="bot_settings.personality_prompt" placeholder="Опишите чем занимается компания." maxlength="3000" spellcheck="false"></textarea>
+                        </div>
+                    </div>
+                    <div class="settings-form-mini">
+                        <div class="setting-item">
+                            <div class="flex-between-compact">
+                                <label class="subtitle-card">Должностная инструкция</label>
+                                <div class="char-counter" data-for="prompt-negative"><span>0</span> / 3000</div>
+                            </div>
+                            <textarea id="prompt-negative" class="hex-input-full" data-setting="bot_settings.negative_prompt" placeholder="Например: Не упоминай конкурентов. В каждом сообщении напоминай про акцию 'Скидка 10%'." maxlength="1000" spellcheck="false"></textarea>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="flex-between">
+                            <label class="subtitle-card">Кэширование ответов</label>
+                            <label class="switch sm-switch">
+                                <input type="checkbox" id="prompt-cache-enabled" data-setting="bot_settings.enable_cache">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <div id="ai-cache-action-group" class="hidden" style="display: none;">
+                            <button class="action-btn sm btn-brand w-100" id="btn-clear-ai-cache">
+                                Очистить кэш ответов (<span id="ai-cache-count">0</span>)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="appearance-column">
+            <div class="bento-card" id="card-legal">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Реквизиты</h3>
+                </div>
+                
+                <div class="settings-form">
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Статус</h3>
+                    </div>
+                    <div class="type-switcher">
+                        <button class="type-btn active" data-type="ip" onclick="window.updateLegalType('ip', this)">ИП</button>
+                        <button class="type-btn" data-type="ooo" onclick="window.updateLegalType('ooo', this)">ООО</button>
+                        <button class="type-btn" data-type="self" onclick="window.updateLegalType('self', this)">Самозанятый</button>
+                    </div>
+
+                    <div id="legal-fields-standard" class="settings-form">
+                        <div class="setting-item">
+                            <label class="subtitle-card" id="label-legal-fio">ФИО предпринимателя</label>
+                            <input type="text" class="hex-input-full" data-legal="name" placeholder="Иванов Иван Иванович" readonly onfocus="this.removeAttribute('readonly');" onblur="this.setAttribute('readonly', true);">
+                        </div>
+                        <div class="setting-item">
+                            <label class="subtitle-card" id="label-legal-ogrn">ОГРНИП</label>
+                            <input type="text" class="hex-input-full" data-legal="ogrn" placeholder="321774600709955">
+                        </div>
+                        <div class="setting-item">
+                            <label class="subtitle-card">Юридический адрес</label>
+                            <input type="text" class="hex-input-full" data-legal="address" name="legal_addr_field_hidden" placeholder="Россия, 105545, г. Москва, ул. Примерная, д. 1" readonly onfocus="this.removeAttribute('readonly');" onblur="this.setAttribute('readonly', true);">
+                        </div>
+                        <div class="form-row">
+                            <div class="setting-item">
+                                <label class="subtitle-card">ИНН</label>
+                                <input type="text" class="hex-input-full" data-legal="inn" placeholder="771974917135">
+                            </div>
+                            <div class="setting-item">
+                                <label class="subtitle-card">БИК</label>
+                                <input type="text" class="hex-input-full" data-legal="bank_bik" placeholder="044525104">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label class="subtitle-card">Название банка</label>
+                            <input type="text" class="hex-input-full" data-legal="bank_name" placeholder="ООО «Банк Точка»">
+                        </div>
+                        <div class="setting-item">
+                            <label class="subtitle-card">Расчетный счет</label>
+                            <input type="text" class="hex-input-full" data-legal="bank_account" placeholder="40802810501500240959">
+                        </div>
+                        <div class="setting-item">
+                            <label class="subtitle-card">Корр. счет</label>
+                            <input type="text" class="hex-input-full" data-legal="bank_corr" placeholder="30101810745374525104">
+                        </div>
+                    </div>
+
+                    <div id="legal-fields-self" class="settings-form" style="display: none;">
+                        <div class="setting-item">
+                            <label class="subtitle-card">ФИО самозанятого</label>
+                            <input type="text" class="hex-input-full" data-legal="name" placeholder="Иванов Иван Иванович" spellcheck="false">
+                        </div>
+                        <div class="form-row">
+                            <div class="setting-item">
+                                <label class="subtitle-card">Серия</label>
+                                <input type="text" class="hex-input-full" data-legal="pass_seria" placeholder="45 00">
+                            </div>
+                            <div class="setting-item">
+                                <label class="subtitle-card">Номер</label>
+                                <input type="text" class="hex-input-full" data-legal="pass_number" placeholder="123456">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="setting-item">
+                                <label class="subtitle-card">Дата выдачи</label>
+                                <input type="text" class="hex-input-full" data-legal="pass_date" placeholder="01.01.2010">
+                            </div>
+                            <div class="setting-item">
+                                <label class="subtitle-card">Код подразделения</label>
+                                <input type="text" class="hex-input-full" data-legal="pass_code" placeholder="770-001">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label class="subtitle-card">Кем выдан</label>
+                            <input type="text" class="hex-input-full" data-legal="pass_issuer" placeholder="ОВД района...">
+                        </div>
+                        <div class="form-row">
+                            <div class="setting-item">
+                                <label class="subtitle-card">Место рождения</label>
+                                <input type="text" class="hex-input-full" data-legal="birth_place" placeholder="г. Москва" readonly onfocus="this.removeAttribute('readonly');" onblur="this.setAttribute('readonly', true);">
+                            </div>
+                            <div class="setting-item">
+                                <label class="subtitle-card">Дата рождения</label>
+                                <input type="text" class="hex-input-full" data-legal="birth_date" placeholder="01.01.1990" readonly onfocus="this.removeAttribute('readonly');" onblur="this.setAttribute('readonly', true);">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label class="subtitle-card">Адрес регистрации</label>
+                            <input type="text" class="hex-input-full" data-legal="reg_address" placeholder="Россия, 105545, г. Москва, ул. Примерная, д. 1" readonly onfocus="this.removeAttribute('readonly');" onblur="this.setAttribute('readonly', true);">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bento-card" id="card-working-hours">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Режим работы</h3>
+                </div>
+                <div class="settings-form">
+                    <div class="working-days-list">
+                        {% for day_id, day_name in [('mon', 'Понедельник'), ('tue', 'Вторник'), ('wed', 'Среда'), ('thu', 'Четверг'), ('fri', 'Пятница'), ('sat', 'Суббота'), ('sun', 'Воскресенье')] %}
+                        <div class="day-config-item" data-day="{{ day_id }}">
+                            <div class="flex-between">
+                                <h3 class="subtitle-card-bold">{{ day_name }}</h3>
+                                <label class="switch sm-switch">
+                                    <input type="checkbox" class="day-enable-toggle">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="day-params settings-form-mini mt-10">
+                                <!-- Круглосуточно -->
+                                <div class="setting-item-compact">
+                                    <div class="flex-between">
+                                        <label class="subtitle-card">Круглосуточно</label>
+                                        <label class="switch sm-switch">
+                                            <input type="checkbox" class="toggle-24h">
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Часы работы -->
+                                <div class="setting-item">
+                                    <label class="subtitle-card">Рабочее время</label>
+                                    <div class="time-row">
+                                        <div class="time-field">
+                                            <span>С</span>
+                                            <input type="time" class="hex-input-full work-from" value="09:00">
+                                        </div>
+                                        <div class="time-field">
+                                            <span>ДО</span>
+                                            <input type="time" class="hex-input-full work-to" value="18:00">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Обеденный перерыв -->
+                                <div class="setting-item mt-10">
+                                    <div class="lunch-header">
+                                        <label class="subtitle-card">Обеденный перерыв</label>
+                                        <label class="switch sm-switch">
+                                            <input type="checkbox" class="toggle-lunch">
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="lunch-time-wrapper">
+                                        <div class="time-row">
+                                            <div class="time-field">
+                                                <span>С</span>
+                                                <input type="time" class="hex-input-full lunch-from" value="13:00">
+                                            </div>
+                                            <div class="time-field">
+                                                <span>ДО</span>
+                                                <input type="time" class="hex-input-full lunch-to" value="14:00">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="flex-between mt-20">
+                        <h3 class="subtitle-card-bold">Праздники и исключения</h3>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" id="working-hours-holidays-toggle" data-setting="working_hours_holidays_enabled">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="settings-form-mini" id="holidays-settings-group">
+                        <div class="setting-item">
+                            <label class="subtitle-card">Особый график или выходные</label>
+                            <textarea class="hex-input-full" data-setting="working_hours_holidays" placeholder="Например: 8 марта — выходной, 31 декабря работаем до 15:00" style="height: 80px; resize: none;"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        <div class="appearance-column">
+            <div class="bento-card" id="card-prompt-knowledge">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Контакты</h3>
+                </div>
+                <div class="settings-form">
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Телефон</h3>
+                        <button type="button" class="action-btn-circle sm" id="add-extra-phone-btn" title="Добавить телефон">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                    </div>
+                    <div id="extra-phones-wrapper" style="display: none;">
+                        <div id="extra-phones-container" class="extra-phones-list">
+                            <!-- Сюда будут добавляться все телефоны -->
+                        </div>
+                    </div>
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Электронная почта</h3>
+                        <button type="button" class="action-btn-circle sm" id="add-extra-email-btn" title="Добавить почту">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                    </div>
+                    <div id="extra-emails-wrapper" style="display: none;">
+                        <div id="extra-emails-container" class="extra-emails-list">
+                            <!-- Сюда будут добавляться все почты -->
+                        </div>
+                    </div>
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Адрес</h3>
+                        <button type="button" class="action-btn-circle sm" id="add-extra-address-btn" title="Добавить адрес">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                    </div>
+                    <div id="extra-addresses-wrapper" style="display: none;">
+                        <div id="extra-addresses-container" class="extra-addresses-list">
+                            <!-- Сюда будут добавляться все адреса -->
+                        </div>
+                    </div>
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Telegram</h3>
+                        <button type="button" class="action-btn-circle sm" id="add-extra-tg-btn" title="Добавить Telegram">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                    </div>
+                    <div id="extra-tg-wrapper" style="display: none;">
+                        <div id="extra-tg-container" class="extra-tg-list">
+                            <!-- Сюда будут добавляться все Telegram аккаунты -->
+                        </div>
+                    </div>
+
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">WhatsApp</h3>
+                        <button type="button" class="action-btn-circle sm" id="add-extra-wa-btn" title="Добавить WhatsApp">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                    </div>
+                    <div id="extra-wa-wrapper" style="display: none;">
+                        <div id="extra-wa-container" class="extra-wa-list">
+                            <!-- Сюда будут добавляться все WhatsApp аккаунты -->
+                        </div>
+                    </div>
+
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Max</h3>
+                        <button type="button" class="action-btn-circle sm" id="add-extra-max-btn" title="Добавить Max">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                    </div>
+                    <div id="extra-max-wrapper" style="display: none;">
+                        <div id="extra-max-container" class="extra-max-list">
+                            <!-- Сюда будут добавляться все Max аккаунты -->
+                        </div>
+                    </div>
+
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">VK Messenger</h3>
+                        <button type="button" class="action-btn-circle sm" id="add-extra-vk-btn" title="Добавить VK">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                    </div>
+                    <div id="extra-vk-wrapper" style="display: none;">
+                        <div id="extra-vk-container" class="extra-vk-list">
+                            <!-- Сюда будут добавляться все VK аккаунты -->
+                        </div>
+                    </div>
+
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Социальные сети</h3>
+                        <button type="button" class="action-btn-circle sm" id="add-extra-link-btn" title="Добавить соцсеть">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                    </div>
+                    <div id="extra-links-wrapper" style="display: none;">
+                        <div id="extra-links-container" class="extra-links-list">
+                            <!-- Сюда будут добавляться все соцсети -->
+                        </div>
+                    </div>
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Сайт</h3>
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Название домена</label>
+                        <div class="flex-column-gap-10">
+                            <input type="text" id="index-site-url" class="hex-input-full" data-setting="site_url" placeholder="Например: https://mitia.pro">
+                            <div class="index-buttons-grid">
+                                <button class="action-btn sm" id="start-index-btn">Индексировать</button>
+                                <button class="action-btn sm btn-brand" id="clear-index-btn">Очистить индекс</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="index-stats-grid">
+                        <div class="index-stat-item">
+                            <div class="stat-value" id="stat-pages">0</div>
+                            <div class="stat-label">страниц</div>
+                            <div class="stat-updated-hint" id="stat-updated">Обновлено: -</div>
+                        </div>
+                    </div>
+                    <div class="pages-list-container">
+                        <label class="subtitle-card">Проиндексированные страницы</label>
+                        <div id="indexed-pages-list" class="pages-list">
+                            <div class="empty-list-hint">Страницы еще не проиндексированы</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

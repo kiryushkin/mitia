@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #109d58;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+    </style>
+  </defs>
+  <rect class="cls-1" y=".35" width="500" height="500"/>
+  <polygon class="cls-2" points="374.5 191.11 374.5 231.3 227.96 231.3 227.96 375 195.38 375 195.38 231.3 125.5 231.3 125.5 191.11 195.38 191.11 195.38 125 227.96 125 227.96 191.11 374.5 191.11"/>
+</svg>

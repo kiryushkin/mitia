@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /login
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /profile
+Disallow: /api/
+
+Sitemap: https://mitia.pro/sitemap.xml

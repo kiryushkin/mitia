@@ -1,0 +1,300 @@
+<!-- ЧАТ -->
+<div class="bento-card" id="card-chat-design">
+    <div class="card-header-flex">
+        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
+            <div class="collapse-icon"></div>
+            <h3 class="card-title">Чат</h3>
+        </div>
+        <!-- Иконки -->
+        <div class="card-actions-mini">
+            <button class="icon-btn-sm" onclick="window.resetChatToDefault()" title="Восстановить дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button class="icon-btn-sm" onclick="window.randomizeChatDesign()" title="Магический дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+        </div>
+    </div>
+    <!-- Параметры чата -->
+    <div class="settings-form">
+        <!-- ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Политика</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="chat-privacy-enabled-toggle" data-setting="theme.chat_privacy_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры политики конфедициальности -->
+        <div id="chat-privacy-group" class="settings-form-mini">
+            <!-- URL ссылка политики конфедициальности -->
+            <div class="setting-item-compact">
+                <label class="subtitle-card">URL ссылка</label>
+                <input type="text" id="chat-privacy-url-input" data-setting="theme.chat_privacy_url" spellcheck="false" class="hex-input-full" placeholder="https://mitia.pro/privacy">
+            </div>
+            <!-- Открыть ссылку политики конфедициальности в новом окне -->
+            <div class="setting-item-compact">
+                <div class="flex-between">
+                    <label class="subtitle-card">Открыть ссылку в новом окне</label>
+                    <label class="switch sm-switch">
+                        <input type="checkbox" id="chat-privacy-target-toggle" data-setting="theme.chat_privacy_target_blank">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+            <!-- Шрифт текста политики конфедициальности -->
+            <div class="setting-item">
+                <label class="subtitle-card">Шрифт</label>
+                <div class="custom-select" id="chat-privacy-font-family-select-container">
+                    <div class="select-trigger">
+                        <span id="chat-privacy-current-font-name">Geist</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="select-options">
+                        <!-- Заполняется динамически через FontManager -->
+                    </div>
+                </div>
+                <input type="hidden" id="chat-privacy-font-family-select" data-setting="theme.chat_privacy_font_family">
+            </div>
+            <!-- Цвет текста политики конфедициальности -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="chat-privacy-color-preview"></div>
+                        <input type="color" id="chat-privacy-color-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="chat-privacy-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.chat_privacy_text_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность текста политики конфедициальности -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="chat-privacy-opacity-input" spellcheck="false" class="range-input" data-setting="theme.chat_privacy_text_opacity" min="0" max="100">
+                    <span class="range-value" id="chat-privacy-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размер текста политики конфедициальности -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размер</label>
+                <div class="range-with-val">
+                    <input type="range" id="chat-privacy-font-size-input" spellcheck="false" class="range-input" data-setting="theme.chat_privacy_font_size" min="8" max="24">
+                    <span class="range-value" id="chat-privacy-font-size-val"></span>
+                </div>
+            </div>
+            <!-- Толщина текста политики конфедициальности -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="chat-privacy-font-weight-input" spellcheck="false" class="range-input" data-setting="theme.chat_privacy_font_weight" min="100" max="900" step="100">
+                    <span class="range-value" id="chat-privacy-font-weight-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ССЫЛКИ ЧАТА -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Ссылки</h3>
+        </div>
+        <!-- Цвет ссылок чата -->
+        <div class="setting-item">
+            <label class="subtitle-card">Цвет</label>
+            <div class="color-input-group">
+                <div class="color-circle-wrapper">
+                    <div class="color-circle-bg" id="chat-link-color-preview"></div>
+                    <input type="color" id="chat-link-color-picker" class="hidden-picker">
+                </div>
+                <input type="text" id="chat-link-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.chat_link_color" placeholder="Прозрачный">
+            </div>
+        </div>
+        <!-- Прозрачность ссылок чата -->
+        <div class="setting-item">
+            <label class="subtitle-card">Прозрачность</label>
+            <div class="range-with-val">
+                <input type="range" id="chat-link-opacity-input" spellcheck="false" class="range-input" data-setting="theme.chat_link_opacity" min="0" max="100">
+                <span class="range-value" id="chat-link-opacity-val"></span>
+            </div>
+        </div>
+        <!-- ССЫЛКИ ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Ссылки при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="chat-link-h-enabled-toggle" data-setting="theme.chat_link_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры ссылок при наведении -->
+        <div id="chat-link-h-group" class="settings-form-mini">
+            <!-- Цвет ссылок при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="chat-link-h-color-preview"></div>
+                        <input type="color" id="chat-link-h-color-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="chat-link-h-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.chat_link_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность ссылок при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="chat-link-h-opacity-input" spellcheck="false" class="range-input" data-setting="theme.chat_link_opacity_h" min="0" max="100">
+                    <span class="range-value" id="chat-link-h-opacity-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ДАТА СООБЩЕНИЯ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Дата</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="chat-date-enabled-toggle" data-setting="theme.chat_date_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры даты сообщения -->
+        <div id="chat-date-group" class="settings-form-mini">
+            <!-- Шрифт даты сообщения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Шрифт</label>
+                <div class="custom-select" id="chat-date-font-family-select-container">
+                    <div class="select-trigger">
+                        <span id="chat-date-current-font-name">Geist</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="select-options">
+                        <!-- Заполняется динамически через FontManager -->
+                    </div>
+                </div>
+                <input type="hidden" id="chat-date-font-family-select" data-setting="theme.chat_date_font_family">
+            </div>
+            <!-- Цвет даты сообщения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="chat-date-color-preview"></div>
+                        <input type="color" id="chat-date-color-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="chat-date-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.chat_date_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность даты сообщения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="chat-date-opacity-input" spellcheck="false" class="range-input" data-setting="theme.chat_date_opacity" min="0" max="100">
+                    <span class="range-value" id="chat-date-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размер даты сообщения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размер</label>
+                <div class="range-with-val">
+                    <input type="range" id="chat-date-font-size-input" spellcheck="false" class="range-input" data-setting="theme.chat_date_font_size" min="8" max="24">
+                    <span class="range-value" id="chat-date-font-size-val"></span>
+                </div>
+            </div>
+            <!-- Толщина даты сообщения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="chat-date-font-weight-input" spellcheck="false" class="range-input" data-setting="theme.chat_date_font_weight" min="100" max="900" step="100">
+                    <span class="range-value" id="chat-date-font-weight-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ВРЕМЯ ОТПРАВКИ СООБЩЕНИЯ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Время</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="chat-time-enabled-toggle" data-setting="theme.chat_time_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры времени сообщения -->
+        <div id="chat-time-group" class="settings-form-mini">
+            <!-- Шрифт времени сообщения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Шрифт</label>
+                <div class="custom-select" id="chat-time-font-family-select-container">
+                    <div class="select-trigger">
+                        <span id="chat-time-current-font-name">Geist</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="select-options">
+                        <!-- Заполняется динамически через FontManager -->
+                    </div>
+                </div>
+                <input type="hidden" id="chat-time-font-family-select" data-setting="theme.chat_time_font_family">
+            </div>
+            <!-- Цвет времени сообщения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="chat-time-color-preview"></div>
+                        <input type="color" id="chat-time-color-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="chat-time-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.chat_time_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность времени сообщения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="chat-time-opacity-input" spellcheck="false" class="range-input" data-setting="theme.chat_time_opacity" min="0" max="100">
+                    <span class="range-value" id="chat-time-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размер времени сообщения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размер</label>
+                <div class="range-with-val">
+                    <input type="range" id="chat-time-font-size-input" spellcheck="false" class="range-input" data-setting="theme.chat_time_font_size" min="8" max="24">
+                    <span class="range-value" id="chat-time-font-size-val"></span>
+                </div>
+            </div>
+            <!-- Толщина времени сообщения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="chat-time-font-weight-input" spellcheck="false" class="range-input" data-setting="theme.chat_time_font_weight" min="100" max="900" step="100">
+                    <span class="range-value" id="chat-time-font-weight-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ЭФФЕКТЫ ЧАТА -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Эффекты</h3>
+        </div>
+        <!-- Цвет точек индикатора набора -->
+        <div class="setting-item">
+            <label class="subtitle-card">Цвет</label>
+            <div class="color-input-group">
+                <div class="color-circle-wrapper">
+                    <div class="color-circle-bg" id="chat-typing-indicator-color-preview"></div>
+                    <input type="color" id="chat-typing-indicator-color-picker" class="hidden-picker">
+                </div>
+                <input type="text" id="chat-typing-indicator-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.chat_typing_indicator_color" placeholder="Прозрачный">
+            </div>
+        </div>
+        <!-- ЭФФЕКТ ЧАТА ПЕЧАТНАЯ МАШИНКА -->
+        <div class="flex-between-compact">
+            <h3 class="subtitle-card">Печатная машинка</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="chat-typewriter-toggle" data-setting="theme.chat_typewriter_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- ЭФФЕКТ ЧАТА ИНДИКАТОР НАБОРА -->
+        <div class="flex-between-compact">
+            <h3 class="subtitle-card">Мгновенный набор</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="chat-typing-indicator-toggle" data-setting="theme.chat_typing_indicator_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+    </div>
+</div>

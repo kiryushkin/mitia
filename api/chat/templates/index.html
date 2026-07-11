@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="format-detection" content="telephone=no">
+    
+  <title>MITIA — Платформа для создания ИИ-ассистентов для бизнеса</title>
+  <meta name="description" content="Создавайте умных чат-ботов, аудиоботов и видеоботов с искусственным интеллектом без кода. Автоматизация поддержки и продаж с помощью MITIA.">
+  <meta name="keywords" content="ИИ-ассистент, чат-бот для бизнеса, нейросети, автоматизация продаж, искусственный интеллект, MITIA, разработка чат-ботов">
+  <meta name="author" content="MITIA">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mitia.pro/">
+  <meta property="og:title" content="MITIA — Платформа для создания ИИ-ассистентов">
+  <meta property="og:description" content="Умные ИИ-ассистенты для вашего бизнеса: чат, голос, видео.">
+  <meta property="og:image" content="https://mitia.pro/api/chat/static/img/og-image.jpg">
+  
+  <!-- Twitter -->  
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://mitia.pro/">
+  <meta property="twitter:title" content="MITIA — Платформа для создания ИИ-ассистентов">
+  <meta property="twitter:description" content="Умные ИИ-ассистенты для вашего бизнеса: чат, голос, видео.">
+  <meta property="twitter:image" content="https://mitia.pro/api/chat/static/img/og-image.jpg">
+  
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  
+  <link rel="canonical" href="https://mitia.pro/">
+  <link rel="icon" href="/api/chat/img/favicon.svg?v=2" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/api/chat/img/favicon.svg?v=2">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "MITIA",
+    "url": "https://mitia.pro",
+    "description": "Платформа для создания ИИ-ассистентов для бизнеса без программирования. Автоматизация поддержки, продаж и клиентского сервиса.",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "All",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "RUB"
+    },
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.9",
+      "reviewCount": "124"
+    }
+  }
+  </script>
+  
+  <!-- Scripts -->
+   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+   <script src="http://127.0.0.1:5007/api/chat/chat-widget.js?client_id=mitia_assistant" defer></script>
+  <link rel="stylesheet" href="/api/chat/static/css/index.css">
+
+</head>
+<body>
+    <div id="presentation-overlay"></div>
+
+    <div class="presentation-controls">
+        <button id="pres-toggle-play" class="pres-btn" title="Пауза/Плей">
+            <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            <svg class="icon-play icon-play-hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button id="pres-exit" class="pres-btn" title="Выход">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+    </div>
+    <!-- ORB BACKGROUND -->
+    <div class="cl-hero-orb-container" aria-hidden="true">
+        <canvas id="canvasOne" width="1400" height="1400"></canvas>
+    </div>
+
+    <nav class="nav">
+        <a href="/" class="logo" aria-label="MITIA">
+            <img src="/api/chat/img/logo_mitia.svg" alt="MITIA" height="20">
+        </a>
+        <div class="nav-links" id="nav-links">
+            <a href="/login" id="login-link">Войти</a>
+        </div>
+    </nav>
+
+
+    <section class="hero">
+        <h1 class="fade-in">AI-ассистенты<br>для бизнеса</h1>
+        <p class="subtitle fade-in hero-subtitle-delayed">
+            Создавайте и внедряйте ИИ-ассистентов в каналы связи, автоматизируйте коммуникации и принимайте решения на&nbsp;основе аналитики диалогов.
+        </p>
+        <div class="cta-group fade-in hero-cta-delayed">
+            <button class="btn btn-primary" id="start-presentation">Послушать</button>
+        </div>
+    </section>
+    <script src="/api/chat/static/js/index.js"></script>
+</body>
+</html>

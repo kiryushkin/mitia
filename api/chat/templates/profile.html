@@ -1,0 +1,337 @@
+<div class="profile-view appearance-view">
+    <h1 class="visually-hidden">Настройки профиля</h1>
+    <div class="appearance-grid">
+        <div class="appearance-column" id="profile-left-column">
+            <div class="bento-card" id="card-settings">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Аккаунт</h3>
+                    <button class="menu-dots-btn" id="account-lock-btn" aria-label="Редактировать аккаунт">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+                    </button>
+                </div>
+                <div class="settings-form account-standard-content">
+                    <div class="flex-between">
+                        <div class="setting-item">
+                            <div class="value-accent" id="display-user-email">...</div>
+                        </div>
+                    </div>
+                    <div class="setting-item toggle-item">
+                        <label class="subtitle-card">Получать уведомления платформы</label>
+                        <label class="switch">
+                            <input type="checkbox" data-setting="notifications.platform_news" class="platform-news-checkbox">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-form account-edit-content" id="account-edit-content">
+                
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Удалить профиль</h3>
+                    </div>
+                    <div class="setting-item password-field-wrapper">
+                        <label class="subtitle-card">Текущий пароль</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="color_hex" id="account-delete-password" placeholder="••••••••" autocomplete="off">
+                            <button type="button" class="toggle-password-btn" title="Показать/скрыть пароль">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="eye-open">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </g>
+                                    <g class="eye-slash">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <p class="setting-hint">Удаление профиля необратимо. Введите текущий пароль для подтверждения.</p>
+                    </div>
+                    <div class="setting-item account-delete-row">
+                        <button class="action-btn sm btn-danger account-delete-submit" id="account-delete-btn" type="button">Удалить профиль</button>
+                    </div>
+                </div>
+            </div>
+            <div class="bento-card" id="card-tariff">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Тариф</h3>
+                    <div class="tariff-top-right">
+                        <div class="value-large" id="tariff-name">...</div>
+                        <div class="value-small reset-info" id="tariff-reset"></div>
+                    </div>
+                </div>
+                <div class="info-group">
+                    <div class="value-small" id="tariff-expiry">До: ...</div>
+                </div>
+                <div class="info-group">
+                    <div class="flex-between">
+                        <label class="subtitle-card">Лимит сообщений</label>
+                        <span class="value-small" id="tariff-limit-text">0/0</span>
+                    </div>
+                    <div class="limit-progress-container">
+                        <div class="limit-progress-bar" id="tariff-progress-bar"></div>
+                    </div>
+                </div>
+                <div class="tariff-inline-grid" id="tariff-inline-grid">
+                    <button type="button" class="tariff-option profile-tariff-option" data-tariff="start" data-price="0">
+                        <div class="tariff-option-name">Старт</div>
+                        <div class="tariff-option-price">0 ₽<span>/мес</span></div>
+                        <div class="tariff-option-desc">Для малого бизнеса</div>
+                    </button>
+                    <button type="button" class="tariff-option profile-tariff-option" data-tariff="business" data-price="3900">
+                        <div class="tariff-option-name">Бизнес</div>
+                        <div class="tariff-option-price">3 900 ₽<span>/мес</span></div>
+                        <div class="tariff-option-desc">Для среднего бизнеса</div>
+                    </button>
+                    <button type="button" class="tariff-option profile-tariff-option" data-tariff="neuro" data-price="9900">
+                        <div class="tariff-option-name">Нейро</div>
+                        <div class="tariff-option-price">9 900 ₽<span>/мес</span></div>
+                        <div class="tariff-option-desc">Для крупного бизнеса</div>
+                    </button>
+                </div>
+            </div>
+            <div class="bento-card" id="card-balance">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Баланс</h3>
+                    <div class="value-large" id="user-balance">0 ₽</div>
+                </div>
+                <div class="settings-form">
+                    <div class="setting-item auto-renew-section auto-renew-section-styled" id="auto-renew-container">
+                        <label class="subtitle-card">Автопродление тарифа</label>
+                        <label class="switch">
+                            <input type="checkbox" class="auto-renew-checkbox">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="topup-inline-row">
+                    <button class="topup-step-btn" id="topup-minus-inline" type="button" aria-label="Уменьшить сумму">−</button>
+                    <input type="number" id="topup-amount-inline" class="topup-amount-input no-spinners" placeholder="1000" min="100" step="100" inputmode="numeric" autocomplete="off">
+                    <button class="topup-step-btn" id="topup-plus-inline" type="button" aria-label="Увеличить сумму">+</button>
+                </div>
+                <div class="flex-between balance-actions-row">
+                    <button class="action-btn sm success-bg-btn" id="topup-btn-trigger">Пополнить</button>
+                    <div class="balance-history-trigger">
+                        <button class="menu-dots-btn" id="balance-history-toggle" type="button" aria-label="Показать историю пополнений">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9"></circle>
+                                <path d="M12 7v5l3 2"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="balance-history-panel" id="balance-history-panel">
+                    <div class="balance-history-list" id="balance-history-list">
+                        <div class="value-small">Загрузка...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="appearance-column" id="profile-right-column">
+            <div class="bento-card" id="card-guide">
+                <div class="profile-orb-container" aria-hidden="true">
+                    <canvas id="profile-orb-canvas" width="400" height="400"></canvas>
+                </div>
+                <div class="card-header-flex">
+                    <h3 class="card-title">Руководство</h3>
+                </div>
+                <div class="guide-content-layout">
+                    <div class="guide-main-col">
+                        <div class="guide-action-row">
+                            <button type="button" class="guide-inline-btn" id="profile-help-center-btn">
+                                <span>Справочный центр</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                            </button>
+                        </div>
+                        <p class="guide-text-muted">Инструкции по настройке платформы и управлению AI</p>
+                    </div>
+                </div>
+
+                <div class="guide-help-modal" id="profile-help-modal" aria-hidden="true">
+                    <div class="guide-help-card" role="dialog" aria-modal="true" aria-labelledby="profile-help-modal-title">
+                        <h4 id="profile-help-modal-title" class="guide-help-title">Справочный центр в разработке</h4>
+                        <p class="guide-help-text">Мы уже готовим подробные инструкции по настройке платформы, интеграциям и аналитике.</p>
+                        <p class="guide-help-text">Скоро здесь появится полный справочный раздел.</p>
+                        <button type="button" class="guide-help-ok" id="profile-help-ok">Понятно</button>
+                    </div>
+                </div>
+            </div>
+            <div class="bento-card faq-card" id="card-storage">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Хранилище</h3>
+                    <div class="storage-card-actions">
+                        <button class="menu-dots-btn" id="storage-delete-btn" type="button" aria-label="Удалить выбранные файлы" title="Удалить выбранные файлы" style="display:none;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M3 6h18"></path>
+                                <path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6"></path>
+                                <rect x="6.5" y="6" width="11" height="15" rx="1.8"></rect>
+                                <path d="M10 10v7"></path>
+                                <path d="M14 10v7"></path>
+                            </svg>
+                        </button>
+                        <button class="menu-dots-btn" id="storage-edit-btn" type="button" aria-label="Режим выбора файлов" title="Режим выбора файлов">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
+                        </button>
+                        <button class="menu-dots-btn icon-square-btn" id="storage-lock-btn" type="button" aria-label="Открыть файловый режим" title="Открыть файловый режим">
+                            <svg class="icon-lock-closed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"></path></svg>
+                            <svg class="icon-lock-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8.5z"></path><path d="M3 11h18"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="faq-chart-container storage-donut-wrap" id="storage-main-view">
+                    <canvas id="storage-donut-chart"></canvas>
+                    <div id="storage-donut-center" class="storage-donut-center">
+                        <div id="storage-donut-value" class="storage-donut-value">0 Б</div>
+                    </div>
+                </div>
+                <div id="storage-legend" class="faq-list storage-legend"></div>
+
+                <div id="storage-files-view" class="storage-files-view" style="display:none;">
+                    <div id="storage-files-grid" class="storage-files-grid"></div>
+                </div>
+                <div class="storage-footer-line">
+                    <div id="storage-total-limit" class="value-small storage-total-memory">Общая: 0 Б</div>
+                    <div id="storage-free-space" class="value-small storage-free-space">Свободно: 0 Б</div>
+                </div>
+            </div>
+        </div>
+        <div class="appearance-column" id="profile-right-column">
+            <div class="bento-card" id="card-news">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Новости</h3>
+                    <button type="button" class="menu-dots-btn" id="profile-news-btn" title="Все новости" aria-label="Открыть все новости">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M15 3h6v6"></path>
+                            <path d="M10 14L21 3"></path>
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="settings-form">
+                    <div class="setting-item">
+                        <div class="flex-between">
+                            <h4 class="subtitle-card-bold">Обновление нейросети</h4>
+                            <span class="value-small">Сегодня</span>
+                        </div>
+                        <p class="setting-hint">Мы улучшили алгоритмы обработки контекста. Теперь Mitia еще лучше понимает сложные инструкции и техническую документацию.</p>
+                    </div>
+                    <div class="setting-item">
+                        <div class="flex-between">
+                            <h4 class="subtitle-card-bold">Новые интеграции</h4>
+                            <span class="value-small">Вчера</span>
+                        </div>
+                        <p class="setting-hint">Добавлена поддержка выгрузки отчетов в PDF и Excel напрямую из чата. Попробуйте в разделе аналитики.</p>
+                    </div>
+                </div>
+
+                <div class="guide-help-modal" id="profile-news-modal" aria-hidden="true">
+                    <div class="guide-help-card" role="dialog" aria-modal="true" aria-labelledby="profile-news-modal-title">
+                        <h4 id="profile-news-modal-title" class="guide-help-title">Архив новостей в разработке</h4>
+                        <p class="guide-help-text">Мы работаем над созданием полноценного раздела с историей обновлений и анонсами платформы.</p>
+                        <p class="guide-help-text">Совсем скоро вы сможете просматривать все важные события в одном месте.</p>
+                        <button type="button" class="guide-help-ok" id="profile-news-ok">Понятно</button>
+                    </div>
+                </div>
+            </div>
+            <div class="bento-card" id="card-security">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Безопасность</h3>
+                    <button class="menu-dots-btn" id="security-lock-btn" aria-label="Редактировать безопасность">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+                    </button>
+                </div>
+                <div class="settings-form">
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Сменить пароль</h3>
+                    </div>
+                    <div class="setting-item password-field-wrapper security-first-field">
+                        <label class="subtitle-card">Текущий пароль</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="color_hex" id="current-password" placeholder="••••••••">
+                            <button type="button" class="toggle-password-btn" title="Показать/скрыть пароль">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="eye-open">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </g>
+                                    <g class="eye-slash">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-item password-field-wrapper">
+                        <label class="subtitle-card">Новый пароль</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="color_hex" id="new-password" placeholder="••••••••">
+                            <button type="button" class="toggle-password-btn" title="Показать/скрыть пароль">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="eye-open">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </g>
+                                    <g class="eye-slash">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-item password-field-wrapper">
+                        <label class="subtitle-card">Подтвердите пароль</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="color_hex" id="confirm-password" placeholder="••••••••">
+                            <button type="button" class="toggle-password-btn" title="Показать/скрыть пароль">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="eye-open">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </g>
+                                    <g class="eye-slash">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <button class="link-muted-btn" onclick="window.logout(); window.location.href='/reset'">Забыли пароль?</button>
+                    </div>
+                </div>
+                <div class="settings-form">
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Сменить почту</h3>
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Новый email</label>
+                        <input type="email" class="color_hex" id="account-email-new" placeholder="assistant@mitia.pro" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off">
+                    </div>
+                    <div class="setting-item password-field-wrapper">
+                        <label class="subtitle-card">Текущий пароль</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="color_hex" id="account-email-password" placeholder="••••••••" autocomplete="off">
+                            <button type="button" class="toggle-password-btn" title="Показать/скрыть пароль">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="eye-open">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </g>
+                                    <g class="eye-slash">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

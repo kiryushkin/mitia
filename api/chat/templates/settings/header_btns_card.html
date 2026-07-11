@@ -1,0 +1,364 @@
+<!-- КНОПКИ ШАПКИ -->
+<div class="bento-card" id="card-header-btns-design">
+    <div class="card-header-flex">
+        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
+            <div class="collapse-icon"></div>
+            <h3 class="card-title">Кнопки шапки</h3>
+        </div>
+        <!-- Иконки -->
+        <div class="card-actions-mini">
+            <button class="icon-btn-sm" onclick="window.resetHeaderButtonsToDefault()" title="Восстановить дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button class="icon-btn-sm" onclick="window.randomizeHeaderButtonsDesign()" title="Магический дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+        </div>
+    </div>
+    <!-- Параметры кнопок шапки -->
+    <div class="settings-form">
+        <!-- СТАТУС КНОПОК ШАПКИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Статус</h3>
+        </div>
+        <!-- Показать кнопку шапки закрыть окно -->
+        <div class="setting-item-compact">
+            <div class="flex-between">
+                <label class="subtitle-card">Показать кнопку «Закрыть окно»</label>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="header-close-toggle" data-setting="theme.header_close_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+        <!-- Показать кнопку шапки изменить размер -->
+        <div class="setting-item-compact">
+            <div class="flex-between">
+                <label class="subtitle-card">Показать кнопку «Изменить размер»</label>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="header-expand-toggle" data-setting="theme.header_expand_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+        <!-- ГЕОМЕТРИЯ КНОПОК ШАПКИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Геометрия</h3>
+        </div>
+        <!-- Расположение кнопок шапки -->
+        <div class="setting-item">
+            <label class="subtitle-card">Расположение</label>
+            <div class="side-selector">
+                <button class="side-btn" data-side-val="left" onclick="window.setHeaderSide('left')">Слева</button>
+                <button class="side-btn" data-side-val="right" onclick="window.setHeaderSide('right')">Справа</button>
+                <input type="hidden" id="header-side-input" data-setting="theme.header_icons_side">
+            </div>
+        </div>
+        <!-- Тип кнопки шапки -->
+        <div class="setting-item">
+                <label class="subtitle-card">Тип</label>
+                <div class="type-switcher" id="header-button-type-switcher">
+                <button class="type-btn active" data-btn-type="close">Закрыть окно</button>
+                <button class="type-btn" data-btn-type="expand">Изменить размер</button>
+            </div>
+        </div>
+        <!-- Размер кнопок шапки -->
+        <div class="setting-item">
+            <label class="subtitle-card">Размер</label>
+            <div class="range-with-val">
+                <input type="range" id="header-btn-size-input" data-setting="theme.header_btn_size" min="24" max="60" class="range-input">
+                <span class="range-value" id="header-btn-size-val"></span>
+            </div>
+        </div>
+        <!-- Скругление кнопок шапки -->
+        <div class="setting-item">
+            <label class="subtitle-card">Скругление</label>
+            <div class="range-with-val">
+                <input type="range" id="header-btn-radius-input" spellcheck="false" class="range-input" data-setting="theme.header_btn_radius" min="0" max="50">
+                <span class="range-value" id="header-btn-radius-val"></span>
+            </div>
+        </div>
+        
+            <!-- ИКОНКА КНОПКИ ШАПКИ -->
+            <div class="flex-between">
+                <h3 class="subtitle-card-bold white">Иконка</h3>
+            </div>
+            <!-- Цвет иконки кнопки шапки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="header-btn-color-preview"></div>
+                        <input type="color" id="header-btn-color-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="header-btn-color-hex" class="color_hex hex-input-full" data-setting="theme.header_btn_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность иконки кнопки шапки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="header-btn-opacity-input" class="range-input" data-setting="theme.header_btn_opacity" min="0" max="100">
+                    <span class="range-value" id="header-btn-opacity-val"></span>
+                </div>
+            </div>
+            <!-- ИКОНКА КНОПКИ ШАПКИ ПРИ НАВЕДЕНИИ -->
+            <div class="flex-between">
+                <h3 class="subtitle-card-bold white">Иконка при наведении</h3>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="header-btn-color-h-toggle" data-setting="theme.header_btn_color_h_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div id="header-btn-color-h-settings" class="settings-form-mini">
+                <!-- Цвет иконки кнопки шапки при наведении -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Цвет</label>
+                    <div class="color-input-group">
+                        <div class="color-circle-wrapper">
+                            <div class="color-circle-bg" id="header-btn-color-hover-preview"></div>
+                            <input type="color" id="header-btn-color-hover-picker" class="hidden-picker">
+                        </div>
+                        <input type="text" id="header-btn-color-hover-hex" class="color_hex hex-input-full" data-setting="theme.header_btn_color_h" placeholder="Прозрачный">
+                    </div>
+                </div>
+                <!-- Прозрачность иконки кнопки шапки при наведении -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Прозрачность</label>
+                    <div class="range-with-val">
+                        <input type="range" id="header-btn-opacity-h-input" class="range-input" data-setting="theme.header_btn_opacity_h" min="0" max="100">
+                        <span class="range-value" id="header-btn-opacity-h-val"></span>
+                    </div>
+                </div>
+            </div>
+        
+            <!-- ФОН КНОПКИ ШАПКИ -->
+            <div class="flex-between">
+                <h3 class="subtitle-card-bold white">Фон</h3>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="header-btn-bg-enabled-toggle" data-setting="theme.header_btn_bg_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <!-- Параметры фона кнопки шапки -->
+            <div id="header-btn-bg-settings" class="settings-form-mini">
+                <!-- Цвет фона кнопки шапки -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Цвет</label>
+                    <div class="color-input-group">
+                        <div class="color-circle-wrapper">
+                            <div class="color-circle-bg" id="header-btn-bg-preview"></div>
+                            <input type="color" id="header-btn-bg-picker" class="hidden-picker">
+                        </div>
+                        <input type="text" id="header-btn-bg-hex" class="color_hex hex-input-full" data-setting="theme.header_btn_bg" placeholder="Прозрачный">
+                    </div>
+                </div>
+                <!-- Прозрачность фона кнопки шапки -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Прозрачность</label>
+                    <div class="range-with-val">
+                        <input type="range" id="header-btn-bg-opacity-input" class="range-input" data-setting="theme.header_btn_bg_opacity" min="0" max="100">
+                        <span class="range-value" id="header-btn-bg-opacity-val"></span>
+                    </div>
+                </div>
+                <!-- Размытие фона кнопки шапки -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Размытие</label>
+                    <div class="range-with-val">
+                        <input type="range" id="header-btn-bg-blur-input" min="0" max="20" class="range-input">
+                        <span class="range-value" id="header-btn-bg-blur-val"></span>
+                    </div>
+                </div>
+            </div>
+            <!-- ФОН КНОПКИ ШАПКИ ПРИ НАВЕДЕНИИ -->
+            <div class="flex-between">
+                <h3 class="subtitle-card-bold white">Фон при наведении</h3>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="header-btn-bg-h-toggle" data-setting="theme.header_btn_bg_h_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <!-- Параметры фона кнопки шапки при наведении -->
+            <div id="header-btn-bg-h-settings" class="settings-form-mini">
+                <!-- Цвет фона кнопки шапки при наведении -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Цвет</label>
+                    <div class="color-input-group">
+                        <div class="color-circle-wrapper">
+                            <div class="color-circle-bg" id="header-btn-bg-h-preview"></div>
+                            <input type="color" id="header-btn-bg-h-picker" class="hidden-picker">
+                        </div>
+                        <input type="text" id="header-btn-bg-h-hex" class="color_hex hex-input-full" data-setting="theme.header_btn_bg_h" placeholder="Прозрачный">
+                    </div>
+                </div>
+                <!-- Прозрачность фона кнопки шапки при наведении -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Прозрачность</label>
+                    <div class="range-with-val">
+                        <input type="range" id="header-btn-bg-h-opacity-input" class="range-input" data-setting="theme.header_btn_bg_opacity_h" min="0" max="100">
+                        <span class="range-value" id="header-btn-bg-h-opacity-val"></span>
+                    </div>
+                </div>
+                <!-- Размытие фона кнопки шапки при наведении -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Размытие</label>
+                    <div class="range-with-val">
+                        <input type="range" id="header-btn-bg-h-blur-input" min="0" max="20" class="range-input">
+                        <span class="range-value" id="header-btn-bg-h-blur-val"></span>
+                    </div>
+                </div>
+            </div>
+            <!-- ОБВОДКА КНОПКИ ШАПКИ -->
+            <div class="flex-between">
+                <h3 class="subtitle-card-bold white">Обводка</h3>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="header-btn-border-enabled-toggle" data-setting="theme.header_btn_border_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <!-- Параметры обводки кнопки шапки -->
+            <div id="header-btn-border-settings" class="settings-form-mini">
+                <!-- Цвет обводки кнопки шапки -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Цвет</label>
+                    <div class="color-input-group">
+                        <div class="color-circle-wrapper">
+                            <div class="color-circle-bg" id="header-btn-border-preview"></div>
+                            <input type="color" id="header-btn-border-picker" class="hidden-picker">
+                        </div>
+                        <input type="text" id="header-btn-border-hex" class="color_hex hex-input-full" data-setting="theme.header_btn_border_color" placeholder="Прозрачный">
+                    </div>
+                </div>
+                <!-- Прозрачность обводки кнопки шапки -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Прозрачность</label>
+                    <div class="range-with-val">
+                        <input type="range" id="header-btn-border-opacity-input" class="range-input" data-setting="theme.header_btn_border_opacity" min="0" max="100">
+                        <span class="range-value" id="header-btn-border-opacity-val"></span>
+                    </div>
+                </div>
+                <!-- Толщина обводки кнопки шапки -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Толщина</label>
+                    <div class="range-with-val">
+                        <input type="range" id="header-btn-border-width-input" class="range-input" data-setting="theme.header_btn_border_width" min="0" max="5">
+                        <span class="range-value" id="header-btn-border-width-val"></span>
+                    </div>
+                </div>
+            </div>
+            <!-- ОБВОДКА КНОПКИ ШАПКИ ПРИ НАВЕДЕНИИ -->
+            <div class="flex-between">
+                <h3 class="subtitle-card-bold white">Обводка при наведении</h3>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="header-btn-border-h-toggle" data-setting="theme.header_btn_border_h_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <!-- Параметры обводки кнопки шапки при наведении -->
+            <div id="header-btn-border-h-settings" class="settings-form-mini">
+                <!-- Цвет обводки кнопки шапки при наведении -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Цвет</label>
+                    <div class="color-input-group">
+                        <div class="color-circle-wrapper">
+                            <div class="color-circle-bg" id="header-btn-border-h-preview"></div>
+                            <input type="color" id="header-btn-border-h-picker" class="hidden-picker">
+                        </div>
+                        <input type="text" id="header-btn-border-h-hex" class="color_hex hex-input-full" data-setting="theme.header_btn_border_color_h" placeholder="Прозрачный">
+                    </div>
+                </div>
+                <!-- Прозрачность обводки кнопки шапки при наведении -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Прозрачность</label>
+                    <div class="range-with-val">
+                        <input type="range" id="header-btn-border-h-opacity-input" class="range-input" data-setting="theme.header_btn_border_opacity_h" min="0" max="100">
+                        <span class="range-value" id="header-btn-border-h-opacity-val"></span>
+                    </div>
+                </div>
+                <!-- Толщина обводки кнопки шапки при наведении -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Толщина</label>
+                    <div class="range-with-val">
+                        <input type="range" id="header-btn-border-h-width-input" class="range-input" data-setting="theme.header_btn_border_width_h" min="0" max="5">
+                        <span class="range-value" id="header-btn-border-h-width-val"></span>
+                    </div>
+                </div>
+            </div>
+            <!-- ТЕНЬ КНОПКИ ШАПКИ -->
+            <div class="flex-between">
+                <h3 class="subtitle-card-bold white">Тень</h3>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="header-btn-shadow-toggle" data-setting="theme.header_btn_shadow_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <!-- Параметры тени кнопки шапки -->
+            <div id="header-btn-shadow-settings" class="settings-form-mini">
+                <!-- Цвет тени кнопки шапки -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Цвет</label>
+                    <div class="color-input-group">
+                        <div class="color-circle-wrapper">
+                            <div class="color-circle-bg" id="header-btn-shadow-preview"></div>
+                            <input type="color" id="header-btn-shadow-picker" class="hidden-picker">
+                        </div>
+                        <input type="text" id="header-btn-shadow-hex" class="color_hex hex-input-full" data-setting="theme.header_btn_shadow_color" placeholder="Прозрачный">
+                    </div>
+                </div>
+                <!-- Прозрачность тени кнопки шапки -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Прозрачность</label>
+                    <div class="range-with-val">
+                        <input type="range" id="header-btn-shadow-opacity-input" class="range-input" data-setting="theme.header_btn_shadow_opacity" min="0" max="100">
+                        <span class="range-value" id="header-btn-shadow-opacity-val"></span>
+                    </div>
+                </div>
+                <!-- Размытие тени кнопки шапки -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Размытие</label>
+                    <div class="range-with-val">
+                        <input type="range" id="header-btn-shadow-blur-input" class="range-input" data-setting="theme.header_btn_shadow_blur" min="0" max="30">
+                        <span class="range-value" id="header-btn-shadow-blur-val"></span>
+                    </div>
+                </div>
+            </div>
+            <!-- ТЕНЬ КНОПКИ ШАПКИ ПРИ НАВЕДЕНИИ -->
+            <div class="flex-between">
+                <h3 class="subtitle-card-bold white">Тень при наведении</h3>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="header-btn-shadow-h-toggle" data-setting="theme.header_btn_shadow_h_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <!-- Параметры тени кнопки шапки при наведении -->
+            <div id="header-btn-shadow-h-settings" class="settings-form-mini">
+                <!-- Цвет тени кнопки шапки при наведении -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Цвет</label>
+                    <div class="color-input-group">
+                        <div class="color-circle-wrapper">
+                            <div class="color-circle-bg" id="header-btn-shadow-h-preview"></div>
+                            <input type="color" id="header-btn-shadow-h-picker" class="hidden-picker">
+                        </div>
+                        <input type="text" id="header-btn-shadow-h-hex" class="color_hex hex-input-full" data-setting="theme.header_btn_shadow_color_h" placeholder="Прозрачный">
+                    </div>
+                </div>
+                <!-- Прозрачность тени кнопки шапки при наведении -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Прозрачность</label>
+                    <div class="range-with-val">
+                        <input type="range" id="header-btn-shadow-h-opacity-input" class="range-input" data-setting="theme.header_btn_shadow_opacity_h" min="0" max="100">
+                        <span class="range-value" id="header-btn-shadow-h-opacity-val"></span>
+                    </div>
+                </div>
+                <!-- Размытие тени кнопки шапки при наведении -->
+                <div class="setting-item">
+                    <label class="subtitle-card">Размытие</label>
+                    <div class="range-with-val">
+                        <input type="range" id="header-btn-shadow-h-blur-input" class="range-input" data-setting="theme.header_btn_shadow_blur_h" min="0" max="30">
+                        <span class="range-value" id="header-btn-shadow-h-blur-val"></span>
+                    </div>
+                </div>
+            </div>
+    </div>
+</div>

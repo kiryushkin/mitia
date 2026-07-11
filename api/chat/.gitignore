@@ -1,0 +1,9 @@
+*.log
+.DS_Store
+__pycache__/
+*.pyc
+static/tts_cache/*
+!static/tts_cache/.gitkeep
+img/mitia_assistant/*
+node_modules/
+dist/

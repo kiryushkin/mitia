@@ -1,0 +1,52 @@
+{
+  "site_url": "",
+  "bot_settings": {
+    "enable_knowledge_file": false,
+    "knowledge_file_url": "",
+    "knowledge_file_name": "",
+    "personality_prompt": "",
+    "negative_prompt": "",
+    "ai_unavailable_message": "Я передал ваш вопрос оператору. Пожалуйста, оставьте контакты, мы ответим вам в ближайшее время.",
+    "enable_cache": false,
+    "enable_site_search": true
+  },
+  "contacts": {
+    "company_name": "",
+    "phone": "",
+    "country_code": "ru",
+    "email": "",
+    "telegram": "",
+    "whatsapp": "",
+    "vk_url": "",
+    "vk_messenger": "",
+    "max": "",
+    "website": "",
+    "extra_phones": [],
+    "extra_emails": [],
+    "extra_tg": [],
+    "extra_wa": [],
+    "extra_max": [],
+    "extra_vk": [],
+    "extra_links": [],
+    "extra_addresses": []
+  },
+  "working_hours": {
+    "mon": { "enabled": false, "is_24h": false, "from": "09:00", "to": "18:00", "lunch_enabled": false, "lunch_from": "13:00", "lunch_to": "14:00" },
+    "tue": { "enabled": false, "is_24h": false, "from": "09:00", "to": "18:00", "lunch_enabled": false, "lunch_from": "13:00", "lunch_to": "14:00" },
+    "wed": { "enabled": false, "is_24h": false, "from": "09:00", "to": "18:00", "lunch_enabled": false, "lunch_from": "13:00", "lunch_to": "14:00" },
+    "thu": { "enabled": false, "is_24h": false, "from": "09:00", "to": "18:00", "lunch_enabled": false, "lunch_from": "13:00", "lunch_to": "14:00" },
+    "fri": { "enabled": false, "is_24h": false, "from": "09:00", "to": "18:00", "lunch_enabled": false, "lunch_from": "13:00", "lunch_to": "14:00" },
+    "sat": { "enabled": false, "is_24h": false, "from": "09:00", "to": "18:00", "lunch_enabled": false, "lunch_from": "13:00", "lunch_to": "14:00" },
+    "sun": { "enabled": false, "is_24h": false, "from": "09:00", "to": "18:00", "lunch_enabled": false, "lunch_from": "13:00", "lunch_to": "14:00" }
+  },
+  "working_hours_holidays": "",
+  "working_hours_holidays_enabled": false,
+  "legal": {
+    "type": "ip"
+  },
+  "legal_data": {
+    "ip": {},
+    "ooo": {},
+    "self": {}
+  }
+}

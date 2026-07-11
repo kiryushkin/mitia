@@ -1,0 +1,315 @@
+<!-- КНОПКА ОТПРАВКИ -->
+<div class="bento-card" id="card-btn-send-design">
+    <div class="card-header-flex">
+        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
+            <div class="collapse-icon"></div>
+            <h3 class="card-title">Кнопка отправки</h3>
+        </div>
+        <!-- Иконки -->
+        <div class="card-actions-mini">
+            <button class="icon-btn-sm" onclick="window.resetSendBtnToDefault()" title="Восстановить дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button class="icon-btn-sm" onclick="window.randomizeSendBtnDesign()" title="Магический дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+        </div>
+    </div>
+    <!-- Параметры кнопки отправки -->
+    <div class="settings-form">
+        <!-- СТАТУС КНОПКИ ОТПРАВКИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Статус</h3>
+        </div>
+        <!-- Предпросмотр кнопки отправки -->
+        <div class="setting-item-compact">
+            <div class="flex-between">
+                <label class="subtitle-card">Предпросмотр</label>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="btn-send-preview-toggle" data-setting="theme.btn_send_preview_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+        <!-- ГЕОМЕТРИЯ КНОПКИ ОТПРАВКИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Геометрия</h3>
+        </div>
+        <!-- Скругление кнопки отправки -->
+        <div class="setting-item">
+            <label class="subtitle-card">Скругление</label>
+            <div class="range-with-val">
+                <input type="range" id="btn-send-radius-input" data-setting="theme.btn_send_radius" min="0" max="50" class="range-input">
+                <span class="range-value" id="btn-send-radius-val"></span>
+            </div>
+        </div>
+        <!-- ИКОНКА КНОПКИ ОТПРАВКИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Иконка</h3>
+        </div>
+        <!-- Параметры иконки кнопки отправки -->
+        <div class="settings-form-mini">
+            <!-- Цвет иконки кнопки отправки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-send-icon-preview"></div>
+                        <input type="color" id="btn-send-icon-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-send-icon-hex" class="color_hex hex-input-full" data-setting="theme.btn_send_icon_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность иконки кнопки отправки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-send-icon-opacity-input" data-setting="theme.btn_send_icon_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-send-icon-opacity-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ИКОНКА КНОПКИ ОТПРАВКИ ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Иконка при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-send-icon-h-toggle" data-setting="theme.btn_send_icon_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры иконки кнопки отправки при наведении -->
+        <div id="btn-send-icon-h-settings" class="settings-form-mini">
+            <!-- Цвет иконки кнопки отправки при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-send-icon-h-preview"></div>
+                        <input type="color" id="btn-send-icon-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-send-icon-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_send_icon_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность иконки кнопки отправки при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-send-icon-h-opacity-input" data-setting="theme.btn_send_icon_opacity_h" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-send-icon-h-opacity-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ФОН КНОПКИ ОТПРАВКИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Фон</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-send-bg-toggle" data-setting="theme.btn_send_bg_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры фона кнопки отправки -->
+        <div id="btn-send-bg-settings" class="settings-form-mini">
+            <!-- Цвет фона кнопки отправки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-send-bg-preview"></div>
+                        <input type="color" id="btn-send-bg-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-send-bg-hex" class="color_hex hex-input-full" data-setting="theme.btn_send_bg_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность фона кнопки отправки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-send-bg-opacity-input" data-setting="theme.btn_send_bg_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-send-bg-opacity-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ФОН КНОПКИ ОТПРАВКИ ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Фон при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-send-bg-h-toggle" data-setting="theme.btn_send_bg_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры фона кнопки отправки при наведении -->
+        <div id="btn-send-bg-h-settings" class="settings-form-mini">
+            <!-- Цвет фона кнопки отправки при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-send-bg-h-preview"></div>
+                        <input type="color" id="btn-send-bg-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-send-bg-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_send_bg_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность фона кнопки отправки при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-send-bg-h-opacity-input" data-setting="theme.btn_send_bg_opacity_h" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-send-bg-h-opacity-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ОБВОДКА КНОПКИ ОТПРАВКИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Обводка</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-send-border-toggle" data-setting="theme.btn_send_border_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры обводки кнопки отправки -->
+        <div id="btn-send-border-settings" class="settings-form-mini">
+            <!-- Цвет обводки кнопки отправки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-send-border-preview"></div>
+                        <input type="color" id="btn-send-border-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-send-border-hex" class="color_hex hex-input-full" data-setting="theme.btn_send_border_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность обводки кнопки отправки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-send-border-opacity-input" data-setting="theme.btn_send_border_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-send-border-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Толщина обводки кнопки отправки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-send-border-width-input" data-setting="theme.btn_send_border_width" min="0" max="5" class="range-input">
+                    <span class="range-value" id="btn-send-border-width-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ОБВОДКА КНОПКИ ОТПРАВКИ ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Обводка при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-send-border-h-toggle" data-setting="theme.btn_send_border_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры обводки кнопки отправки при наведении -->
+        <div id="btn-send-border-h-settings" class="settings-form-mini">
+            <!-- Цвет обводки кнопки отправки при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-send-border-h-preview"></div>
+                        <input type="color" id="btn-send-border-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-send-border-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_send_border_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность обводки кнопки отправки при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-send-border-h-opacity-input" data-setting="theme.btn_send_border_opacity_h" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-send-border-h-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Толщина обводки кнопки отправки при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-send-border-h-width-input" data-setting="theme.btn_send_border_width_h" min="0" max="5" class="range-input">
+                    <span class="range-value" id="btn-send-border-h-width-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ТЕНЬ КНОПКИ ОТПРАВКИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Тень</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-send-shadow-toggle" data-setting="theme.btn_send_shadow_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры тени кнопки отправки -->
+        <div id="btn-send-shadow-settings" class="settings-form-mini">
+            <!-- Цвет тени кнопки отправки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-send-shadow-preview"></div>
+                        <input type="color" id="btn-send-shadow-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-send-shadow-hex" class="color_hex hex-input-full" data-setting="theme.btn_send_shadow_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность тени кнопки отправки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-send-shadow-opacity-input" data-setting="theme.btn_send_shadow_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-send-shadow-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие тени кнопки отправки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-send-shadow-blur-input" data-setting="theme.btn_send_shadow_blur" min="0" max="50" class="range-input">
+                    <span class="range-value" id="btn-send-shadow-blur-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ТЕНЬ КНОПКИ ОТПРАВКИ ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Тень при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-send-shadow-h-toggle" data-setting="theme.btn_send_shadow_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры тени кнопки отправки при наведении -->
+        <div id="btn-send-shadow-h-settings" class="settings-form-mini">
+            <!-- Цвет тени кнопки отправки при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-send-shadow-h-preview"></div>
+                        <input type="color" id="btn-send-shadow-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-send-shadow-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_send_shadow_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность тени кнопки отправки при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-send-shadow-h-opacity-input" data-setting="theme.btn_send_shadow_opacity_h" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-send-shadow-h-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие тени кнопки отправки при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-send-shadow-h-blur-input" data-setting="theme.btn_send_shadow_blur_h" min="0" max="50" class="range-input">
+                    <span class="range-value" id="btn-send-shadow-h-blur-val"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

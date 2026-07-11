@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="icon_avito" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 500 500">
+  <!-- Generator: Adobe Illustrator 30.4.0, SVG Export Plug-In . SVG Version: 2.1.4 Build 226)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: none;
+        stroke: #fff;
+        stroke-miterlimit: 10;
+        stroke-width: 25px;
+      }
+
+      .st1 {
+        fill: #ff4053;
+      }
+    </style>
+  </defs>
+  <rect id="bg" class="st1" width="500" height="500"/>
+  <path id="line" class="st0" d="M385.3,363.7H116.3c-13.7,0-24.9-11.1-24.9-24.9v-178c0-13.7,11.1-24.9,24.9-24.9h269c13.7,0,24.9,11.1,24.9,24.9v178c0,13.7-11.1,24.9-24.9,24.9ZM405.9,146.7l-137.5,119.9c-9.7,9.7-25.5,9.7-35.2,0l-137.5-119.9"/>
+</svg>

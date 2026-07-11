@@ -1,0 +1,195 @@
+<!-- ШАПКА -->
+<div class="bento-card" id="card-window-header-design">
+    <div class="card-header-flex">
+        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
+            <div class="collapse-icon"></div>
+            <h3 class="card-title">Шапка</h3>
+        </div>
+        <!-- Иконки -->
+        <div class="card-actions-mini">
+            <button class="icon-btn-sm" onclick="window.resetHeaderToDefault()" title="Восстановить дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button class="icon-btn-sm" onclick="window.randomizeHeaderDesign()" title="Магический дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+        </div>
+    </div>
+    <!-- Параметры шапки -->
+    <div class="settings-form">
+        <!-- ИЗОБРАЖЕНИЕ ШАПКИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Изображение</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="header-logo-enabled-toggle" data-setting="theme.header_logo_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры изображения шапки -->
+        <div id="header-logo-settings-group" class="settings-form-mini">
+            <!-- Загрузить изображение шапки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Загрузить изображение</label>
+                <div class="color-input-group">
+                    <div id="header-logo-preview" class="img-upload-preview" onclick="document.getElementById('header-logo-upload').click()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="placeholder-icon"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                    </div>
+                    <div class="upload-info">
+                        <span class="upload-hint">JPG, PNG, SVG, GIF, WEBP. Макс. вес: 500 KB</span>
+                    </div>
+                    <input type="file" id="header-logo-upload" hidden accept=".jpg,.jpeg,.png,.svg,.gif,.webp">
+                </div>
+            </div>
+            <!-- Прозрачность изображения шапки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="header-logo-opacity-input" data-setting="theme.header_logo_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="header-logo-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размер изображения шапки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размер</label>
+                <div class="range-with-val">
+                    <input type="range" id="header-logo-size-input" spellcheck="false" class="range-input" data-setting="theme.header_logo_size" min="10" max="60">
+                    <span class="range-value" id="header-logo-size-val"></span>
+                </div>
+            </div>
+            <!-- Скругление изображения шапки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Скругление</label>
+                <div class="range-with-val">
+                    <input type="range" id="header-logo-radius-input" data-setting="theme.header_logo_radius" min="0" max="30" class="range-input">
+                    <span class="range-value" id="header-logo-radius-val"></span>
+                </div>
+            </div>
+            <!-- URL ссылка изображения шапки-->
+            <div class="setting-item-compact">
+                <label class="subtitle-card">URL ссылка</label>
+                <input type="text" id="header-logo-url-input" data-setting="theme.header_logo_url" spellcheck="false" class="hex-input-full" placeholder="https://mitia.pro">
+            </div>
+            <!-- Открыть ссылку изображения шапки в новом окне -->
+            <div class="setting-item-compact">
+                <div class="flex-between">
+                    <label class="subtitle-card">Открыть ссылку в новом окне</label>
+                    <label class="switch sm-switch">
+                        <input type="checkbox" id="header-logo-target-toggle" data-setting="theme.header_logo_target_blank">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        <!-- ФОН ШАПКИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Фон</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="header-bg-enabled-toggle" data-setting="theme.header_bg_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры фона шапки -->
+        <div id="header-bg-settings-group" class="settings-form-mini">
+            <!-- Цвет фона шапки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="header-bg-preview"></div>
+                        <input type="color" id="header-bg-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="header-bg-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.header_bg" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность фона шапки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="header-opacity-input" spellcheck="false" class="range-input" data-setting="theme.header_bg_opacity" min="0" max="100">
+                    <span class="range-value" id="header-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие фона шапки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="header-blur-input" spellcheck="false" class="range-input" data-setting="theme.header_bg_blur" min="0" max="20">
+                    <span class="range-value" id="header-blur-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ТЕНЬ ШАПКИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Тень</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="header-shadow-toggle" data-setting="theme.header_shadow_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры тени шапки -->
+        <div id="header-shadow-settings-group" class="settings-form-mini">
+            <!-- Цвет тени шапки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="header-shadow-preview"></div>
+                        <input type="color" id="header-shadow-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="header-shadow-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.header_shadow_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность тени шапки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="header-shadow-opacity-input" data-setting="theme.header_shadow_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="header-shadow-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие тени шапки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="header-shadow-blur-input" data-setting="theme.header_shadow_blur" min="0" max="100" class="range-input">
+                    <span class="range-value" id="header-shadow-blur-val"></span>
+                </div>
+            </div>
+            <!-- Смещение тени шапки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Смещение по вертикали</label>
+                <div class="range-with-val">
+                    <input type="range" id="header-shadow-offset-y-input" data-setting="theme.header_shadow_offset_y" min="0" max="30" class="range-input">
+                    <span class="range-value" id="header-shadow-offset-y-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ЭФФЕКТ ЗАТУХАНИЯ ШАПКИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold">Эффект затухания</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="header-mask-toggle" data-setting="theme.header_mask_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры эффекта затухания шапки -->
+        <div id="header-mask-settings-group" class="settings-form-mini">
+            <!-- Высота затухания -->
+            <div class="setting-item">
+                <label class="subtitle-card">Высота</label>
+                <div class="range-with-val">
+                    <input type="range" id="header-mask-height-input" data-setting="theme.header_mask_height" min="0" max="60"class="range-input">
+                    <span class="range-value" id="header-mask-height-val"></span>
+                </div>
+            </div>
+            <!-- Плавность затухания -->
+            <div class="setting-item">
+                <label class="subtitle-card">Плавность</label>
+                <div class="range-with-val">
+                    <input type="range" id="header-mask-smoothness-input" data-setting="theme.header_mask_smoothness" min="0" max="100" class="range-input">
+                    <span class="range-value" id="header-mask-smoothness-val"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,85 @@
+[
+  {
+    "id": "yookassa",
+    "name": "ЮKassa",
+    "description": "Прием платежей через банковские карты, СБП и кошельки. Деньги поступают на ваш расчетный счет.",
+    "logo": "/api/chat/img/icon-yookassa.svg",
+    "fields": [
+      { "id": "shop_id", "label": "ID магазина", "type": "text", "placeholder": "Например: 500000" },
+      { "id": "secret_key", "label": "Секретный ключ", "type": "password", "placeholder": "live_..." },
+      { "id": "webhook_secret", "label": "Секрет для уведомлений", "type": "password", "placeholder": "Секретное слово из настроек ЮKassa", "hint": "Для проверки подлинности уведомлений" },
+      { "id": "return_url", "label": "URL возврата после оплаты", "type": "text", "placeholder": "https://your-site.com/thanks", "hint": "Куда перенаправить пользователя после платежа" }
+    ],
+    "webhook_info": {
+      "title": "Настройка уведомлений (Webhook)",
+      "desc": "Скопируйте этот адрес в настройки ЮKassa (раздел «Уведомления по HTTP»), чтобы бот узнал об оплате:",
+      "path": "/api/payments/yookassa/webhook"
+    }
+  },
+  {
+    "id": "telegram",
+    "name": "Telegram Bot",
+    "description": "Подключите вашего бота, чтобы он отвечал клиентам напрямую в Telegram.",
+    "logo": "/api/chat/img/icon-telegram.svg",
+    "fields": [
+      { "id": "bot_token", "label": "Токен бота (API Token)", "type": "password", "placeholder": "123456789:ABCDEF..." }
+    ],
+    "webhook_info": {
+      "title": "Настройка Webhook",
+      "desc": "Установите этот URL для вашего бота через BotFather или API:",
+      "path": "/api/chat/telegram/webhook"
+    }
+  },
+  {
+    "id": "bitrix24",
+    "name": "Bitrix24",
+    "description": "Автоматическая передача лидов и истории переписки в вашу CRM-систему.",
+    "logo": "/api/chat/img/icon-bitrix24.svg",
+    "fields": [
+      { "id": "webhook_url", "label": "Входящий вебхук", "type": "text", "placeholder": "https://your-domain.bitrix24.ru/rest/1/..." },
+      { "id": "lead_source", "label": "Название источника заявок", "type": "text", "placeholder": "Например: Mitia AI" }
+    ]
+  },
+  {
+    "id": "google_sheets",
+    "name": "Google Таблицы",
+    "description": "Сохраняйте данные о клиентах и заказы в удобные таблицы Google.",
+    "logo": "/api/chat/img/icon-google-sheets.svg",
+    "fields": [
+      { "id": "spreadsheet_id", "label": "ID таблицы", "type": "text", "placeholder": "Например: 1abc123..." },
+      { "id": "sheet_name", "label": "Название листа", "type": "text", "placeholder": "Лист1" },
+      { "id": "credentials", "label": "Данные авторизации (JSON)", "type": "textarea", "placeholder": "{ \"type\": \"service_account\", ... }" }
+    ]
+  },
+  {
+    "id": "whatsapp",
+    "name": "WhatsApp Business",
+    "description": "Общайтесь с клиентами в самом популярном мессенджере через официальное API.",
+    "logo": "/api/chat/img/icon-whatsapp-business.svg",
+    "fields": [
+      { "id": "phone_id", "label": "ID номера телефона", "type": "text", "placeholder": "Например: 10987654321" },
+      { "id": "access_token", "label": "Постоянный ключ доступа", "type": "password", "placeholder": "Начинается с EAAB..." }
+    ]
+  },
+  {
+    "id": "amocrm",
+    "name": "amoCRM",
+    "description": "Интеграция сделок и контактов в одну из самых популярных CRM для продаж.",
+    "logo": "/api/chat/img/icon-amoCRM.svg",
+    "fields": [
+      { "id": "subdomain", "label": "Адрес вашей CRM (субдомен)", "type": "text", "placeholder": "Например: mycompany" },
+      { "id": "client_id", "label": "ID интеграции", "type": "text", "placeholder": "Можно найти в настройках amoCRM" },
+      { "id": "client_secret", "label": "Секретный ключ интеграции", "type": "password", "placeholder": "..." }
+    ]
+  },
+  {
+    "id": "moysklad",
+    "name": "МойСклад",
+    "description": "Синхронизация остатков товаров и создание заказов в учетной системе.",
+    "logo": "/api/chat/img/icon-moysklad.svg",
+    "fields": [
+      { "id": "login", "label": "Логин / Email", "type": "text", "placeholder": "admin@company.ru" },
+      { "id": "password", "label": "Пароль", "type": "password", "placeholder": "..." }
+    ]
+  }
+]

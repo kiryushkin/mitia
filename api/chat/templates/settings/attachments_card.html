@@ -1,0 +1,224 @@
+<!-- ВЛОЖЕНИЯ -->
+<div class="bento-card" id="card-attachments-design">
+    <div class="card-header-flex">
+        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
+            <div class="collapse-icon"></div>
+            <h3 class="card-title">Вложения</h3>
+        </div>
+        <!-- Иконки -->
+        <div class="card-actions-mini">
+            <button class="icon-btn-sm" onclick="window.resetAttachmentsToDefault()" title="Восстановить дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button class="icon-btn-sm" onclick="window.randomizeAttachmentsDesign()" title="Магический дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+        </div>
+    </div>
+    <!-- Параметры вложений -->
+    <div class="settings-form">
+        <!-- СТАТУС ВЛОЖЕНИЙ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Статус</h3>
+        </div>
+        <!-- Предпросмотр вложений -->
+        <div class="setting-item-compact">
+            <div class="flex-between">
+                <label class="subtitle-card">Предпросмотр</label>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="attach-item-preview-toggle" data-setting="theme.attach_item_preview_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- ГЕОМЕТРИЯ ВЛОЖЕНИЙ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Геометрия</h3>
+        </div>
+        <!-- Высота вложения -->
+        <div class="setting-item">
+            <label class="subtitle-card">Высота</label>
+            <div class="range-with-val">
+                <input type="range" id="attach-item-height-input" data-setting="theme.attach_item_height" min="20" max="40" class="range-input">
+                <span class="range-value" id="attach-item-height-val"></span>
+            </div>
+        </div>
+        <!-- Скругление вложения -->
+        <div class="setting-item">
+            <label class="subtitle-card">Скругление</label>
+            <div class="range-with-val">
+                <input type="range" id="attach-item-radius-input" data-setting="theme.attach_item_radius" min="0" max="20" class="range-input">
+                <span class="range-value" id="attach-item-radius-val"></span>
+            </div>
+        </div>
+
+        <!-- ТЕКСТ ВЛОЖЕНИЯ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Текст</h3>
+        </div>
+        <div class="settings-form-mini">
+            <!-- Шрифт текста вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Шрифт</label>
+                <div class="custom-select" id="attach-item-font-family-select-container">
+                    <div class="select-trigger">
+                        <span id="attach-item-current-font-name">Geist</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"></path></svg>
+                    </div>
+                    <div class="select-options"></div>
+                </div>
+                <input type="hidden" id="attach-item-font-family-select" data-setting="theme.attach_item_font_family">
+            </div>
+            <!-- Цвет текста вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="attach-item-text-preview"></div>
+                        <input type="color" id="attach-item-text-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="attach-item-text-hex" class="color_hex hex-input-full" data-setting="theme.attach_item_text_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность текста вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="attach-item-text-opacity-input" data-setting="theme.attach_item_text_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="attach-item-text-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размер текста вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размер</label>
+                <div class="range-with-val">
+                    <input type="range" id="attach-item-font-size-input" data-setting="theme.attach_item_font_size" min="8" max="14" class="range-input">
+                    <span class="range-value" id="attach-item-font-size-val"></span>
+                </div>
+            </div>
+            <!-- Толщина текста вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="attach-item-font-weight-input" data-setting="theme.attach_item_font_weight" min="100" max="900" step="100" class="range-input">
+                    <span class="range-value" id="attach-item-font-weight-val"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ФОН ВЛОЖЕНИЯ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Фон</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="attach-item-bg-toggle" data-setting="theme.attach_item_bg_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <div id="attach-item-bg-settings-group" class="settings-form-mini">
+            <!-- Цвет фона вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="attach-item-bg-preview"></div>
+                        <input type="color" id="attach-item-bg-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="attach-item-bg-hex" class="color_hex hex-input-full" data-setting="theme.attach_item_bg_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность фона вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="attach-item-bg-opacity-input" data-setting="theme.attach_item_bg_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="attach-item-bg-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие фона вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="attach-item-bg-blur-input" data-setting="theme.attach_item_bg_blur" min="0" max="20" class="range-input">
+                    <span class="range-value" id="attach-item-bg-blur-val"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ОБВОДКА ВЛОЖЕНИЯ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Обводка</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="attach-item-border-toggle" data-setting="theme.attach_item_border_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <div id="attach-item-border-settings-group" class="settings-form-mini">
+            <!-- Цвет обводки вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="attach-item-border-preview"></div>
+                        <input type="color" id="attach-item-border-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="attach-item-border-hex" class="color_hex hex-input-full" data-setting="theme.attach_item_border_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность обводки вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="attach-item-border-opacity-input" data-setting="theme.attach_item_border_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="attach-item-border-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Толщина обводки вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="attach-item-border-width-input" data-setting="theme.attach_item_border_width" min="0" max="10" class="range-input">
+                    <span class="range-value" id="attach-item-border-width-val"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ТЕНЬ ВЛОЖЕНИЯ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Тень</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="attach-item-shadow-toggle" data-setting="theme.attach_item_shadow_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <div id="attach-item-shadow-settings-group" class="settings-form-mini">
+            <!-- Цвет тени вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="attach-item-shadow-preview"></div>
+                        <input type="color" id="attach-item-shadow-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="attach-item-shadow-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.attach_item_shadow_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность тени вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="attach-item-shadow-opacity-input" data-setting="theme.attach_item_shadow_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="attach-item-shadow-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие тени вложения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="attach-item-shadow-blur-input" data-setting="theme.attach_item_shadow_blur" min="0" max="50" class="range-input">
+                    <span class="range-value" id="attach-item-shadow-blur-val"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

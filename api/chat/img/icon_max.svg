@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="max" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 500 500">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-2 {
+        fill: url(#_Безымянный_градиент_39);
+      }
+
+      .cls-3 {
+        fill: url(#_Безымянный_градиент_13);
+      }
+    </style>
+    <linearGradient id="_Безымянный_градиент_13" data-name="Безымянный градиент 13" x1="0" y1="250" x2="500" y2="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#55c9fd"/>
+      <stop offset=".99" stop-color="#a657dd"/>
+    </linearGradient>
+    <radialGradient id="_Безымянный_градиент_39" data-name="Безымянный градиент 39" cx="232.61" cy="216.24" fx="200.81" fy="216.24" r="301.12" gradientUnits="userSpaceOnUse">
+      <stop offset=".38" stop-color="#3350ef"/>
+      <stop offset="1" stop-color="#3846ee" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect id="bg" class="cls-3" x="0" y="0" width="500" height="500"/>
+  <rect id="ligh" class="cls-2" x="0" y="0" width="500" height="500"/>
+  <path id="curve" class="cls-1" d="M250.01,67.65c-100.72,0-182.36,81.64-182.36,182.36,0,25.69,13.23,96.53,21.48,119.23,11.37,31.34-4.48,48.75,12.92,58.03,30.25,16.14,72.33-22.05,72.33-22.05,16.62,16.64,49.45,27.12,75.62,27.12,100.7,0,182.34-81.64,182.34-182.34s-81.64-182.36-182.34-182.36ZM250.01,341.63c-18.95,0-42.31-10.98-48.44-17.11,0,0-20.27,21.52-26.33,15.45-13.23-13.25-16.87-77.3-16.87-89.97,0-50.61,41.03-91.64,91.64-91.64s91.62,41.03,91.62,91.64-41.03,91.62-91.62,91.62Z"/>
+</svg>

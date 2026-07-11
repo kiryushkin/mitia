@@ -1,0 +1,327 @@
+:root {
+	--color-brand: #e1fd71;
+	--color-accent: #8d4af6;
+	--color-black: #000;
+	--color-white: #fff;
+	--color-gray: #707070;
+	--color-gray-dark: #333;
+	--color-gray-light: #999;
+	--color-red: #ff3300;
+	--color-green: #00893c;
+	--color-chat: #f30;
+	--color-white-08: rgba(225, 255, 255, .08);
+	--color-white-02: rgba(255, 255, 255, .2);
+	--color-white-01: rgba(255, 255, 255, .1);
+	--color-white-03: rgba(255, 255, 255, .3);
+	--color-white-05: rgba(255, 255, 255, .5);
+	--font-main: "Geist", sans-serif;
+}
+@font-face {
+	font-family: "Geist";
+	src: url("/api/chat/static/fonts/Geist/webfonts/Geist-Thin.woff2") format("woff2");
+	font-weight: 100;
+	font-display: swap;
+}
+@font-face {
+	font-family: "Geist";
+	src: url("/api/chat/static/fonts/Geist/webfonts/Geist-Regular.woff2") format("woff2");
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: "Geist";
+	src: url("/api/chat/static/fonts/Geist/webfonts/Geist-SemiBold.woff2") format("woff2");
+	font-weight: 600;
+	font-display: swap;
+}
+@font-face {
+	font-family: "Geist";
+	src: url("/api/chat/static/fonts/Geist/webfonts/Geist-Bold.woff2") format("woff2");
+	font-weight: 700;
+	font-display: swap;
+}
+body {
+	background-color: var(--color-black);
+	color: var(--color-white);
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	transition: background-color .5s ease;
+	font-family: var(--font-main);
+}
+body.login-error {
+	background-color: var(--color-red);
+}
+body.login-success {
+	background-color: var(--color-green);
+}
+body.login-confirm {
+	background-color: var(--color-black);
+}
+body.login-verified {
+	background-color: var(--color-green);
+}
+body.login-verify-error {
+	background-color: var(--color-black);
+}
+body.is-locked {
+	background-color: var(--color-black) !important;
+}
+body.is-locked .auth-global-footer a {
+	color: var(--color-chat);
+}
+body.login-error .auth-form-container, body.login-error .auth-footer, body.login-error .auth-global-footer, body.login-success .auth-footer, body.login-success .auth-global-footer {
+	opacity: 0;
+	transition: opacity .3s ease;
+}
+.welcome-msg {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: clamp(22px, 4.5vw, 28px);
+	font-weight: 700;
+	text-align: center;
+	z-index: 1000;
+	animation: welcomeFade .5s ease-out forwards;
+}
+@keyframes welcomeFade {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+.auth-screen {
+	position: relative;
+	z-index: 10;
+	width: clamp(320px, 88vw, 460px);
+	max-width: calc(100vw - 32px);
+	padding: clamp(12px, 2vw, 20px);
+	text-align: center;
+}
+.auth-form-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: clamp(10px, 1.5vh, 14px);
+	margin-bottom: clamp(18px, 3vh, 28px);
+	min-height: 54px;
+}
+.auth-form {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	background: var(--color-white-08);
+	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+	border: 1px solid var(--color-white-02);
+	border-radius: 100px;
+	padding: 0 clamp(18px, 3vw, 28px);
+	height: clamp(48px, 6.5vh, 58px);
+	transition: all .3s ease;
+	box-sizing: border-box;
+}
+.auth-form:focus-within {
+	background: var(--color-white-01);
+	border-color: var(--color-white-03);
+}
+.auth-input {
+	background: transparent;
+	border: none;
+	color: var(--color-white);
+	font-size: clamp(15px, 2vw, 17px);
+	width: 100%;
+	outline: none;
+	padding: 0;
+}
+.auth-input::placeholder {
+	color: var(--color-white-05);
+	font-size: clamp(14px, 1.8vw, 16px);
+}
+.password-input-wrapper .auth-input {
+	padding-right: 10px;
+}
+.toggle-password-btn {
+	background: transparent;
+	border: none;
+	padding: 0;
+	margin: 0;
+	color: var(--color-white-05);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	outline: none;
+	flex-shrink: 0;
+	transition: color .2s ease;
+}
+.toggle-password-btn:hover {
+	color: var(--color-white);
+}
+.toggle-password-btn .eye-icon {
+	stroke: currentColor;
+}
+.toggle-password-btn .eye-slash {
+	display: none;
+}
+.toggle-password-btn.active .eye-slash {
+	display: block;
+}
+.toggle-password-btn.active .eye-open {
+	display: none;
+}
+.auth-submit {
+	background: var(--color-red);
+	color: var(--color-white);
+	border: none;
+	border-radius: 100px;
+	padding: 0 clamp(32px, 5vw, 48px);
+	height: clamp(48px, 6.5vh, 58px);
+	font-weight: 700;
+	font-size: clamp(14px, 1.8vw, 16px);
+	cursor: pointer;
+	transition: all .3s ease;
+	opacity: 1;
+	pointer-events: all;
+	white-space: nowrap;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+}
+.auth-submit:hover {
+	transform: none;
+}
+
+.auth-submit:active {
+	transform: scale(0.98);
+}
+
+.auth-submit:active {
+	transform: scale(0.98);
+}
+.auth-mode-switcher {
+	font-size: 15px;
+	opacity: .8;
+	margin-top: 10px;
+}
+.auth-mode-switcher a {
+	color: #e1fd71 !important;
+	text-decoration: underline;
+	font-weight: 500;
+}
+.auth-mode-switcher a:hover {
+	opacity: .7;
+}
+.nav {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	padding: 20px;
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+	z-index: 100;
+}
+@media (min-width: 768px) {
+	.nav { padding: 24px 40px; }
+}
+.logo {
+	display: inline-flex;
+	align-items: center;
+	text-decoration: none;
+	opacity: 0.9;
+	transition: opacity 0.2s ease;
+}
+.logo:hover {
+	opacity: 1;
+}
+
+.logo img {
+	display: block;
+	height: 20px;
+	width: auto;
+}
+.auth-global-footer {
+	position: fixed;
+	bottom: 30px;
+	left: 0;
+	width: 100%;
+	text-align: center;
+	font-size: 13px;
+	opacity: 0.7;
+	z-index: 5;
+}
+.auth-support-note {
+	margin: 0;
+	color: var(--color-white);
+}
+.auth-support-link {
+	color: var(--color-white) !important;
+	text-decoration: underline;
+	font-weight: 600;
+	cursor: pointer;
+}
+.auth-legal-note {
+	margin: 0 0 16px;
+	font-size: clamp(11px, 1.4vw, 13px);
+	line-height: 1.4;
+	color: var(--color-white);
+	opacity: 0.8;
+	text-align: center;
+	width: 100%;
+	padding: 0 4px;
+}
+.auth-legal-link {
+	text-decoration: underline;
+	font-weight: 500;
+	color: var(--color-white) !important;
+}
+.welcome-msg--col {
+	flex-direction: column;
+}
+.welcome-msg__title {
+	color: var(--color-white);
+	margin: 0 0 20px;
+	font-weight: 800;
+	font-size: clamp(24px, 6vw, 36px);
+}
+.welcome-msg__title--error {
+	color: var(--color-white);
+}
+.welcome-msg__text {
+	color: var(--color-white);
+	font-size: clamp(16px, 4vw, 20px);
+	line-height: 1.5;
+	margin-bottom: 30px;
+}
+.auth-submit--auto {
+	width: auto;
+	padding: 0 60px;
+}
+@media (max-width: 768px) {
+	.auth-form-container {
+		flex-direction: column;
+	}
+	.auth-form {
+		width: 100%;
+		min-height: clamp(48px, 6.5vh, 58px);
+		padding: 0 clamp(18px, 3vw, 28px);
+	}
+}

@@ -1,0 +1,132 @@
+<!-- ФУТЕР -->
+<div class="bento-card" id="card-footer-design">
+    <div class="card-header-flex">
+        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
+            <div class="collapse-icon"></div>
+            <h3 class="card-title">Футер</h3>
+        </div>
+        <!-- Иконки -->
+        <div class="card-actions-mini">
+            <button class="icon-btn-sm" onclick="window.resetFooterToDefault()" title="Восстановить дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button class="icon-btn-sm" onclick="window.randomizeFooterDesign()" title="Магический дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+        </div>
+    </div>
+    <!-- Параметры футера -->
+    <div class="settings-form">
+        <!-- ФОН ПОДЛОЖКИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Фон</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="footer-bg-toggle" data-setting="theme.footer_bg_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры фона подложки -->
+        <div id="footer-bg-settings-group" class="settings-form-mini">
+            <!-- Цвет фона подложки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="footer-bg-preview"></div>
+                        <input type="color" id="footer-bg-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="footer-bg-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.footer_bg" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность фона подложки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="footer-bg-opacity-input" data-setting="theme.footer_bg_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="footer-bg-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие фона подложки -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="footer-bg-blur-input" data-setting="theme.footer_bg_blur" min="0" max="20" class="range-input">
+                    <span class="range-value" id="footer-bg-blur-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ТЕНЬ ФУТЕРА -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Тень</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="footer-shadow-toggle" data-setting="theme.footer_shadow_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры тени футера -->
+        <div id="footer-shadow-settings-group" class="settings-form-mini">
+            <!-- Цвет тени футера -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="footer-shadow-preview"></div>
+                        <input type="color" id="footer-shadow-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="footer-shadow-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.footer_shadow_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность тени футера -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="footer-shadow-opacity-input" data-setting="theme.footer_shadow_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="footer-shadow-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие тени футера -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="footer-shadow-blur-input" data-setting="theme.footer_shadow_blur" min="0" max="100" class="range-input">
+                    <span class="range-value" id="footer-shadow-blur-val"></span>
+                </div>
+            </div>
+            <!-- Смещение тени футера -->
+            <div class="setting-item">
+                <label class="subtitle-card">Смещение по вертикали</label>
+                <div class="range-with-val">
+                    <input type="range" id="footer-shadow-offset-y-input" data-setting="theme.footer_shadow_offset_y" min="0" max="30" class="range-input">
+                    <span class="range-value" id="footer-shadow-offset-y-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ЭФФЕКТ ЗАТУХАНИЯ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Эффект затухания</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="footer-mask-toggle" data-setting="theme.footer_mask_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры эффекта затухания -->
+        <div id="footer-mask-settings-group" class="settings-form-mini">
+            <!-- Высота эффекта затухания -->
+            <div class="setting-item">
+                <label class="subtitle-card">Высота</label>
+                <div class="range-with-val">
+                    <input type="range" id="footer-mask-height-input" data-setting="theme.footer_mask_height" min="0" max="100" class="range-input">
+                    <span class="range-value" id="footer-mask-height-val"></span>
+                </div>
+            </div>
+            <!-- Плавность эффекта затухания -->
+            <div class="setting-item">
+                <label class="subtitle-card">Плавность</label>
+                <div class="range-with-val">
+                    <input type="range" id="footer-mask-smoothness-input" data-setting="theme.footer_mask_smoothness" min="0" max="100" class="range-input">
+                    <span class="range-value" id="footer-mask-smoothness-val"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

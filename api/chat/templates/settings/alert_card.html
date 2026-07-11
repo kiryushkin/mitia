@@ -1,0 +1,106 @@
+<div class="bento-card" id="card-alert-design">
+    <div class="card-header-flex">
+        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
+            <div class="collapse-icon"></div>
+            <h3 class="card-title">Уведомления</h3>
+        </div>
+        <div class="card-actions-mini">
+            <button class="icon-btn-sm" onclick="window.resetAlertToDefault()" title="Восстановить дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button class="icon-btn-sm" onclick="window.randomizeAlertDesign()" title="Магический дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+        </div>
+    </div>
+        <div class="settings-form">
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Статус</h3>
+        </div>
+        <div id="alert-status-settings-group" class="settings-form-mini">
+            <div class="flex-between">
+                <label class="subtitle-card">Предпросмотр</label>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="alert-preview-toggle" data-setting="theme.alert_preview_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Текст</h3>
+        </div>
+        <div id="alert-text-settings-group" class="settings-form-mini">
+            <div class="setting-item">
+                <label class="subtitle-card">Шрифт</label>
+                <div class="custom-select" id="alert-font-family-select-container">
+                    <div class="select-trigger">
+                        <span class="font-name" id="alert-current-font-name">Geist</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"></path></svg>
+                    </div>
+                    <div class="select-options"></div>
+                </div>
+                <input type="hidden" id="alert-font-family-select" data-setting="theme.alert_font_family">
+            </div>
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="alert-text-preview"></div>
+                        <input type="color" id="alert-text-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="alert-text-hex" class="color_hex hex-input-full" data-setting="theme.alert_text_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="alert-text-opacity-input" data-setting="theme.alert_text_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="alert-text-opacity-val"></span>
+                </div>
+            </div>
+            <div class="setting-item">
+                <label class="subtitle-card">Размер</label>
+                <div class="range-with-val">
+                    <input type="range" id="alert-font-size-input" data-setting="theme.alert_font_size" min="10" max="40" class="range-input">
+                    <span class="range-value" id="alert-font-size-val"></span>
+                </div>
+            </div>
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="alert-font-weight-input" data-setting="theme.alert_font_weight" min="100" max="900" step="100" class="range-input">
+                    <span class="range-value" id="alert-font-weight-val"></span>
+                </div>
+            </div>
+        </div>
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Фон</h3>
+        </div>
+        <div id="alert-bg-settings-group" class="settings-form-mini">
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="alert-bg-preview"></div>
+                        <input type="color" id="alert-bg-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="alert-bg-hex" class="color_hex hex-input-full" data-setting="theme.alert_bg_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="alert-bg-opacity-input" data-setting="theme.alert_bg_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="alert-bg-opacity-val"></span>
+                </div>
+            </div>
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="alert-bg-blur-input" data-setting="theme.alert_bg_blur" min="0" max="20" class="range-input">
+                    <span class="range-value" id="alert-bg-blur-val"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

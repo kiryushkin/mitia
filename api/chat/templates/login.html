@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="format-detection" content="telephone=no">
+  
+  <title>Вход в систему — MITIA</title>
+  <meta name="description" content="Авторизация в панели управления MITIA. Управляйте вашими ИИ-ассистентами, настраивайте сценарии и анализируйте диалоги.">
+  <meta name="keywords" content="MITIA, вход, авторизация, ИИ-ассистент, панель управления">
+  <meta name="author" content="MITIA">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mitia.pro/login">
+  <meta property="og:title" content="MITIA — Вход в систему">
+  <meta property="og:description" content="Панель управления вашими ИИ-ассистентами.">
+  <meta property="og:image" content="https://mitia.pro/api/chat/static/img/og-image.jpg">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://mitia.pro/login">
+  <meta property="twitter:title" content="MITIA — Вход в систему">
+  <meta property="twitter:description" content="Панель управления вашими ИИ-ассистентами.">
+  <meta property="twitter:image" content="https://mitia.pro/api/chat/static/img/og-image.jpg">
+
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  
+  <link rel="canonical" href="https://mitia.pro/login">
+  <link rel="icon" href="/api/chat/img/favicon.svg?v=2" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/api/chat/img/favicon.svg?v=2">
+
+  
+  <!-- JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Вход в систему MITIA",
+    "url": "https://mitia.pro/login",
+    "description": "Страница авторизации и регистрации пользователей сервиса MITIA.",
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": "MITIA",
+      "url": "https://mitia.pro"
+    }
+  }
+  </script>
+
+  <!-- Style -->
+  <link rel="stylesheet" href="/api/chat/static/css/login.css">
+
+  <!-- Scripts -->
+  <script type="module" src="/api/chat/static/js/login.js" defer></script>
+  <script src="http://127.0.0.1:5007/api/chat/chat-widget.js?client_id=mitia_assistant" defer></script>
+</head>
+
+<body class="loading" 
+  data-auth-mode="{{ auth_mode or '' }}"
+  data-verify-success="{{ 'true' if verify_success == 'true' else 'false' }}"
+  data-verify-error="{{ 'true' if verify_error == 'true' else 'false' }}">
+  <nav class="nav">
+    <a href="/" class="logo" aria-label="MITIA">
+        <img src="/api/chat/img/logo_mitia.svg" alt="MITIA" height="20">
+    </a>
+  </nav>
+  <div id="app"></div>
+  <footer class="auth-global-footer">
+    <p class="auth-support-note">
+      <a href="#" id="open-support-chat" class="auth-support-link">Техподдержка</a>
+    </p>
+  </footer>
+   <template id="tmpl-confirm">
+    <div class="welcome-msg welcome-msg--col">
+      <h2 class="welcome-msg__title">Проверьте почту</h2>
+      <p class="welcome-msg__text"><span class="welcome-msg__email"></span><br>Посмотрите в папке «Спам» — на всякий случай.</p>
+      <button id="confirm-ok" class="auth-submit auth-submit--auto">Хорошо</button>
+    </div>
+  </template>
+  <template id="tmpl-message">
+    <div class="welcome-msg welcome-msg--col">
+      <h2 class="welcome-msg__title"></h2>
+    </div>
+  </template>
+  <template id="tmpl-login">
+    <div class="auth-screen">
+      <div class="auth-form-container">
+        <p class="auth-legal-note">
+          Регистрируясь или входя в систему, вы соглашаетесь с
+          <a href="#" class="auth-legal-link" data-doc-placeholder="terms">Условиями использования</a>
+          и
+          <a href="#" class="auth-legal-link" data-doc-placeholder="privacy">Политикой конфиденциальности</a>
+          от MITIA
+        </p>
+        <div class="auth-form"><input type="email" id="login-email" class="auth-input" placeholder="Email" readonly onfocus="this.removeAttribute('readonly');" /></div>
+        <div class="auth-form password-input-wrapper">
+          <input type="password" id="login-password" class="auth-input" placeholder="Пароль" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" />
+          <button type="button" class="toggle-password-btn" title="Показать/скрыть пароль" aria-label="Показать или скрыть пароль">
+            <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <g class="eye-open">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </g>
+              <g class="eye-slash">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </g>
+            </svg>
+          </button>
+        </div>
+        <button id="login-submit" class="auth-submit">Войти</button>
+      </div>
+      <div class="auth-mode-switcher">
+        <a href="#" id="switch-to-signup">Регистрация</a> или <a href="#" id="switch-to-reset">Восстановить доступ</a>
+      </div>
+    </div>
+  </template>
+  <template id="tmpl-signup">
+    <div class="auth-screen">
+      <div class="auth-form-container">
+        <p class="auth-legal-note">
+          Регистрируясь или входя в систему, вы соглашаетесь с
+          <a href="#" class="auth-legal-link" data-doc-placeholder="terms">Условиями использования</a>
+          и
+          <a href="#" class="auth-legal-link" data-doc-placeholder="privacy">Политикой конфиденциальности</a>
+          от MITIA
+        </p>
+        <div class="auth-form"><input type="email" id="signup-email" class="auth-input" placeholder="Введите ваш Email" readonly onfocus="this.removeAttribute('readonly');" /></div>
+        <div class="auth-form password-input-wrapper">
+          <input type="password" id="signup-password" class="auth-input" placeholder="Придумайте пароль" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" />
+          <button type="button" class="toggle-password-btn" title="Показать/скрыть пароль" aria-label="Показать или скрыть пароль">
+            <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <g class="eye-open">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </g>
+              <g class="eye-slash">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </g>
+            </svg>
+          </button>
+        </div>
+        <button id="signup-submit" class="auth-submit">Зарегистрироваться</button>
+      </div>
+      <div class="auth-mode-switcher">
+        <a href="#" id="switch-to-login">Войти</a> или <a href="#" id="switch-to-reset">Восстановить доступ</a>
+      </div>
+    </div>
+  </template>
+  <template id="tmpl-reset">
+    <div class="auth-screen">
+      <div class="auth-form-container">
+        <p class="auth-legal-note">
+          Регистрируясь или входя в систему, вы соглашаетесь с
+          <a href="#" class="auth-legal-link" data-doc-placeholder="terms">Условиями использования</a>
+          и
+          <a href="#" class="auth-legal-link" data-doc-placeholder="privacy">Политикой конфиденциальности</a>
+          от MITIA
+        </p>
+        <div class="auth-form"><input type="email" id="reset-email" class="auth-input" placeholder="Email для восстановления" readonly onfocus="this.removeAttribute('readonly');" /></div>
+        <button id="reset-submit" class="auth-submit">Восстановить</button>
+      </div>
+      <div class="auth-mode-switcher">
+        <a href="#" id="switch-to-login">Войти</a> или <a href="#" id="switch-to-signup">Регистрация</a>
+      </div>
+    </div>
+  </template>
+  <template id="tmpl-set-new-password">
+    <div class="auth-screen">
+      <div class="auth-form-container">
+        <p class="auth-legal-note">
+          Регистрируясь или входя в систему, вы соглашаетесь с
+          <a href="#" class="auth-legal-link" data-doc-placeholder="terms">Условиями использования</a>
+          и
+          <a href="#" class="auth-legal-link" data-doc-placeholder="privacy">Политикой конфиденциальности</a>
+          от MITIA
+        </p>
+        <div class="auth-form"><input type="password" id="new-password" class="auth-input" placeholder="Новый пароль" /></div>
+        <div class="auth-form"><input type="password" id="confirm-password" class="auth-input" placeholder="Повторите пароль" /></div>
+        <button id="set-password-submit" class="auth-submit">Установить пароль</button>
+      </div>
+      <div class="auth-mode-switcher"><a href="#" id="switch-to-login">Вернуться ко входу</a></div>
+    </div>
+  </template>
+  <template id="tmpl-lock">
+    <div class="welcome-msg welcome-msg--col">
+      <h2 class="welcome-msg__title welcome-msg__title--upper">Доступ заблокирован</h2>
+      <p class="welcome-msg__text">Попробуйте снова через <span id="lock-timer">60</span> сек.</p>
+    </div>
+  </template>
+  </body>
+</html>

@@ -1,0 +1,548 @@
+<div class="integrations-view appearance-view">
+    <h1 class="visually-hidden">Интеграции</h1>
+    <div class="appearance-grid">
+        <div class="appearance-column">
+            <div class="bento-card" id="card-integrations-info">
+                <div class="card-header-flex">
+                    <h3 class="card-title intelligence-title-accent">Интеграции</h3>
+                </div>
+                <div class="settings-form">
+                    <div class="flex-between">
+                        <div class="setting-item">
+                            <p class="intelligence-cover-subtitle">Центр управления каналами</p>
+                            <p class="intelligence-cover-note">Единая система для всех мессенджеров<br>и мгновенных ответов.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bento-card" id="card-widget">
+                <div class="card-header-flex">
+                    <div class="integration-brand">
+                        <div class="integration-logo-box">
+                            <img src="/api/chat/img/icon_earth.svg" alt="Виджет на сайт">
+                        </div>
+                        <div class="integration-title-group">
+                            <h3 class="card-title">Сайт</h3>
+                            <span class="status-badge disconnected" id="widget-status">Не подключено</span>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" data-integration="widget" data-field="enabled">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note mb-10">Превратите сайт в источник заявок 24/7: виджет отвечает мгновенно, фиксирует контакты и не теряет ни одного запроса.</p>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Домен</label>
+                        <input type="text" class="hex-input-full" id="widget-origin-field" placeholder="https://mitia.pro" data-integration="widget" data-field="allowed_origins">
+                    </div>
+                    <div class="setting-item widget-code-section">
+                        <label class="subtitle-card">Script</label>
+                        <div class="code-snippet-container">
+                            <code id="widget-script-code">Загрузка...</code>
+                            <button class="action-btn sm btn-full-width" id="copy-widget-script-btn" disabled>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                Скопировать
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Режим</h3>
+                    </div>
+                    <div class="setting-item flex-between-compact">
+                        <label class="subtitle-card">Ассистент</label>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" id="widget-assistant-enabled-checkbox" data-integration="widget" data-field="assistant_enabled">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item flex-between-compact" id="widget-autoreply-row">
+                        <label class="subtitle-card">Оператор</label>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" id="widget-autoreply-enabled-checkbox" data-integration="widget" data-field="autoreply_enabled">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div id="widget-autoreply-settings" class="setting-item" style="display: none;">
+                        <h3 class="subtitle-card">Текст</h3>
+                        <textarea class="hex-input-full" id="widget-autoreply-message-field" rows="3" placeholder="Например: Оператор скоро ответит вам. Пожалуйста, подождите." data-integration="widget" data-field="autoreply_message" style="resize: none;"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="bento-card" id="card-email">
+                <div class="card-header-flex">
+                    <div class="integration-brand">
+                        <div class="integration-logo-box">
+                            <img src="/api/chat/img/icon_envelope.svg" alt="Email">
+                        </div>
+                        <div class="integration-title-group">
+                            <h3 class="card-title">Email</h3>
+                            <span class="status-badge disconnected" id="email-status">Не подключено</span>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" data-integration="email" data-field="enabled">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note mb-10">Соберите всю деловую переписку в единую систему: быстрые ответы, прозрачный контроль и рост конверсии из каждого письма.</p>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Электронная почта</label>
+                        <input type="text" class="hex-input-full" placeholder="assistant@mitia.pro" data-integration="email" data-field="email_address" autocomplete="username" name="email_user" autocorrect="off" spellcheck="false" tabindex="2">
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Пароль</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="hex-input-full" placeholder="••••••••" data-integration="email" data-field="email_password" autocomplete="current-password" name="email_pass" autocorrect="off" spellcheck="false" tabindex="3">
+                            <button type="button" class="toggle-password-btn" data-target="email_password" title="Показать/скрыть пароль">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="eye-open">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </g>
+                                    <g class="eye-slash">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">IMAP сервер</label>
+                        <input type="text" class="hex-input-full" placeholder="imap.sweb.ru" data-integration="email" data-field="imap_server" spellcheck="false">
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">SMTP сервер</label>
+                        <input type="text" class="hex-input-full" placeholder="smtp.sweb.ru" data-integration="email" data-field="smtp_server" spellcheck="false">
+                    </div>
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Режим</h3>
+                    </div>
+                    <div class="setting-item flex-between-compact">
+                        <label class="subtitle-card">Ассистент</label>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" id="email-assistant-enabled-checkbox" data-integration="email" data-field="assistant_enabled">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item flex-between-compact" id="email-autoreply-row">
+                        <label class="subtitle-card">Оператор</label>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" id="email-autoreply-enabled-checkbox" data-integration="email" data-field="autoreply_enabled">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div id="email-autoreply-settings" class="setting-item" style="display: none;">
+                        <h3 class="subtitle-card">Текст</h3>
+                        <textarea class="hex-input-full" id="email-autoreply-message-field" rows="3" placeholder="Например: Оператор скоро ответит вам. Пожалуйста, подождите." data-integration="email" data-field="autoreply_message" style="resize: none;"></textarea>
+                    </div>
+                    
+                    <div class="settings-form">
+                        <div class="setting-item flex-between-compact">
+                            <h3 class="subtitle-card-bold">Синхронизировать письма</h3>
+                            <label class="switch">
+                                <input type="checkbox" id="email-sync-history-checkbox" data-integration="email" data-field="sync_history">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <div id="email-sync-progress-container" class="sync-progress-box mt-15" style="display: none; background: var(--bg-light); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color);">
+                            <div class="flex-between mb-10">
+                                <span class="subtitle-card" style="margin-bottom: 0;">Синхронизация...</span>
+                                <span class="subtitle-card-bold" id="email-sync-percent" style="margin-bottom: 0; color: var(--accent-color);">0%</span>
+                            </div>
+                            <div class="progress-bar-bg" style="height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden;">
+                                <div class="progress-bar-fill" id="email-sync-bar" style="width: 0%; height: 100%; background: var(--accent-color); transition: width 0.3s ease;"></div>
+                            </div>
+                            <p class="setting-hint mt-10" id="email-sync-status-text" style="margin-bottom: 0;">Подготовка...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="appearance-column">
+            <div class="bento-card" id="card-max">
+                <div class="card-header-flex">
+                    <div class="integration-brand">
+                        <div class="integration-logo-box">
+                            <img src="/api/chat/img/icon_max.svg" alt="Мессенджер MAX">
+                        </div>
+                        <div class="integration-title-group">
+                            <h3 class="card-title">Max</h3>
+                            <span class="status-badge disconnected" id="max-status">Не подключено</span>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" data-integration="max" data-field="enabled">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note mb-10">Включите канал MAX в воронку: отвечайте быстрее конкурентов и доводите диалоги до целевого действия.</p>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Токен бота</label>
+                        <div class="password-input-wrapper">
+                            <input type="text" id="max-bot-token-input" class="hex-input-full tg-secret-input" placeholder="Введите токен" data-integration="max" data-field="bot_token" spellcheck="false" autocomplete="off">
+                            <button type="button" class="toggle-password-btn" data-target="bot_token" title="Показать/скрыть токен">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="eye-open">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </g>
+                                    <g class="eye-slash">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Режим</h3>
+                    </div>
+                    <div class="setting-item flex-between-compact">
+                        <label class="subtitle-card">Ассистент</label>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" data-integration="max" data-field="assistant_enabled">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item flex-between-compact" id="max-autoreply-row">
+                        <label class="subtitle-card">Оператор</label>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" id="max-autoreply-enabled-checkbox" data-integration="max" data-field="autoreply_enabled">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div id="max-autoreply-settings" class="setting-item" style="display: none;">
+                        <h3 class="subtitle-card">Текст</h3>
+                        <textarea class="hex-input-full" id="max-autoreply-message-field" rows="3" placeholder="Например: Я передал ваш вопрос оператору. Пожалуйста, оставьте контакты, мы свяжемся с вами" data-integration="max" data-field="autoreply_message" style="resize: none;"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="bento-card" id="card-telegram">
+                <div class="card-header-flex">
+                    <div class="integration-brand">
+                        <div class="integration-logo-box">
+                            <img src="/api/chat/img/icon_telegram.svg" alt="Мессенджер Telegram">
+                        </div>
+                        <div class="integration-title-group">
+                            <h3 class="card-title">Telegram</h3>
+                            <span class="status-badge disconnected" id="telegram-status">Не подключено</span>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" data-integration="telegram" data-field="enabled">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note mb-10">Telegram дает скорость и вовлеченность: автоматизируйте первую линию и усиливайте продажи без потери качества.</p>
+
+                    <div class="setting-item">
+                        <label class="subtitle-card">Токен бота</label>
+                        <div class="password-input-wrapper">
+                            <input type="text" id="tg-bot-token-input" class="hex-input-full tg-secret-input" placeholder="123456789:ABCDEF..." data-integration="telegram" data-field="bot_token" spellcheck="false" autocomplete="off">
+                            <button type="button" class="toggle-password-btn" data-target="bot_token" title="Показать/скрыть токен">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="eye-open">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </g>
+                                    <g class="eye-slash">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Режим</h3>
+                    </div> 
+                    <div class="setting-item flex-between-compact">
+                        <label class="subtitle-card">Ассистент</label>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" id="tg-assistant-enabled-checkbox" data-integration="telegram" data-field="assistant_enabled">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item flex-between-compact" id="tg-autoreply-row">
+                        <label class="subtitle-card">Оператор</label>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" id="tg-autoreply-enabled-checkbox" data-integration="telegram" data-field="autoreply_enabled">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div id="tg-autoreply-settings" class="setting-item" style="display: none;">
+                        <h3 class="subtitle-card">Текст</h3>
+                        <textarea class="hex-input-full" id="tg-autoreply-message-field" rows="3" placeholder="Например: Оператор скоро ответит вам. Пожалуйста, подождите." data-integration="telegram" data-field="autoreply_message" style="resize: none;"></textarea>
+                    </div>
+
+                </div>
+            </div>
+            <div class="bento-card" id="card-vk">
+                <div class="card-header-flex">
+                    <div class="integration-brand">
+                        <div class="integration-logo-box">
+                            <img src="/api/chat/img/icon_vk.svg" alt="Вконтакте">
+                        </div>
+                        <div class="integration-title-group">
+                            <h3 class="card-title">Вконтакте</h3>
+                            <span class="status-badge disconnected" id="vk-status">Не подключено</span>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" data-integration="vk" data-field="enabled">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note mb-10">ВКонтакте — мощный поток обращений: принимайте сообщения в одном окне и превращайте интерес в сделки.</p>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Ключ доступа</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="vk-access-token-input" class="hex-input-full" placeholder="vk1.a.abc..." data-integration="vk" data-field="access_token" spellcheck="false">
+                            <button type="button" class="toggle-password-btn" data-target="access_token" title="Показать/скрыть ключ">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="eye-open">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </g>
+                                    <g class="eye-slash">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">ID сообщества</label>
+                        <input type="text" id="vk-group-id-input" class="hex-input-full" placeholder="12345678" data-integration="vk" data-field="group_id" spellcheck="false">
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Код подтверждения</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="hex-input-full" placeholder="abc12345" data-integration="vk" data-field="confirmation_code" spellcheck="false">
+                            <button type="button" class="toggle-password-btn" data-target="confirmation_code" title="Показать/скрыть код">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="eye-open">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </g>
+                                    <g class="eye-slash">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Секретный ключ</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="hex-input-full" placeholder="my_secret_key" data-integration="vk" data-field="secret_key" spellcheck="false">
+                            <button type="button" class="toggle-password-btn" data-target="secret_key" title="Показать/скрыть ключ">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="eye-open">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </g>
+                                    <g class="eye-slash">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">Режим</h3>
+                    </div>
+                    <div class="setting-item flex-between-compact">
+                        <label class="subtitle-card">Ассистент</label>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" id="vk-assistant-enabled-checkbox" data-integration="vk" data-field="assistant_enabled">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item flex-between-compact" id="vk-autoreply-row">
+                        <label class="subtitle-card">Оператор</label>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" id="vk-autoreply-enabled-checkbox" data-integration="vk" data-field="autoreply_enabled">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div id="vk-autoreply-settings" class="setting-item" style="display: none;">
+                        <h3 class="subtitle-card">Текст</h3>
+                        <textarea class="hex-input-full" id="vk-autoreply-message-field" rows="3" placeholder="Например: Оператор скоро ответит вам. Пожалуйста, подождите." data-integration="vk" data-field="autoreply_message" style="resize: none;"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="appearance-column">
+            <div class="bento-card" id="card-hh">
+                <div class="card-header-flex">
+                    <div class="integration-brand">
+                        <div class="integration-logo-box">
+                            <img src="/api/chat/img/icon_hh.svg" alt="HeadHunter">
+                        </div>
+                        <div class="integration-title-group">
+                            <h3 class="card-title">HeadHunter</h3>
+                            <span class="status-badge disconnected" id="hh-status">Не подключено</span>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" data-integration="hh" data-field="enabled">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note mb-10">HeadHunter — прямой доступ к кандидатам: ускорьте найм, отвечайте первыми и закрывайте вакансии сильнее рынка.</p>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Аккаунт</label>
+                        <input type="text" class="hex-input-full" data-integration="hh" data-field="account_name" placeholder="Не подключен" readonly>
+                    </div>
+                    <div class="setting-item mt-10">
+                        <button type="button" class="action-btn sm btn-full-width" id="hh-connect-btn">Подключить через hh.ru</button>
+                    </div>
+                </div>
+            </div>
+            <div class="bento-card" id="card-avito">
+                <div class="card-header-flex">
+                    <div class="integration-brand">
+                        <div class="integration-logo-box">
+                            <img src="/api/chat/img/icon_avito.svg" alt="Avito">
+                        </div>
+                        <div class="integration-title-group">
+                            <h3 class="card-title">Авито</h3>
+                            <span class="status-badge disconnected" id="avito-status">Не подключено</span>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" data-integration="avito" data-field="enabled">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note mb-10">Авито приносит горячие обращения: системно обрабатывайте каждый диалог и повышайте выручку за счет скорости ответа.</p>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Client ID</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="avito-client-id-input" class="hex-input-full" placeholder="Введите Client ID" data-integration="avito" data-field="client_id" autocomplete="off" spellcheck="false">
+                            <button type="button" class="toggle-password-btn" data-target="client_id" title="Показать/скрыть ID">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="eye-open">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </g>
+                                    <g class="eye-slash">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Client Secret</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="avito-client-secret-input" class="hex-input-full" placeholder="Введите Client Secret" data-integration="avito" data-field="client_secret" autocomplete="off" spellcheck="false">
+                            <button type="button" class="toggle-password-btn" data-target="client_secret" title="Показать/скрыть секрет">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="eye-open">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </g>
+                                    <g class="eye-slash">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-item flex-between mt-10">
+                        <label class="subtitle-card">Синхронизировать сообщения</label>
+                        <label class="switch">
+                            <input type="checkbox" id="avito-sync-history-checkbox" data-integration="avito" data-field="sync_history">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div id="avito-sync-progress-container" class="sync-progress-box mt-15" style="display: none; background: var(--bg-light); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color);">
+                        <div class="flex-between mb-10">
+                            <span class="subtitle-card" style="margin-bottom: 0;">Синхронизация...</span>
+                            <span class="subtitle-card-bold" id="avito-sync-percent" style="margin-bottom: 0; color: var(--accent-color);">0%</span>
+                        </div>
+                        <div class="progress-bar-bg" style="height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden;">
+                            <div class="progress-bar-fill" id="avito-sync-bar" style="width: 0%; height: 100%; background: var(--accent-color); transition: width 0.3s ease;"></div>
+                        </div>
+                        <p class="setting-hint mt-10" id="avito-sync-status-text" style="margin-bottom: 0;">Подготовка...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bento-card" id="card-notifications">
+                <div class="card-header-flex">
+                    <div class="integration-brand">
+                        <div class="integration-logo-box">
+                            <img src="/api/chat/img/icon_%20bell.svg" alt="Уведомления">
+                        </div>
+                        <div class="integration-title-group">
+                            <h3 class="card-title">Уведомления</h3>
+                            <span class="status-badge disconnected" id="notifications-status">Не подключено</span>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" data-integration="notifications" data-field="enabled">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note mb-10">Управляйте фокусом команды: получайте только важные сигналы и принимайте решения в моменте, а не постфактум.</p>
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold">События</h3>
+                    </div>
+                    <p class="setting-hint mb-10" id="notifications-telegram-hint">Для отправки уведомлений в Telegram подключите бота в карточке Telegram (укажите токен).</p>
+                    <div class="setting-item flex-between-compact">
+                        <label class="subtitle-card">Новые лиды</label>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" data-integration="notifications" data-field="notify_leads">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item flex-between-compact">
+                        <label class="subtitle-card">Новые контакты</label>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" data-integration="notifications" data-field="notify_contacts">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="setting-item flex-between-compact">
+                        <label class="subtitle-card">Новые сообщения</label>
+                        <label class="switch sm-switch">
+                            <input type="checkbox" data-integration="notifications" data-field="notify_messages">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="flex-between mt-10">
+                        <h3 class="subtitle-card-bold">Telegram получатели</h3>
+                        <button type="button" class="action-btn-circle sm" id="add-tg-admin-btn" title="Добавить получателя">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </button>
+                    </div>
+                    <p class="setting-hint mb-10">Укажите ID пользователей, которым будут приходить уведомления о новых лидах, контактах и сообщениях.</p>
+                    <div class="flex-column-gap-0 mt-10">
+                        <input type="hidden" data-integration="notifications" data-field="admin_id" id="tg-admin-ids-hidden">
+                        <div id="tg-admins-container">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>

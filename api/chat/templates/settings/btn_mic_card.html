@@ -1,0 +1,301 @@
+<!-- КНОПКА МИКРОФОНА -->
+<div class="bento-card" id="card-btn-mic-design">
+    <div class="card-header-flex">
+        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
+            <div class="collapse-icon"></div>
+            <h3 class="card-title">Кнопка микрофона</h3>
+        </div>
+        <!-- Иконки -->
+        <div class="card-actions-mini">
+            <button class="icon-btn-sm" onclick="window.resetMicBtnToDefault()" title="Восстановить дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button class="icon-btn-sm" onclick="window.randomizeMicBtnDesign()" title="Магический дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+        </div>
+    </div>
+    <!-- Параметры кнопки микрофона -->
+    <div class="settings-form">
+        <!-- ГЕОМЕТРИЯ КНОПКИ МИКРОФОНА -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Геометрия</h3>
+        </div>
+        <!-- Скругление кнопки микрофона -->
+        <div class="setting-item">
+            <label class="subtitle-card">Скругление</label>
+            <div class="range-with-val">
+                <input type="range" id="btn-mic-radius-input" data-setting="theme.btn_mic_radius" min="0" max="50" class="range-input">
+                <span class="range-value" id="btn-mic-radius-val"></span>
+            </div>
+        </div>
+        <!-- ИКОНКА КНОПКИ МИКРОФОНА -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Иконка</h3>
+        </div>
+        <!-- Параметры иконки кнопки микрофона -->
+        <div class="settings-form-mini">
+            <!-- Цвет иконки кнопки микрофона -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-mic-icon-preview"></div>
+                        <input type="color" id="btn-mic-icon-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-mic-icon-hex" class="color_hex hex-input-full" data-setting="theme.btn_mic_icon_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность иконки кнопки микрофона -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-mic-icon-opacity-input" data-setting="theme.btn_mic_icon_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-mic-icon-opacity-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ИКОНКА КНОПКИ МИКРОФОНА ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Иконка при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-mic-icon-h-toggle" data-setting="theme.btn_mic_icon_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры иконки кнопки микрофона при наведении -->
+        <div id="btn-mic-icon-h-settings" class="settings-form-mini">
+            <!-- Цвет иконки кнопки микрофона при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-mic-icon-h-preview"></div>
+                        <input type="color" id="btn-mic-icon-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-mic-icon-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_mic_icon_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность иконки кнопки микрофона при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-mic-icon-h-opacity-input" data-setting="theme.btn_mic_icon_opacity_h" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-mic-icon-h-opacity-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ФОН КНОПКИ МИКРОФОНА -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Фон</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-mic-bg-toggle" data-setting="theme.btn_mic_bg_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры фона кнопки микрофона -->
+        <div id="btn-mic-bg-settings" class="settings-form-mini">
+            <!-- Цвет фона кнопки микрофона -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-mic-bg-preview"></div>
+                        <input type="color" id="btn-mic-bg-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-mic-bg-hex" class="color_hex hex-input-full" data-setting="theme.btn_mic_bg_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность фона кнопки микрофона -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-mic-bg-opacity-input" data-setting="theme.btn_mic_bg_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-mic-bg-opacity-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ФОН КНОПКИ МИКРОФОНА ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Фон при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-mic-bg-h-toggle" data-setting="theme.btn_mic_bg_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры фона кнопки микрофона при наведении -->
+        <div id="btn-mic-bg-h-settings" class="settings-form-mini">
+            <!-- Цвет фона кнопки микрофона при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-mic-bg-h-preview"></div>
+                        <input type="color" id="btn-mic-bg-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-mic-bg-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_mic_bg_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность фона кнопки микрофона при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-mic-bg-h-opacity-input" data-setting="theme.btn_mic_bg_opacity_h" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-mic-bg-h-opacity-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ОБВОДКА КНОПКИ МИКРОФОНА -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Обводка</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-mic-border-toggle" data-setting="theme.btn_mic_border_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры обводки кнопки микрофона -->
+        <div id="btn-mic-border-settings" class="settings-form-mini">
+            <!-- Цвет обводки кнопки микрофона -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-mic-border-preview"></div>
+                        <input type="color" id="btn-mic-border-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-mic-border-hex" class="color_hex hex-input-full" data-setting="theme.btn_mic_border_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность обводки кнопки микрофона -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-mic-border-opacity-input" data-setting="theme.btn_mic_border_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-mic-border-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Толщина обводки кнопки микрофона -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-mic-border-width-input" data-setting="theme.btn_mic_border_width" min="0" max="10" class="range-input">
+                    <span class="range-value" id="btn-mic-border-width-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ОБВОДКА КНОПКИ МИКРОФОНА ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Обводка при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-mic-border-h-toggle" data-setting="theme.btn_mic_border_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры обводки кнопки микрофона при наведении -->
+        <div id="btn-mic-border-h-settings" class="settings-form-mini">
+            <!-- Цвет обводки кнопки микрофона при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-mic-border-h-preview"></div>
+                        <input type="color" id="btn-mic-border-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-mic-border-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_mic_border_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность обводки кнопки микрофона при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-mic-border-h-opacity-input" data-setting="theme.btn_mic_border_opacity_h" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-mic-border-h-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Толщина обводки кнопки микрофона при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-mic-border-h-width-input" data-setting="theme.btn_mic_border_width_h" min="0" max="10" class="range-input">
+                    <span class="range-value" id="btn-mic-border-h-width-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ТЕНЬ КНОПКИ МИКРОФОНА -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Тень</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-mic-shadow-toggle" data-setting="theme.btn_mic_shadow_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры тени кнопки микрофона -->
+        <div id="btn-mic-shadow-settings" class="settings-form-mini">
+            <!-- Цвет тени кнопки микрофона -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-mic-shadow-preview"></div>
+                        <input type="color" id="btn-mic-shadow-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-mic-shadow-hex" class="color_hex hex-input-full" data-setting="theme.btn_mic_shadow_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность тени кнопки микрофона -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-mic-shadow-opacity-input" data-setting="theme.btn_mic_shadow_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-mic-shadow-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие тени кнопки микрофона -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-mic-shadow-blur-input" data-setting="theme.btn_mic_shadow_blur" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-mic-shadow-blur-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ТЕНЬ КНОПКИ МИКРОФОНА ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Тень при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-mic-shadow-h-toggle" data-setting="theme.btn_mic_shadow_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры тени кнопки микрофона при наведении -->
+        <div id="btn-mic-shadow-h-settings" class="settings-form-mini">
+            <!-- Цвет тени кнопки микрофона при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-mic-shadow-h-preview"></div>
+                        <input type="color" id="btn-mic-shadow-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-mic-shadow-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_mic_shadow_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность тени кнопки микрофона при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-mic-shadow-h-opacity-input" data-setting="theme.btn_mic_shadow_opacity_h" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-mic-shadow-h-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие тени кнопки микрофона при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-mic-shadow-h-blur-input" data-setting="theme.btn_mic_shadow_blur_h" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-mic-shadow-h-blur-val"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

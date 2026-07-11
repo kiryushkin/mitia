@@ -1,0 +1,217 @@
+.dashboard-view {animation:fadeIn .4s ease-out}
+.dashboard-grid {display:grid; grid-template-columns:1fr 1fr}
+.dashboard-view .card-title {font-size:clamp(16px,2.5vw,20px) !important; font-weight:800 !important; color:var(--text-main) !important; text-transform:none !important; letter-spacing:normal !important; margin-bottom:0 !important}
+.stat-card {background:var(--bg-card) !important; border:1px solid var(--border) !important; border-radius:24px !important; padding:25px !important; display:flex; flex-direction:column; justify-content:space-between; position:relative; overflow:hidden}
+.stat-header {display:flex; justify-content:space-between; align-items:center; z-index:2}
+.stat-value {font-size:38px !important; font-weight:800 !important; color:var(--text-main) !important; line-height:1; z-index:2}
+.analytics-card {padding:24px !important; flex-shrink:1; min-width:0; max-width:100%; will-change:width,height; transition:none !important}
+.analytics-card .card-title {color:var(--text-main) !important; font-size:clamp(16px,2.5vw,20px) !important; font-weight:800 !important}
+.analytics-main-chart-container {min-height:300px; height:auto; margin-top:20px; margin-bottom:0}
+.analytics-card.is-expanded {position:relative; z-index:20; height:100%; min-height:0; display:flex; flex-direction:column; overflow:visible; will-change:width,height; transition:none !important}
+.analytics-card.is-expanded .analytics-main-chart-container {flex:1 1 auto; min-height:320px; height:auto; overflow:visible}
+body.analytics-expanded-open {overflow:hidden}
+#profile-middle-column.analytics-focus-active,#profile-right-column.analytics-focus-active {flex:1 1 auto !important; width:auto !important; max-width:none !important; height:100% !important; overflow:hidden !important; will-change:flex,width; transition:none !important}
+#profile-middle-column.analytics-focus-active .analytics-card:not(.is-expanded),#profile-right-column.analytics-focus-active .analytics-card:not(.is-expanded) {display:none !important}
+#profile-middle-column.analytics-hidden,#profile-right-column.analytics-hidden,#profile-left-column.analytics-hidden {display:none !important}
+.analytics-expanded-only {display:none !important}
+.analytics-card.is-expanded .analytics-expanded-only {display:flex !important}
+.analytics-card.is-expanded .analytics-collapsed-only {display:none !important}
+.main-chart-container {width:100%; min-height:420px; position:relative; margin-top:20px; padding-bottom:0; max-width:100%; overflow:visible}
+.main-chart-container canvas {display:block; width:100% !important; max-width:100% !important; height:100% !important; min-height:260px}
+.chart-legend {display:flex; flex-wrap:wrap; gap:12px 20px; margin-top:20px; margin-bottom:0; justify-content:center; max-width:100%}
+.legend-item {display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted)}
+.legend-item i {width:10px; height:10px; border-radius:50%; display:inline-block}
+.legend-item.accent i {background:var(--accent)}
+.legend-item.white i {background:var(--white)}
+#card-faq {grid-area:faq; padding:30px !important}
+.faq-chart-container {height:280px; margin-top:20px}
+#card-insight {grid-area:insight; background:linear-gradient(135deg,rgba(225,253,113,.05) 0,rgba(5,5,5,0) 100%) !important; border:1px solid rgba(225,253,113,.1) !important; box-shadow: inset 8px 0 20px -6px rgba(112, 0, 255, 0.3) !important;}
+.stat-icon {width:32px; height:32px; border-radius:10px; background:rgba(255,255,255,.05); display:flex; align-items:center; justify-content:center; color:var(--text-muted)}
+.stat-value-group {z-index:2}
+.stat-label {font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; opacity:.6; margin-bottom:5px; display:block}
+.sparkline-canvas {position:absolute; bottom:-10px; left:-10px; width:calc(100% + 20px) !important; height:50% !important; z-index:1; opacity:.3; pointer-events:none}
+.ai-insight-card {padding:30px !important; border:1px solid var(--border)}
+.insight-text {font-size:16px; line-height:1.5; color:var(--text-main)}
+.faq-card {padding:25px !important}
+#faq-container {display:flex; flex-direction:column; gap:10px; min-height:0; overflow:visible}
+.analytics-card.is-expanded #faq-container {overflow-y:auto; padding-right:4px; max-height:calc(100vh - 220px)}
+#case-history-container {display:flex; flex-direction:column; gap:12px; min-height:0; overflow:visible}
+.analytics-card.is-expanded #case-history-container {overflow-y:auto; padding-right:4px; max-height:calc(100vh - 220px)}
+#close-reasons-container {display:flex; flex-direction:column; gap:12px; min-height:0; overflow:visible}
+.analytics-card.is-expanded #close-reasons-container {overflow-y:auto; padding-right:4px; max-height:calc(100vh - 220px)}
+.case-history-dialog {border:1px solid var(--border); background:rgba(255,255,255,.03); border-radius:14px; padding:12px}
+.case-history-dialog-head {display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap; margin-bottom:10px}
+.case-history-dialog-title {font-size:13px; font-weight:700; color:var(--text-main); word-break:break-all}
+.case-history-dialog-badges {display:flex; flex-wrap:wrap; gap:8px}
+.case-history-badge {font-size:11px; color:var(--text-muted); border:1px solid var(--border); border-radius:999px; padding:4px 8px; background:rgba(255,255,255,.02)}
+.case-history-list {display:flex; flex-direction:column; gap:8px}
+.case-history-item {border:1px solid var(--border); border-radius:10px; padding:9px 10px; background:rgba(255,255,255,.02)}
+.case-history-item-head {display:flex; justify-content:space-between; align-items:center; gap:8px}
+.case-history-item-title {font-size:12px; font-weight:700; color:var(--text-main)}
+.case-history-status {font-size:11px; color:var(--text-muted)}
+.case-history-status.is-active {color:var(--accent)}
+.case-history-item-meta {margin-top:6px; display:flex; flex-direction:column; gap:2px; font-size:11px; color:var(--text-muted); word-break:break-word}
+.close-reasons-summary {display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px}
+.close-reasons-summary-item {border:1px solid var(--border); border-radius:10px; padding:10px; background:rgba(255,255,255,.02)}
+.close-reasons-summary-label {font-size:11px; color:var(--text-muted)}
+.close-reasons-summary-value {margin-top:4px; font-size:16px; font-weight:800; color:var(--text-main)}
+.close-reasons-block {border:1px solid var(--border); border-radius:12px; padding:10px; background:rgba(255,255,255,.02)}
+.close-reasons-block-title {font-size:12px; font-weight:700; color:var(--text-main); margin-bottom:8px}
+.close-reasons-list {display:flex; flex-direction:column; gap:7px}
+.close-reasons-row {display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:8px; align-items:center; font-size:12px}
+.close-reasons-row-name {color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.close-reasons-row-count {color:var(--white); font-weight:700}
+.close-reasons-row-share {color:var(--text-muted)}
+@media (max-width:992px){.close-reasons-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.close-reasons-summary{grid-template-columns:1fr}}
+.faq-chart-container {height:200px; margin-top:20px}
+.faq-bar-list {display:flex; flex-direction:column; gap:12px; margin-top:20px}
+.faq-bar-row {display:flex; align-items:center; gap:15px; width:100%}
+.faq-bar-track {flex:1; height:6px; background:rgba(255,255,255,.05); border-radius:3px; overflow:hidden}
+.faq-bar-fill {height:100%; border-radius:3px; transition:width .5s ease}
+.faq-bar-count {min-width:36px; text-align:right; font-family:monospace; color:var(--white); font-weight:bold; font-size:13px; flex-shrink:0}
+.faq-period-label {margin-bottom:4px; font-size:12px; font-weight:700; color:var(--text-muted)}
+.faq-rank-item {padding:8px 0}
+.faq-rank-title {margin-bottom:6px; font-size:16px; line-height:1.5; font-weight:400; color:var(--text-main); word-break:break-word}
+.faq-rank-line {display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px}
+.faq-rank-total {min-width:40px; text-align:right; font-family:monospace; color:var(--white); font-weight:700; font-size:12px}
+.faq-bar-track {height:8px; border:1px solid var(--border); background:rgba(255,255,255,.04); border-radius:999px; overflow:hidden}
+.faq-bar-fill {height:100%; border-radius:999px; transition:width .5s ease}
+.geo-list,.faq-list {display:flex; flex-direction:column; gap:12px; margin-top:20px}
+.geo-item,.faq-item {display:flex; justify-content:space-between; align-items:center; padding:10px 15px; background:rgba(255,255,255,.03); border-radius:12px; font-size:13px}
+.geo-bar-bg {flex:1; height:4px; background:rgba(255,255,255,.05); margin:0 15px; border-radius:2px; overflow:hidden}
+.geo-bar-fill {height:100%; background:var(--accent); border-radius:2px}
+.period-selector {display:flex; align-items:center; gap:8px; background:transparent; padding:0; border:none}
+.period-btn {background:transparent; border:none; color:var(--text-muted); padding:6px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; transition:all var(--transition),transform .08s ease}
+.period-btn.active {background:var(--accent); color:var(--black); box-shadow:0 4px 15px rgba(225,253,113,.2)}
+.period-btn-calendar {padding:0 !important}
+.period-btn-calendar svg {width:16px; height:16px; opacity:1}
+.period-btn-calendar.active svg {opacity:1}
+.period-btn-calendar:active,.period-btn-calendar.is-pressed {transform:scale(0.96) !important}
+.btn-activity-filters-toggle {padding:0 !important; width:32px; height:32px; display:flex; align-items:center; justify-content:center}
+.btn-activity-filters-toggle svg {width:16px; height:16px; opacity:1; display:block}
+.btn-analytics-expand,.btn-analytics-close {padding:0 !important; width:32px; height:32px; display:flex; align-items:center; justify-content:center}
+.btn-analytics-expand svg,.btn-analytics-close svg {width:16px; height:16px; display:block; opacity:1; stroke:var(--text-main)}
+.btn-activity-filters-toggle:hover {background:rgba(255,255,255,.05)}
+.btn-activity-filters-toggle.active {background:rgba(255,255,255,.08); color:var(--text-main); box-shadow:none}
+.chart-tab-btn {background:transparent; border:none; color:var(--text-muted); padding:6px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; transition:all var(--transition),transform .08s ease; white-space:nowrap}
+.chart-tab-btn.active {background:var(--accent); color:var(--black); box-shadow:0 4px 15px rgba(225,253,113,.2)}
+.chart-tab-btn:hover:not(.active) {color:var(--text-main); background:rgba(255,255,255,.05)}
+.btn-calendar-apply {background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; padding:6px 10px; font-size:12px; font-weight:700; color:var(--text-main); box-shadow:none}
+.btn-calendar-apply:hover {background:rgba(255,255,255,.08); color:var(--text-main)}
+.activity-filters-grid {display:grid; grid-template-columns:1fr; gap:10px; margin-top:12px}
+.activity-filters-grid.is-hidden {display:none}
+.analytics-card:not(.is-expanded) .activity-filters-grid {display:none}
+.analytics-card.is-expanded .activity-filters-grid {display:grid !important; visibility:visible !important; opacity:1 !important}
+.activity-filter-group {background:transparent; border:none; border-radius:0; padding:0}
+.activity-filter-head {display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; color:var(--text-main); font-size:12px; font-weight:700}
+.activity-series-controls {display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; margin-bottom:0}
+.activity-series-item {display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; padding:6px 10px; font-size:12px; color:var(--text-muted); cursor:pointer}
+.activity-filter-btn {background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; padding:6px 10px; font-size:12px; font-weight:700; color:var(--text-muted); cursor:pointer; transition:all var(--transition),transform .08s ease}
+.activity-filter-btn:hover {color:var(--text-main); background:rgba(255,255,255,.08)}
+.activity-filter-btn.active {font-weight:800; background:rgba(255,255,255,.08); color:var(--text-main); border-color:rgba(255,255,255,.14); box-shadow:none}
+.profile-calendar-wrapper {position:absolute; top:0; left:0; width:100%; height:100%; z-index:100; background:transparent; backdrop-filter:none; -webkit-backdrop-filter:none; display:flex; flex-direction:column; justify-content:flex-start; padding:24px; border-radius:24px}
+.analytics-card.is-calendar-open > .card-header-flex,.analytics-card.is-calendar-open > .activity-filters-grid,.analytics-card.is-calendar-open > .analytics-main-chart-container,.analytics-card.is-calendar-open .card-header-flex,.analytics-card.is-calendar-open .card-title,.analytics-card.is-calendar-open .period-selector {display:none !important}
+.analytics-card.is-calendar-open > .profile-calendar-wrapper {position:relative; top:auto; left:auto; width:100%; height:100%; min-height:420px}
+.profile-calendar {width:100%; margin-top:12px; flex:1; display:flex; align-items:stretch}
+.card-subtitle {font-size:14px; color:rgba(255,255,255,0.5); margin-top:4px; font-weight:400; line-height:1.4}
+.card-header-flex {align-items:flex-start !important}
+.collapse-icon {width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid var(--text-muted); transition:transform .3s ease; flex-shrink:0; margin-right:4px; display:block}
+.is-collapsed .collapse-icon {transform:rotate(-90deg)}
+.mobile-only {display:none}
+@media (max-width:1024px) {.card-title-group {cursor:pointer}
+ .mobile-only {display:block}
+ .collapse-icon.mobile-only {display:block}
+ .btn-analytics-expand {display:none !important}
+ #card-analytics-filters.is-collapsed .collapse-icon {transform:rotate(-90deg)}
+ #card-analytics-filters .settings-form {transition:all .3s ease; overflow:hidden; max-height:1000px}
+ #card-analytics-filters.is-collapsed .settings-form {max-height:0 !important; margin-top:0 !important; opacity:0; pointer-events:none}
+ #card-analytics-filters.is-collapsed {padding-bottom:15px !important}
+}
+.analytics-card .profile-calendar-wrapper .calendar-weekday {font-size:clamp(14px,1.15vw,18px); padding:clamp(6px,0.55vw,10px) 0}
+.analytics-card .profile-calendar-wrapper .calendar-day {font-size:clamp(18px,1.5vw,24px); border-radius:clamp(12px,0.9vw,16px)}
+.analytics-card .profile-calendar-wrapper .calendar-picker-panel {background:transparent; border:1px solid var(--border); box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none}
+.analytics-card .profile-calendar-wrapper .calendar-picker-option {background:transparent; border:1px solid rgba(255,255,255,0.12); color:var(--text-main); font-size:clamp(14px,1.05vw,18px); min-height:clamp(40px,3.2vw,52px)}
+.analytics-card .profile-calendar-wrapper .calendar-picker-option:hover {background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.22)}
+.analytics-card .profile-calendar-wrapper .calendar-picker-option.active {background:rgba(255,255,255,0.12); color:var(--text-main); border-color:rgba(255,255,255,0.3)}
+.analytics-card .profile-calendar-wrapper .profile-calendar-year-panel {grid-template-columns:repeat(4,minmax(0,1fr)); grid-template-rows:none; grid-auto-rows:minmax(clamp(40px,3.2vw,52px),auto); gap:10px; max-height:min(52vh,430px); overflow:auto; padding-right:4px}
+.profile-calendar-actions {display:grid; grid-template-columns:32px 1fr auto; gap:12px; align-items:center}
+.profile-calendar-actions-top {margin-top:0}
+.profile-calendar-toolbar-center {display:flex; justify-content:center; align-items:center; min-width:0}
+.profile-calendar-actions-right {display:flex; gap:8px; align-items:center; justify-content:flex-end}
+.btn-calendar-reset {width:32px; height:32px; padding:0 !important; display:flex; align-items:center; justify-content:center}
+.period-btn.is-pressed,.chart-tab-btn.is-pressed,.activity-filter-btn.is-pressed,.calendar-nav-btn.is-pressed,.calendar-day.is-pressed {transform:scale(0.96) !important}
+.analytics-page-view {height:100%}
+.analytics-page-grid {grid-template-columns:minmax(130px,170px) minmax(150px,190px) minmax(0,1fr); height:100%; overflow:hidden}
+.analytics-page-grid .analytics-col {min-width:0; height:100%; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; -ms-overflow-style:none}
+.analytics-page-grid .analytics-col::-webkit-scrollbar {display:none}
+.analytics-panel-card,.analytics-main-card {min-height:max-content; display:flex; flex-direction:column}
+.analytics-list {display:flex; flex-direction:column; gap:8px; padding-right:2px}
+.analytics-list-item {background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:10px; color:var(--text-main); font-size:12px; font-weight:600; padding:9px 12px; text-align:left; cursor:pointer; transition:all var(--transition)}
+.analytics-list-item:hover {background:rgba(255,255,255,.07)}
+.analytics-list-item.active {background:rgba(225,253,113,.12); border-color:rgba(225,253,113,.35); color:var(--accent)}
+#analytics-period-buttons,#analytics-mode-buttons {display:flex; flex-wrap:wrap; gap:8px}
+#analytics-period-buttons .analytics-period-btn,#analytics-mode-buttons .analytics-mode-btn {border:1px solid var(--border)}
+.analytics-mode-chart-card {padding:24px !important}
+.analytics-mode-note {display:none !important}
+.analytics-mode-chart-wrap {min-height:260px; height:auto; margin-top:20px !important; margin-bottom:0}
+#card-analytics-mode-share .analytics-mode-chart-wrap {min-height:220px !important; height:220px !important; display:flex; align-items:center; justify-content:center}
+#card-analytics-mode-share .analytics-mode-chart-wrap canvas {position:relative !important; inset:auto !important; width:210px !important; height:210px !important; max-width:210px !important; max-height:210px !important; min-height:0 !important}
+#card-analytics-mode-funnel .analytics-mode-chart-wrap {min-height:340px; height:340px}
+@media (max-width:768px) {.analytics-mode-chart-wrap {min-height:260px; height:260px}
+#card-analytics-mode-share .analytics-mode-chart-wrap {min-height:180px !important; height:180px !important}
+#card-analytics-mode-share .analytics-mode-chart-wrap canvas {width:170px !important; height:170px !important; max-width:170px !important; max-height:170px !important}
+#card-analytics-mode-funnel .analytics-mode-chart-wrap {min-height:280px; height:280px}
+}
+.analytics-weekdays-grid {display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:8px}
+.analytics-weekday-item {border:1px solid var(--border); border-radius:10px; padding:10px 0; text-align:center; color:var(--text-main); font-weight:700; background:rgba(255,255,255,.02)}
+.analytics-placeholder {margin-top:20px; border:1px dashed rgba(255,255,255,.18); border-radius:14px; padding:14px; background:rgba(255,255,255,.02)}
+.analytics-placeholder-title {font-size:14px; font-weight:700; color:var(--text-main)}
+.analytics-placeholder-text {margin-top:6px; font-size:12px; color:var(--text-muted); line-height:1.45}
+@media (max-width:1200px) {.dashboard-grid {grid-template-columns:repeat(2,1fr)}
+.ai-insight-card {grid-column:span 2}
+}
+@media (max-width:992px) {.dashboard-grid {grid-template-columns:1fr 1fr}
+ .stat-card {padding:15px !important}
+ .stat-value {font-size:28px !important}
+}
+@media (max-width:600px) {.dashboard-grid {grid-template-columns:1fr}
+}
+@media (max-width:768px) {.dashboard-grid {grid-template-columns:1fr}
+.ai-insight-card {grid-column:span 1}
+.chart-tab-btn {padding:5px 12px; font-size:11px}
+.analytics-main-chart-container {min-height:300px; height:auto; margin-top:20px}
+.analytics-card.is-expanded .analytics-main-chart-container {min-height:260px}
+.analytics-page-grid {grid-template-columns:1fr; height:auto; overflow:visible}
+.analytics-page-grid .analytics-col {height:auto; overflow:visible}
+}
+
+.ai-thinking-indicator {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-left: 12px;
+    height: 20px;
+}
+
+.ai-thinking-indicator span {
+    width: 4px;
+    height: 4px;
+    background-color: #7000FF;
+    border-radius: 50%;
+    display: inline-block;
+    animation: ai-thinking 1.4s infinite ease-in-out both;
+    box-shadow: 0 0 8px rgba(112, 0, 255, 0.6);
+}
+
+.ai-thinking-indicator span:nth-child(1) { animation-delay: -0.32s; }
+.ai-thinking-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes ai-thinking {
+    0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+    40% { transform: scale(1.0); opacity: 1; }
+}
+
+.analytics-main-chart-container canvas {
+    filter: drop-shadow(0 0 5px rgba(112, 0, 255, 0.05));
+}

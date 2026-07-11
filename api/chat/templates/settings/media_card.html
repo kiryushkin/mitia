@@ -1,0 +1,207 @@
+<!-- ИЗОБРАЖЕНИЯ -->
+<div class="bento-card" id="card-media-design">
+    <div class="card-header-flex">
+        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
+            <div class="collapse-icon"></div>
+            <h3 class="card-title">Изображения</h3>
+        </div>
+        <!-- Иконки -->
+        <div class="card-actions-mini">
+            <button class="icon-btn-sm" onclick="window.resetMediaToDefault()" title="Восстановить дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button class="icon-btn-sm" onclick="window.randomizeMediaDesign()" title="Магический дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+        </div>
+    </div>
+    <!-- Параметры изображений -->
+    <div class="settings-form">
+        <!-- СТАТУС ИЗОБРАЖЕНИЙ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Статус</h3>
+        </div>
+        <!-- Предпросмотр изображения -->
+        <div class="setting-item-compact">
+            <div class="flex-between">
+                <label class="subtitle-card">Предпросмотр</label>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="msg-img-preview-toggle" data-setting="theme.msg_img_preview_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+        <!-- ГЕОМЕТРИЯ ИЗОБРАЖЕНИЯ В ЧАТЕ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Геометрия</h3>
+        </div>
+        <!-- Ширина изображения В ЧАТЕ -->
+        <div class="setting-item">
+            <label class="subtitle-card">Ширина</label>
+            <div class="range-with-val">
+                <input type="range" id="msg-img-width-input" data-setting="theme.msg_img_max_width" min="50" max="100"class="range-input">
+                <span class="range-value" id="msg-img-width-val"></span>
+            </div>
+        </div>
+        <!-- Скругление изображения В ЧАТЕ -->
+        <div class="setting-item">
+            <label class="subtitle-card">Скругление</label>
+            <div class="range-with-val">
+                <input type="range" id="msg-img-radius-input" data-setting="theme.msg_img_radius" min="0" max="32"class="range-input">
+                <span class="range-value" id="msg-img-radius-val"></span>
+            </div>
+        </div>
+        <!-- ОБВОДКА ИЗОБРАЖЕНИЯ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Обводка</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="msg-img-border-toggle" data-setting="theme.msg_img_border_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры обводки изображения -->
+        <div id="msg-img-border-settings-group" class="settings-form-mini">
+            <!-- Цвет обводки изображения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="msg-img-border-preview"></div>
+                        <input type="color" id="msg-img-border-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="msg-img-border-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.msg_img_border_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность обводки изображения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="msg-img-border-opacity-input" spellcheck="false" class="range-input" data-setting="theme.msg_img_border_opacity" min="0" max="100">
+                    <span class="range-value" id="msg-img-border-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Толщина обводки изображения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="msg-img-border-width-input" spellcheck="false" class="range-input" data-setting="theme.msg_img_border_width" min="0" max="10">
+                    <span class="range-value" id="msg-img-border-width-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ОБВОДКА ИЗОБРАЖЕНИЯ ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Обводка при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="msg-img-border-h-toggle" data-setting="theme.msg_img_border_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры обводки изображения при наведении -->
+        <div id="msg-img-border-h-settings-group" class="settings-form-mini">
+            <!-- Цвет обводки изображения при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="msg-img-border-h-preview"></div>
+                        <input type="color" id="msg-img-border-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="msg-img-border-h-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.msg_img_border_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность обводки изображения при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="msg-img-border-opacity-h-input" spellcheck="false" class="range-input" data-setting="theme.msg_img_border_opacity_h" min="0" max="100">
+                    <span class="range-value" id="msg-img-border-opacity-h-val"></span>
+                </div>
+            </div>
+            <!-- Толщина обводки изображения при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="msg-img-border-width-h-input" spellcheck="false" class="range-input" data-setting="theme.msg_img_border_width_h" min="0" max="10">
+                    <span class="range-value" id="msg-img-border-width-h-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ТЕНЬ ИЗОБРАЖЕНИЯ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Тень</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="msg-img-shadow-toggle" data-setting="theme.msg_img_shadow_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры тени изображения -->
+        <div id="msg-img-shadow-settings-group" class="settings-form-mini">
+            <!-- Цвет тени изображения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="msg-img-shadow-preview"></div>
+                        <input type="color" id="msg-img-shadow-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="msg-img-shadow-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.msg_img_shadow_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность тени изображения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="msg-img-shadow-opacity-input" spellcheck="false" class="range-input" data-setting="theme.msg_img_shadow_opacity" min="0" max="100">
+                    <span class="range-value" id="msg-img-shadow-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие тени изображения -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="msg-img-shadow-blur-input" spellcheck="false" class="range-input" data-setting="theme.msg_img_shadow_blur" min="0" max="100">
+                    <span class="range-value" id="msg-img-shadow-blur-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ТЕНЬ ИЗОБРАЖЕНИЯ ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Тень при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="msg-img-shadow-h-toggle" data-setting="theme.msg_img_shadow_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры тени изображения при наведении -->
+        <div id="msg-img-shadow-h-settings-group" class="settings-form-mini">
+            <!-- Цвет тени изображения при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="msg-img-shadow-h-preview"></div>
+                        <input type="color" id="msg-img-shadow-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="msg-img-shadow-h-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.msg_img_shadow_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность тени изображения при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="msg-img-shadow-opacity-h-input" spellcheck="false" class="range-input" data-setting="theme.msg_img_shadow_opacity_h" min="0" max="100">
+                    <span class="range-value" id="msg-img-shadow-opacity-h-val"></span>
+                </div>
+            </div>
+            <!-- Размытие тени изображения при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="msg-img-shadow-blur-h-input" spellcheck="false" class="range-input" data-setting="theme.msg_img_shadow_blur_h" min="0" max="100">
+                    <span class="range-value" id="msg-img-shadow-blur-h-val"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

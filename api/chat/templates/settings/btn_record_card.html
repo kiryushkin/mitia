@@ -1,0 +1,315 @@
+<!-- КНОПКА ЗАПИСИ -->
+<div class="bento-card" id="card-btn-record-design">
+    <div class="card-header-flex">
+        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
+            <div class="collapse-icon"></div>
+            <h3 class="card-title">Кнопка записи</h3>
+        </div>
+        <!-- Иконки -->
+        <div class="card-actions-mini">
+            <button class="icon-btn-sm" onclick="window.resetRecordBtnToDefault()" title="Восстановить дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button class="icon-btn-sm" onclick="window.randomizeRecordBtnDesign()" title="Магический дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+        </div>
+    </div>
+    <!-- Параметры кнопки записи -->
+    <div class="settings-form">
+        <!-- СТАТУС КНОПКИ ЗАПИСИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Статус</h3>
+        </div>
+        <!-- Предпросмотр кнопки записи -->
+        <div class="setting-item-compact">
+            <div class="flex-between">
+                <label class="subtitle-card">Предпросмотр</label>
+                <label class="switch sm-switch">
+                    <input type="checkbox" id="btn-record-preview-toggle" data-setting="theme.btn_record_preview_enabled">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+        <!-- ГЕОМЕТРИЯ КНОПКИ ЗАПИСИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Геометрия</h3>
+        </div>
+        <!-- Скругление кнопки записи -->
+        <div class="setting-item">
+            <label class="subtitle-card">Скругление</label>
+            <div class="range-with-val">
+                <input type="range" id="btn-record-radius-input" data-setting="theme.btn_record_radius" min="0" max="50" class="range-input">
+                <span class="range-value" id="btn-record-radius-val"></span>
+            </div>
+        </div>
+        <!-- ИКОНКА КНОПКИ ЗАПИСИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Иконка</h3>
+        </div>
+        <!-- Параметры иконки кнопки записи -->
+        <div class="settings-form-mini">
+            <!-- Цвет иконки кнопки записи -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-record-icon-preview"></div>
+                        <input type="color" id="btn-record-icon-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-record-icon-hex" class="color_hex hex-input-full" data-setting="theme.btn_record_icon_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность иконки кнопки записи -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-record-icon-opacity-input" data-setting="theme.btn_record_icon_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-record-icon-opacity-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ИКОНКА КНОПКИ ЗАПИСИ ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Иконка при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-record-icon-h-toggle" data-setting="theme.btn_record_icon_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры иконки кнопки записи при наведении -->
+        <div id="btn-record-icon-h-settings" class="settings-form-mini">
+            <!-- Цвет иконки кнопки записи при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-record-icon-h-preview"></div>
+                        <input type="color" id="btn-record-icon-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-record-icon-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_record_icon_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность иконки кнопки записи при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-record-icon-h-opacity-input" data-setting="theme.btn_record_icon_opacity_h" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-record-icon-h-opacity-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ФОН КНОПКИ ЗАПИСИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Фон</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-record-bg-toggle" data-setting="theme.btn_record_bg_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры фона кнопки записи -->
+        <div id="btn-record-bg-settings" class="settings-form-mini">
+            <!-- Цвет фона кнопки записи -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-record-bg-preview"></div>
+                        <input type="color" id="btn-record-bg-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-record-bg-hex" class="color_hex hex-input-full" data-setting="theme.btn_record_bg_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность фона кнопки записи -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-record-bg-opacity-input" data-setting="theme.btn_record_bg_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-record-bg-opacity-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ФОН КНОПКИ ЗАПИСИ ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Фон при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-record-bg-h-toggle" data-setting="theme.btn_record_bg_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры фона кнопки записи при наведении -->
+        <div id="btn-record-bg-h-settings" class="settings-form-mini">
+            <!-- Цвет фона кнопки записи при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-record-bg-h-preview"></div>
+                        <input type="color" id="btn-record-bg-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-record-bg-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_record_bg_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность фона кнопки записи при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-record-bg-h-opacity-input" data-setting="theme.btn_record_bg_opacity_h" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-record-bg-h-opacity-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ОБВОДКА КНОПКИ ЗАПИСИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Обводка</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-record-border-toggle" data-setting="theme.btn_record_border_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры обводки кнопки записи -->
+        <div id="btn-record-border-settings" class="settings-form-mini">
+            <!-- Цвет обводки кнопки записи -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-record-border-preview"></div>
+                        <input type="color" id="btn-record-border-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-record-border-hex" class="color_hex hex-input-full" data-setting="theme.btn_record_border_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность обводки кнопки записи -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-record-border-opacity-input" data-setting="theme.btn_record_border_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-record-border-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Толщина обводки кнопки записи -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-record-border-width-input" data-setting="theme.btn_record_border_width" min="0" max="5" class="range-input">
+                    <span class="range-value" id="btn-record-border-width-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ОБВОДКА КНОПКИ ЗАПИСИ ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Обводка при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-record-border-h-toggle" data-setting="theme.btn_record_border_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры обводки кнопки записи при наведении -->
+        <div id="btn-record-border-h-settings" class="settings-form-mini">
+            <!-- Цвет обводки кнопки записи при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-record-border-h-preview"></div>
+                        <input type="color" id="btn-record-border-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-record-border-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_record_border_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность обводки кнопки записи при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-record-border-h-opacity-input" data-setting="theme.btn_record_border_opacity_h" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-record-border-h-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Толщина обводки кнопки записи при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-record-border-h-width-input" data-setting="theme.btn_record_border_width_h" min="0" max="5" class="range-input">
+                    <span class="range-value" id="btn-record-border-h-width-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ТЕНЬ КНОПКИ ЗАПИСИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Тень</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-record-shadow-toggle" data-setting="theme.btn_record_shadow_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры тени кнопки записи -->
+        <div id="btn-record-shadow-settings" class="settings-form-mini">
+            <!-- Цвет тени кнопки записи -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-record-shadow-preview"></div>
+                        <input type="color" id="btn-record-shadow-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-record-shadow-hex" class="color_hex hex-input-full" data-setting="theme.btn_record_shadow_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность тени кнопки записи -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-record-shadow-opacity-input" data-setting="theme.btn_record_shadow_opacity" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-record-shadow-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие тени кнопки записи -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-record-shadow-blur-input" data-setting="theme.btn_record_shadow_blur" min="0" max="50" class="range-input">
+                    <span class="range-value" id="btn-record-shadow-blur-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ТЕНЬ КНОПКИ ЗАПИСИ ПРИ НАВЕДЕНИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Тень при наведении</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="btn-record-shadow-h-toggle" data-setting="theme.btn_record_shadow_h_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры тени кнопки записи при наведении -->
+        <div id="btn-record-shadow-h-settings" class="settings-form-mini">
+            <!-- Цвет тени кнопки записи при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="btn-record-shadow-h-preview"></div>
+                        <input type="color" id="btn-record-shadow-h-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="btn-record-shadow-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_record_shadow_color_h" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность тени кнопки записи при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-record-shadow-h-opacity-input" data-setting="theme.btn_record_shadow_opacity_h" min="0" max="100" class="range-input">
+                    <span class="range-value" id="btn-record-shadow-h-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие тени кнопки записи при наведении -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="btn-record-shadow-h-blur-input" data-setting="theme.btn_record_shadow_blur_h" min="0" max="50" class="range-input">
+                    <span class="range-value" id="btn-record-shadow-h-blur-val"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="format-detection" content="telephone=no">
+  
+  <title>Панель управления — MITIA</title>
+  <meta name="description" content="Панель управления вашими ИИ-ассистентами MITIA. Настройка сценариев, аналитика диалогов и управление интеграциями.">
+  <meta name="keywords" content="MITIA, админ-панель, управление ИИ, чат-боты, аналитика">
+  <meta name="author" content="MITIA">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mitia.pro/admin">
+  <meta property="og:title" content="MITIA — Панель управления">
+  <meta property="og:description" content="Управляйте вашими ИИ-ассистентами в реальном времени.">
+  <meta property="og:image" content="https://mitia.pro/api/chat/static/img/og-image.jpg">
+   
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://mitia.pro/admin">
+  <meta property="twitter:title" content="MITIA — Панель управления">
+  <meta property="twitter:description" content="Управляйте вашими ИИ-ассистентами в реальном времени.">
+  <meta property="twitter:image" content="https://mitia.pro/api/chat/static/img/og-image.jpg">
+  
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  
+  <link rel="canonical" href="https://mitia.pro/admin">
+  <link rel="icon" href="/api/chat/img/favicon.svg?v=2" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/api/chat/img/favicon.svg?v=2">
+  
+  <!-- JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Панель управления MITIA",
+    "url": "https://mitia.pro/admin",
+    "description": "Интерфейс управления ИИ-ассистентами для бизнеса.",
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": "MITIA",
+      "url": "https://mitia.pro"
+    }
+  }
+  </script>
+  
+  <base href="/api/chat/static/js/">
+  
+  <!-- Style -->
+  <link rel="stylesheet" href="/api/chat/static/css/admin.css?v=2">
+  <link rel="stylesheet" href="/api/chat/static/css/dashboard.css">
+  <link rel="stylesheet" href="/api/chat/static/css/settings.css">
+  <link rel="stylesheet" href="/api/chat/static/css/storage.css">
+  <link rel="stylesheet" href="/api/chat/chat-widget.css">
+  
+  <!-- Scripts -->
+  <script src="/api/chat/static/js/chart.min.js" defer></script>
+  <script src="/api/chat/static/js/marked.min.js" defer></script>
+  <script src="/api/chat/static/js/purify.min.js" defer></script>
+  <script type="module" src="/api/chat/static/js/admin.js?v=101" defer></script>
+  <script src="http://127.0.0.1:5007/api/chat/chat-widget.js?client_id=mitia_assistant" defer></script>
+
+</head>
+
+<body class="admin-panel">
+    <div id="app-preloader" class="app-preloader">
+        <div class="preloader-dots">
+            <span class="p-dot"></span>
+            <span class="p-dot"></span>
+            <span class="p-dot"></span>
+        </div>
+    </div>
+    <div class="admin-layout">
+        <div id="sidebar-root"></div>
+        <main class="admin-main">
+            <div id="app"></div>
+        </main>
+    </div>
+    <template id="tmpl-sidebar">
+        <aside class="admin-sidebar">
+            <nav class="sidebar-nav">
+                <button class="nav-item" data-tab="profile" title="Профиль">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </button>
+                <button class="nav-item" data-tab="assistant" title="Интеллект">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                </button>
+                <button class="nav-item" data-tab="integrations" title="Интеграции">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                </button>
+                <button class="nav-item" data-tab="settings" title="Внешний вид">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+                <button class="nav-item has-notify" data-tab="dialogs" title="Диалоги">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                </button>
+                <button class="nav-item" data-tab="analytics" title="Аналитика">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <rect x="5" y="10" width="3" height="8" rx="1.5"></rect>
+                        <rect x="10.5" y="5" width="3" height="13" rx="1.5"></rect>
+                        <rect x="16" y="8" width="3" height="10" rx="1.5"></rect>
+                    </svg>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="nav-item" id="global-save-btn" title="Сохранить изменения">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                </button>
+                <button onclick="window.logout()" class="nav-item" title="Выйти">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                </button>
+            </div>
+        </aside>
+    </template>
+    <template id="tmpl-error-alert">
+        <div class="custom-alert-overlay">
+            <div class="custom-alert">
+                <div class="alert-icon-box error-bg">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </div>
+                <h3 class="alert-title"></h3>
+                <p class="alert-text"></p>
+                <div class="alert-buttons">
+                    <button class="alert-btn alert-btn-primary error-bg" id="error-close">Понятно</button>
+                </div>
+            </div>
+        </div>
+    </template>
+    <template id="tmpl-success-alert">
+        <div class="custom-alert-overlay">
+            <div class="custom-alert">
+                <div class="alert-icon-box success-bg">
+                    <svg width="35" height="35" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </div>
+                <h3 class="alert-title"></h3>
+                <p class="alert-text"></p>
+                <div class="alert-buttons">
+                    <button class="alert-btn alert-btn-primary success-bg" id="success-close">Отлично</button>
+                </div>
+            </div>
+        </div>
+    </template>
+    <template id="tmpl-confirm-alert">
+        <div class="custom-alert-overlay">
+            <div class="custom-alert">
+                <div class="alert-icon-box warning-bg">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+                <h3 class="alert-title"></h3>
+                <p class="alert-text"></p>
+                <div class="alert-buttons">
+                    <button class="alert-btn alert-btn-secondary" id="confirm-cancel">Отмена</button>
+                    <button class="alert-btn alert-btn-primary warning-bg" id="confirm-yes">Удалить</button>
+                </div>
+            </div>
+        </div>
+    </template>
+    <template id="tmpl-topup-alert">
+        <div class="custom-alert-overlay">
+            <div class="custom-alert">
+                <div class="alert-icon-box">
+                    <span class="alert-currency-sign">₽</span>
+                </div>
+                <h3 class="alert-title">Пополнение баланса</h3>
+                <p class="alert-text">Введите сумму в рублях для пополнения баланса.</p>
+                <div class="alert-input-group">
+                    <button class="alert-btn alert-btn-secondary alert-btn-step" id="topup-minus">-</button>
+                    <div class="alert-input-wrapper">
+                        <input type="number" class="alert-input no-spinners" id="topup-amount" value="1000" min="100">
+                    </div>
+                    <button class="alert-btn alert-btn-secondary alert-btn-step" id="topup-plus">+</button>
+                </div>
+                <div class="alert-buttons">
+                    <button class="alert-btn alert-btn-secondary" id="topup-cancel">Отмена</button>
+                    <button class="alert-btn alert-btn-primary" id="topup-confirm">Оплатить</button>
+                </div>
+            </div>
+        </div>
+    </template>
+    <template id="tmpl-tariffs-alert">
+        <div class="custom-alert-overlay">
+            <div class="custom-alert tariffs-modal no-bg">
+                <div class="tariffs-grid">
+                    <div class="tariff-option" data-tariff="start" data-price="0">
+                        <div class="tariff-option-name">Старт</div>
+                        <div class="tariff-option-price">0 ₽<span>/мес</span></div>
+                        <div class="tariff-option-desc">Для малого бизнеса</div>
+                        <button class="action-btn sm btn-full-width tariff-select-btn">Выбрать</button>
+                    </div>
+                    <div class="tariff-option popular" data-tariff="business" data-price="3900">
+                        <div class="tariff-badge">Популярный</div>
+                        <div class="tariff-option-name">Бизнес</div>
+                        <div class="tariff-option-price">3 900 ₽<span>/мес</span></div>
+                        <div class="tariff-option-desc">Для среднего бизнеса</div>
+                        <button class="action-btn sm btn-full-width tariff-select-btn">Выбрать</button>
+                    </div>
+                    <div class="tariff-option" data-tariff="neuro" data-price="9900">
+                        <div class="tariff-option-name">Нейро</div>
+                        <div class="tariff-option-price">9 900 ₽<span>/мес</span></div>
+                        <div class="tariff-option-desc">Для крупного бизнеса</div>
+                        <button class="action-btn sm btn-full-width tariff-select-btn">Выбрать</button>
+                    </div>
+                </div>
+                
+                <div class="alert-buttons mt-15">
+                    <button class="alert-btn alert-btn-secondary" id="tariffs-cancel">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </template>
+    <template id="tmpl-prompt-alert">
+        <div class="custom-alert-overlay">
+            <div class="custom-alert">
+                <div class="alert-icon-box success-bg">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </div>
+                <h3 class="alert-title">Добавить телефон</h3>
+                <p class="alert-text">Введите название для нового телефона</p>
+                <div class="alert-input-wrapper mt-20">
+                    <input type="text" class="hex-input-full" id="prompt-input" placeholder="Например: Отдел продаж" autocomplete="off" style="text-align: center; font-family: inherit;">
+                </div>
+                <div class="alert-buttons mt-25">
+                    <button class="alert-btn alert-btn-secondary" id="prompt-cancel">Отмена</button>
+                    <button class="alert-btn alert-btn-primary success-bg" id="prompt-confirm">Добавить</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+</body>
+</html>

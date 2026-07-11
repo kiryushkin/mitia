@@ -1,0 +1,269 @@
+<!-- ПОЛЕ ВВОДА -->
+<div class="bento-card" id="card-input-design">
+    <div class="card-header-flex">
+        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
+            <div class="collapse-icon"></div>
+            <h3 class="card-title">Поле ввода</h3>
+        </div>
+        <!-- Иконки -->
+        <div class="card-actions-mini">
+            <button class="icon-btn-sm" onclick="window.resetInputToDefault()" title="Восстановить дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            </button>
+            <button class="icon-btn-sm" onclick="window.randomizeInputDesign()" title="Магический дизайн">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+        </div>
+    </div>
+    <!-- Параметры поля ввода -->
+    <div class="settings-form">
+        <!-- ГЕОМЕТРИЯ ПОЛЯ ВВОДА -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Геометрия</h3>
+        </div>
+        <!-- Скругление поля ввода -->
+        <div class="setting-item">
+            <label class="subtitle-card">Скругление</label>
+            <div class="range-with-val">
+                <input type="range" id="input-radius-input" spellcheck="false" class="range-input" data-setting="theme.input_radius" min="0" max="32">
+                <span class="range-value" id="input-radius-val"></span>
+            </div>
+        </div>
+        <!-- ТЕКСТ ПОЛЯ ВВОДА -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Текст</h3>
+        </div>
+        <!-- Цвет текста поля ввода -->
+        <div class="setting-item">
+            <label class="subtitle-card">Цвет</label>
+            <div class="color-input-group">
+                <div class="color-circle-wrapper">
+                    <div class="color-circle-bg" id="input-text-preview"></div>
+                    <input type="color" id="input-text-picker" class="hidden-picker">
+                </div>
+                <input type="text" id="input-text-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.input_text_color" placeholder="Прозрачный">
+            </div>
+        </div>
+        <!-- Прозрачность текста поля ввода -->
+        <div class="setting-item">
+            <label class="subtitle-card">Прозрачность</label>
+            <div class="range-with-val">
+                <input type="range" id="input-text-opacity-input" spellcheck="false" class="range-input" data-setting="theme.input_text_opacity" min="0" max="100">
+                <span class="range-value" id="input-text-opacity-val"></span>
+            </div>
+        </div>
+        <!-- Подсказка поля ввода -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Подсказка</h3>
+        </div>
+        <!-- Цвет текста подсказки -->
+        <div class="setting-item">
+            <label class="subtitle-card">Цвет</label>
+            <div class="color-input-group">
+                <div class="color-circle-wrapper">
+                    <div class="color-circle-bg" id="input-placeholder-preview"></div>
+                    <input type="color" id="input-placeholder-picker" class="hidden-picker">
+                </div>
+                <input type="text" id="input-placeholder-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.input_placeholder_color" placeholder="Прозрачный">
+            </div>
+        </div>
+        <!-- Прозрачность подсказки поля ввода -->
+        <div class="setting-item">
+            <label class="subtitle-card">Прозрачность</label>
+            <div class="range-with-val">
+                <input type="range" id="input-placeholder-opacity-input" spellcheck="false" class="range-input" data-setting="theme.input_placeholder_opacity" min="0" max="100">
+                <span class="range-value" id="input-placeholder-opacity-val"></span>
+            </div>
+        </div>
+        <!-- ФОН ПОЛЯ ВВОДА -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Фон</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="input-bg-toggle" data-setting="theme.input_bg_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры фона поля ввода -->
+        <div id="input-bg-settings-group" class="settings-form-mini">
+            <!-- Цвет фона поля ввода -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="input-bg-preview"></div>
+                        <input type="color" id="input-bg-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="input-bg-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.input_bg" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность фона поля ввода -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="input-opacity-input" spellcheck="false" class="range-input" data-setting="theme.input_bg_opacity" min="0" max="100">
+                    <span class="range-value" id="input-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие фона поля ввода -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="input-bg-blur-input" spellcheck="false" class="range-input" data-setting="theme.input_bg_blur" min="0" max="20">
+                    <span class="range-value" id="input-bg-blur-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ОБВОДКА ПОЛЯ ВВОДА -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Обводка</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="input-border-toggle" data-setting="theme.input_border_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры обводки поля ввода -->
+        <div id="input-border-settings-group" class="settings-form-mini">
+            <!-- Цвет обводки поля ввода-->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="input-border-preview"></div>
+                        <input type="color" id="input-border-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="input-border-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.input_border_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность обводки поля ввода -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="input-border-opacity-input" spellcheck="false" class="range-input" data-setting="theme.input_border_opacity" min="0" max="100">
+                    <span class="range-value" id="input-border-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Толщина обводки поля ввода -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="input-border-width-input" spellcheck="false" class="range-input" data-setting="theme.input_border_width" min="0" max="5">
+                    <span class="range-value" id="input-border-width-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ОБВОДКА ПОЛЯ ВВОДА ПРИ АКТИВАЦИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Обводка при активации</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="input-active-border-toggle" data-setting="theme.input_active_border_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры обводки поля ввода при активации -->
+        <div id="input-active-border-settings-group" class="settings-form-mini">
+            <!-- Цвет обводки поля ввода при активации -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="input-active-border-preview"></div>
+                        <input type="color" id="input-active-border-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="input-active-border-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.input_active_border_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность обводки поля ввода при активации -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="input-active-border-opacity-input" spellcheck="false" class="range-input" data-setting="theme.input_active_border_opacity" min="0" max="100">
+                    <span class="range-value" id="input-active-border-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Толщина обводки поля ввода при активации -->
+            <div class="setting-item">
+                <label class="subtitle-card">Толщина</label>
+                <div class="range-with-val">
+                    <input type="range" id="input-active-border-width-input" spellcheck="false" class="range-input" data-setting="theme.input_active_border_width" min="0" max="5">
+                    <span class="range-value" id="input-active-border-width-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ТЕНЬ ПОЛЯ ВВОДА -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Тень</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="input-shadow-toggle" data-setting="theme.input_shadow_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры тени поля ввода -->
+        <div id="input-shadow-settings-group" class="settings-form-mini">
+            <!-- Цвет тени поля ввода -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="input-shadow-color-preview"></div>
+                        <input type="color" id="input-shadow-color-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="input-shadow-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.input_shadow_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность тени поля ввода -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="input-shadow-opacity-input" spellcheck="false" class="range-input" data-setting="theme.input_shadow_opacity" min="0" max="100">
+                    <span class="range-value" id="input-shadow-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие тени поля ввода -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="input-shadow-blur-input" spellcheck="false" class="range-input" data-setting="theme.input_shadow_blur" min="0" max="50">
+                    <span class="range-value" id="input-shadow-blur-val"></span>
+                </div>
+            </div>
+        </div>
+        <!-- ТЕНЬ ПОЛЯ ВВОДА ПРИ АКТИВАЦИИ -->
+        <div class="flex-between">
+            <h3 class="subtitle-card-bold white">Тень при активации</h3>
+            <label class="switch sm-switch">
+                <input type="checkbox" id="input-active-shadow-toggle" data-setting="theme.input_active_shadow_enabled">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        <!-- Параметры тени поля ввода при активации -->
+        <div id="input-active-shadow-settings-group" class="settings-form-mini">
+            <!-- Цвет тени поля ввода при активации -->
+            <div class="setting-item">
+                <label class="subtitle-card">Цвет</label>
+                <div class="color-input-group">
+                    <div class="color-circle-wrapper">
+                        <div class="color-circle-bg" id="input-active-shadow-preview"></div>
+                        <input type="color" id="input-active-shadow-picker" class="hidden-picker">
+                    </div>
+                    <input type="text" id="input-active-shadow-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.input_active_shadow_color" placeholder="Прозрачный">
+                </div>
+            </div>
+            <!-- Прозрачность тени поля ввода при активации -->
+            <div class="setting-item">
+                <label class="subtitle-card">Прозрачность</label>
+                <div class="range-with-val">
+                    <input type="range" id="input-active-shadow-opacity-input" spellcheck="false" class="range-input" data-setting="theme.input_active_shadow_opacity" min="0" max="100">
+                    <span class="range-value" id="input-active-shadow-opacity-val"></span>
+                </div>
+            </div>
+            <!-- Размытие тени поля ввода при активации -->
+            <div class="setting-item">
+                <label class="subtitle-card">Размытие</label>
+                <div class="range-with-val">
+                    <input type="range" id="input-active-shadow-blur-input" spellcheck="false" class="range-input" data-setting="theme.input_active_shadow_blur" min="0" max="100">
+                    <span class="range-value" id="input-active-shadow-blur-val"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
