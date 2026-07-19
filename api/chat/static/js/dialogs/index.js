@@ -1,40 +1,146 @@
-/**
- * Оркестратор модуля диалогов
- * Собирает state, api, websocket, UI-компоненты в единый DialogsModule
- */
-
 import { state, resetState } from './state.js';
 import {
     fetchSessions,
     fetchAdminConfig,
+    fetchAnalyticsSettings,
+    fetchIntegrations,
     saveAdminConfig,
     fetchCloseReasons,
     createCloseReason,
 } from './api.js';
 import { disconnectWebSocket } from './websocket.js';
-import { bindEvents, initMobileFilters } from './ui/filters.js';
-import { initCalendar } from './ui/calendar.js';
+import { bindEvents, applyAssistantFilterDraft } from './ui/filters.js';
+import { initCalendar, renderCalendar } from './ui/calendar.js';
 import { renderDialogs, updateSidebarNotify, updateSelectUI, initInfiniteScroll } from './ui/list.js';
+
+function syncAssistantsListFromAdmin() {
+    if (!window.AdminApp) return;
+    const items = Array.isArray(window.AdminApp.modules?.profile?.state?.assistants_backend_items)
+        ? window.AdminApp.modules.profile.state.assistants_backend_items
+        : [];
+    if (typeof window.AdminApp.setAssistantsList === 'function') {
+        window.AdminApp.setAssistantsList(items.map((item) => ({
+            assistant_id: item.assistant_id,
+            name: item.name || item.config?.bot_settings?.bot_name || item.assistant_id,
+        })));
+    }
+}
+
+function getPersistedDialogsFilters(config) {
+    const fallback = { statuses: [], modes: [], platforms: [] };
+    if (!config || typeof config !== 'object') return fallback;
+
+    const raw = config.dialogs_filters;
+    if (!raw || typeof raw !== 'object') return fallback;
+
+    const statuses = Array.isArray(raw.statuses) ? raw.statuses.map(String) : [];
+    const modes = Array.isArray(raw.modes) ? raw.modes.map(String) : [];
+    const platforms = Array.isArray(raw.platforms) ? raw.platforms.map(String) : [];
+    return { statuses, modes, platforms };
+}
+
+function normalizeModeSet(rawModes) {
+    const set = new Set((Array.isArray(rawModes) ? rawModes : []).map(String));
+    const hasAssistant = set.has('assistant');
+    const hasOperator = set.has('operator');
+
+    if (set.has('all') || (hasAssistant && hasOperator) || (!hasAssistant && !hasOperator)) {
+        return new Set();
+    }
+
+    return new Set([hasAssistant ? 'assistant' : 'operator']);
+}
+
+const PLATFORM_FILTERS = [
+    { integration: 'widget', platform: 'web', label: 'Веб-сайт' },
+    { integration: 'telegram', platform: 'telegram', label: 'Telegram' },
+    { integration: 'max', platform: 'max', label: 'MAX' },
+    { integration: 'vk', platform: 'vk', label: 'Вконтакте' },
+    { integration: 'ok', platform: 'ok', label: 'Одноклассники' },
+    { integration: 'email', platform: 'email', label: 'Email' },
+    { integration: 'avito', platform: 'avito', label: 'Avito' },
+    { integration: 'hh', platform: 'hh', label: 'HeadHunter' },
+];
+
+function renderPlatformButtons(integrations) {
+    const container = document.getElementById('platform-buttons');
+    if (!container) return;
+
+    const enabledPlatforms = PLATFORM_FILTERS.filter(({ integration }) => integrations?.[integration]?.enabled)
+        .map(({ platform }) => platform);
+    const filterSection = document.getElementById('dialog-channels-filter');
+    if (filterSection) filterSection.style.display = enabledPlatforms.length ? '' : 'none';
+    state.activePlatforms = new Set(
+        [...state.activePlatforms].filter((platform) => enabledPlatforms.includes(platform))
+    );
+
+    container.innerHTML = PLATFORM_FILTERS
+        .filter(({ platform }) => enabledPlatforms.includes(platform))
+        .map(({ platform, label }) => (
+            `<button class="filter-btn${state.activePlatforms.has(platform) ? ' active' : ''}" data-platform="${platform}">${label}</button>`
+        ))
+        .join('');
+
+    container.querySelectorAll('[data-platform]').forEach((button) => {
+        button.onclick = () => {
+            const platform = button.dataset.platform;
+            if (state.activePlatforms.has(platform)) {
+                state.activePlatforms.delete(platform);
+            } else {
+                state.activePlatforms.add(platform);
+            }
+            state.currentPage = 1;
+            syncFilterButtonsFromState();
+            renderDialogs();
+        };
+    });
+}
+
+function syncFilterButtonsFromState() {
+    document.querySelectorAll('#status-buttons .filter-btn').forEach((btn) => {
+        const key = btn.dataset.filter;
+        btn.classList.toggle('active', !!key && state.activeFilters.has(key));
+    });
+
+    const activeMode = state.activeModes.has('assistant')
+        ? 'assistant'
+        : state.activeModes.has('operator')
+            ? 'operator'
+            : null;
+
+    document.querySelectorAll('#mode-buttons .filter-btn').forEach((btn) => {
+        const mode = (btn.dataset.mode || '').trim();
+        let isActive = false;
+        if (mode === 'all') {
+            isActive = !activeMode;
+        } else {
+            isActive = !!activeMode && mode === activeMode;
+        }
+        btn.classList.toggle('active', isActive);
+    });
+
+    document.querySelectorAll('#platform-buttons .filter-btn').forEach((btn) => {
+        const key = btn.dataset.platform;
+        btn.classList.toggle('active', !!key && state.activePlatforms.has(key));
+    });
+}
+
 import { setOnDialogsChanged, renderDialogSidebar } from './ui/modal.js';
 
-/**
- * Загрузка диалогов с сервера
- */
 async function loadDialogsFromServer(isSilent = false) {
+    syncAssistantsListFromAdmin();
     try {
         const searchQuery = document.getElementById('dialogs-search')?.value || '';
         
-        // Сбрасываем страницу при поиске (если это не фоновое обновление)
         if (!isSilent) state.currentPage = 1;
 
         const newData = await fetchSessions(searchQuery);
 
         if (!isSilent) {
-            const hasUnread = newData.some(d => !d.is_read || d.is_operator_mode);
+            const hasUnread = newData.some(d => !d.is_read);
             updateSidebarNotify(hasUnread);
         }
 
-        // Нормализуем metadata_json для корректного сравнения
         const normalizeMeta = (d) => ({
             ...d,
             metadata_json: typeof d.metadata_json === 'string'
@@ -42,12 +148,11 @@ async function loadDialogsFromServer(isSilent = false) {
                 : d.metadata_json
         });
         const newNorm = newData.map(normalizeMeta);
-        
-        // УМНОЕ ОБНОВЛЕНИЕ: сохраняем локально распознанные имена
+        state.hasLoadedDialogsOnce = true;
+
         newNorm.forEach(newD => {
             const oldD = state.dialogs.find(d => d.session_id === newD.session_id);
             if (oldD) {
-                // Если в старом объекте было имя, а в новом нет - сохраняем старое
                 const oldName = oldD.metadata_json?.first_name || oldD.metadata_json?.name;
                 const newName = newD.metadata_json?.first_name || newD.metadata_json?.name;
                 if (oldName && !newName) {
@@ -71,9 +176,6 @@ async function loadDialogsFromServer(isSilent = false) {
     }
 }
 
-/**
- * Массовое изменение статуса
- */
 async function batchChangeStatus(newStatus) {
     const sids = Array.from(state.selectedSessions);
     if (sids.length === 0) return;
@@ -173,7 +275,6 @@ async function batchChangeStatus(newStatus) {
                             body: JSON.stringify({ is_archived: false })
                         }).catch(() => {});
                     } else if (newStatus === 'application') {
-                        // Переключаем в режим оператора
                         d.is_archived = false;
                         d.is_operator_mode = true;
                         fetch(`/api/chat/admin/sessions/${sid}/archive`, {
@@ -208,9 +309,6 @@ async function batchChangeStatus(newStatus) {
     setTimeout(() => loadDialogsFromServer(true), 2000);
 }
 
-/**
- * Массовое удаление
- */
 function batchDelete() {
     const sids = Array.from(state.selectedSessions);
     if (sids.length === 0) return;
@@ -245,9 +343,6 @@ function batchDelete() {
     });
 }
 
-/**
- * Автообновление списка диалогов
- */
 function startAutoUpdate() {
     if (state.autoUpdateTimer) clearInterval(state.autoUpdateTimer);
     state.autoUpdateTimer = setInterval(() => {
@@ -258,12 +353,19 @@ function startAutoUpdate() {
     }, 5000);
 }
 
-
-/**
- * Единый экспортируемый объект (совместим с admin.js)
- */
 export const DialogsModule = {
     get state() { return state; },
+
+    getPreviewAssistantFilter() {
+        if (typeof window.AdminApp?.getDialogsAssistantFilter === 'function') {
+            const applied = window.AdminApp.getDialogsAssistantFilter() || [];
+            if (Array.isArray(this._draftAssistantFilterPreview) && this._draftAssistantFilterPreview.length >= 0) {
+                return this._draftAssistantFilterPreview;
+            }
+            return applied;
+        }
+        return this._draftAssistantFilterPreview || [];
+    },
 
     async init() {
         console.log('Dialogs module V2 initialized');
@@ -277,17 +379,46 @@ export const DialogsModule = {
         const urlParams = new URLSearchParams(window.location.search);
         state.activeClientId = urlParams.get('client_id') || localStorage.getItem('chat_client_id') || null;
 
-        // Колбэк при изменении диалогов из модалки
         setOnDialogsChanged(() => loadDialogsFromServer(true));
 
-        bindEvents({
-            onSearch: () => loadDialogsFromServer(),
+        await bindEvents({
+            onSearch: () => {
+                return loadDialogsFromServer();
+            },
             onBatchStatus: (status) => batchChangeStatus(status),
             onBatchDelete: () => batchDelete()
         });
-        initMobileFilters();
+
+        // Сворачиваем фильтры по умолчанию на мобильных устройствах и планшетах
+        if (window.innerWidth <= 1024) {
+            const filtersCard = document.getElementById('card-dialogs-filters');
+            if (filtersCard) filtersCard.classList.add('is-collapsed');
+        }
+
         updateSelectUI();
         initInfiniteScroll();
+
+        this._draftAssistantFilterPreview = window.AdminApp?.getDialogsAssistantFilter?.() || [];
+
+        try {
+            const analyticsSettings = await fetchAnalyticsSettings(state.activeClientId);
+            const today = new Date();
+            const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            state.calendarBounds = {
+                minDate: analyticsSettings?.calendar_bounds?.min_date || todayKey,
+                maxDate: analyticsSettings?.calendar_bounds?.max_date || todayKey,
+                maxSource: analyticsSettings?.calendar_bounds?.max_source || 'today'
+            };
+        } catch (_) {
+            const today = new Date();
+            const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            state.calendarBounds = {
+                minDate: todayKey,
+                maxDate: todayKey,
+                maxSource: 'today'
+            };
+        }
+
         initCalendar(() => {
             state.currentPage = 1;
             renderDialogs();
@@ -295,7 +426,10 @@ export const DialogsModule = {
         await loadDialogsFromServer();
 
         try {
-            const cfg = await fetchAdminConfig(state.activeClientId);
+            const [cfg, integrationSettings] = await Promise.all([
+                fetchAdminConfig(state.activeClientId),
+                fetchIntegrations(state.activeClientId),
+            ]);
             const operatorNameInput = document.getElementById('dialogs-operator-name-input');
             const counter = document.querySelector('.char-counter[data-for="dialogs-operator-name-input"] span');
             if (operatorNameInput) {
@@ -309,11 +443,21 @@ export const DialogsModule = {
                     if (saveBtn) saveBtn.classList.add('pulse-active');
                 };
             }
+
+            const persisted = getPersistedDialogsFilters(cfg);
+            state.activeFilters = new Set(persisted.statuses);
+            state.activeModes = normalizeModeSet(persisted.modes);
+            state.activePlatforms = new Set(persisted.platforms);
+            renderPlatformButtons(integrationSettings || cfg?.integrations || {});
+            applyAssistantFilterDraft(window.AdminApp?.getDialogsAssistantFilter?.() || []);
+            syncFilterButtonsFromState();
+            renderCalendar();
+            state.currentPage = 1;
+            renderDialogs();
         } catch (e) {
             console.error('Failed to load operator name config', e);
         }
 
-        // Deep Linking: если в URL есть session_id или был передан deepSessionId, открываем его
         const sid = new URLSearchParams(window.location.search).get('session_id') || window.deepSessionId;
 
         if (sid) {
@@ -324,7 +468,6 @@ export const DialogsModule = {
 
         startAutoUpdate();
 
-        // Принудительно скрываем прелоадер после инициализации модуля
         const loader = document.getElementById('admin-preloader');
         if (loader) loader.style.display = 'none';
     },
@@ -345,20 +488,26 @@ export const DialogsModule = {
     async saveData() {
         const { saveClientProfile } = await import('./ui/modal.js');
 
-        const operatorNameInput = document.getElementById('dialogs-operator-name-input');
-        if (operatorNameInput) {
-            const name = operatorNameInput.value.trim();
-            const result = await saveAdminConfig({ theme: { msg_operator_name: name } }, state.activeClientId);
-            if (!result?.ok) {
-                throw new Error('Failed to save msg_operator_name');
-            }
+        if (state.activeSessionId) {
+            await saveClientProfile();
+            return true;
         }
 
-        // Проверяем, открыт ли режим редактирования (по наличию кнопки Отмена)
-        const btnCancel = document.getElementById('btn-cancel-profile');
-        if (btnCancel && btnCancel.style.display === 'flex') {
-            return await saveClientProfile();
+        const operatorNameInput = document.getElementById('dialogs-operator-name-input');
+        const name = operatorNameInput ? operatorNameInput.value.trim() : '';
+        const filtersPayload = {
+            statuses: Array.from(state.activeFilters),
+            modes: Array.from(state.activeModes),
+            platforms: Array.from(state.activePlatforms)
+        };
+        const result = await saveAdminConfig({
+            theme: { msg_operator_name: name },
+            dialogs_filters: filtersPayload
+        }, state.activeClientId);
+        if (!result?.ok) {
+            throw new Error('Failed to save dialogs settings');
         }
+
         return true;
     }
 

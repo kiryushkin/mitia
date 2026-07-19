@@ -14,6 +14,7 @@ from ..services.db_service import (
     get_user_by_client_id, get_chat_history
 )
 from ..services.clients import get_client_config
+from ..services.assistants_service import resolve_assistant_id_for_origin
 from ..services.chat_service import chat_service
 from ..services.tts_engine import tts_engine
 from ..core.rate_limit import ask_limiter, tts_limiter
@@ -42,6 +43,7 @@ class AskRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     attachments: Optional[List[Dict[str, Any]]] = None
     client_ip: Optional[str] = None
+    assistant_id: Optional[str] = None
 
 from ..services.theme_manager import get_default_theme, THEME_FIELDS
 
@@ -69,11 +71,17 @@ async def get_integrations_presets():
         return json.load(f)
 
 @router.get("/config")
-async def get_config(request: Request, client_id: str):
+async def get_config(request: Request, client_id: str, assistant_id: Optional[str] = None):
     """Загрузка конфигурации виджета."""
     if not client_id or client_id == 'default':
         client_id = 'mitia_assistant'
-    
+
+    referer = request.headers.get('referer')
+    origin = request.headers.get('origin') or referer
+    is_platform_admin_preview = bool(referer and '/admin' in referer)
+    if not assistant_id and not is_platform_admin_preview:
+        assistant_id = await resolve_assistant_id_for_origin(client_id, origin)
+
     user_row = await get_user_by_client_id(client_id)
     ai_disabled_by_balance = False
     if user_row and user_row.balance <= -1 and client_id != 'mitia_assistant':
@@ -82,17 +90,16 @@ async def get_config(request: Request, client_id: str):
         ai_disabled_by_balance = True
     
     # Загружаем конфиг без кэша, чтобы сразу видеть изменения домена
-    config = await get_client_config(client_id, use_cache=False)
+    config = await get_client_config(client_id, use_cache=False, assistant_id=assistant_id)
     
-    referer = request.headers.get('referer')
     allowed_origins = config.raw.get('allowed_origins', [])
-    log.info(f"[DOMAIN CHECK] client_id: {client_id}, allowed_origins: {allowed_origins}, referer: {referer}")
+    log.info(f"[DOMAIN CHECK] client_id: {client_id}, assistant_id: {assistant_id}, allowed_origins: {allowed_origins}, referer: {referer}")
 
     # Внутри админки разрешаем предпросмотр конфигурации текущего клиента
     # без доменной проверки, чтобы настройки не подменялись витринным аккаунтом.
-    is_platform_admin_preview = bool(referer and '/admin' in referer)
     if is_platform_admin_preview:
         res = config.public_dict()
+        res['assistant_id'] = assistant_id
         res['ai_disabled'] = ai_disabled_by_balance
         res['preview_fallback'] = False
         return res
@@ -132,37 +139,38 @@ async def get_config(request: Request, client_id: str):
 
     res = config.public_dict()
     res['ai_disabled'] = ai_disabled_by_balance
+    res['assistant_id'] = assistant_id
     return res
 
 @router.get("/history")
 async def history(request: Request, token: str, client_id: Optional[str] = None, limit: int = 50):
     """Получение истории сообщений с проверкой принадлежности клиенту."""
-    # Если передан 0, запрашиваем очень большое число (фактически всё)
-    actual_limit = limit if limit != 0 else 1000000
-    
-    # Проверяем авторизацию (для админки)
-    is_admin = False
+    actual_limit = max(1, min(int(limit or 50), 500))
+
+    token_data = None
     auth_header = request.headers.get('Authorization')
     if auth_header and auth_header.startswith('Bearer '):
         try:
             from ..core.config import JWT_SECRET, JWT_ALGORITHM
             import jwt
-            payload = jwt.decode(auth_header.split(' ')[1], JWT_SECRET, algorithms=[JWT_ALGORITHM])
-            if payload.get('role') == 'superadmin':
-                is_admin = True
-        except: pass
+            token_data = jwt.decode(auth_header.split(' ')[1], JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        except Exception:
+            token_data = None
 
-    # Проверяем в БД, что сессия принадлежит указанному клиенту
+    is_superadmin = bool(token_data and token_data.get('role') == 'superadmin')
+    requester_id = token_data.get('sub') if token_data else None
+    if not client_id and not is_superadmin:
+        raise HTTPException(status_code=400, detail="client_id is required")
+    if requester_id and not is_superadmin and requester_id != client_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
     from ..services.db_service import AsyncSessionLocal, ChatSession
     from sqlalchemy import select
     async with AsyncSessionLocal() as db:
         stmt = select(ChatSession).where(ChatSession.session_id == token)
-        
-        # Если это НЕ админ, и передан client_id, проверяем строго.
-        # Если client_id НЕ передан, разрешаем по session_id (токену).
-        if client_id and not is_admin:
+        if client_id:
             stmt = stmt.where(ChatSession.client_id == client_id)
-            
+
         res = await db.execute(stmt)
         session = res.scalar_one_or_none()
         
@@ -263,15 +271,11 @@ async def ask(
             session_id=session_id,
             context=ctx_obj,
             voice_output=voice_output,
-            source=source
+            source=source,
+            assistant_id=form_data.get('assistant_id')
         )
     
     data.client_ip = client_ip
-
-    # В админке платформы всегда используем витринного ассистента,
-    # чтобы ответы шли из единой базы знаний и промптов платформы.
-    if referer and '/admin' in referer:
-        data.client_id = 'mitia_assistant'
 
     result = await chat_service.process_ask(data, files=files, stream=is_stream, is_admin=False)
     
@@ -292,28 +296,41 @@ async def stop_chat(request: Request):
     try:
         data = await request.json()
         session_id = data.get('token') or data.get('session_id')
+        client_id = str(data.get('client_id') or '').strip()
         last_text = data.get('last_text', '')
-        
+
+        if not session_id or not client_id:
+            raise HTTPException(status_code=400, detail="session_id and client_id are required")
+
         log.info(f"Stop signal received for session {session_id}. Last text length: {len(last_text)}")
-        
-        if session_id:
-            from ..services.db_service import AsyncSessionLocal, ChatMessage
-            async with AsyncSessionLocal() as db:
-                from sqlalchemy import select, desc
-                result = await db.execute(
+
+        from ..services.db_service import AsyncSessionLocal, ChatMessage, ChatSession
+        async with AsyncSessionLocal() as db:
+            from sqlalchemy import select, desc
+            session_result = await db.execute(
+                select(ChatSession.id).where(
+                    ChatSession.session_id == session_id,
+                    ChatSession.client_id == client_id,
+                )
+            )
+            if session_result.scalar_one_or_none() is None:
+                raise HTTPException(status_code=403, detail="Access denied")
+
+            result = await db.execute(
                     select(ChatMessage)
                     .where(ChatMessage.session_id == session_id, ChatMessage.role == 'assistant')
                     .order_by(desc(ChatMessage.id))
                     .limit(1)
                 )
-                msg = result.scalar_one_or_none()
-                if msg:
-                    final_text = last_text if last_text else msg.content
-                    msg.content = final_text + "\n\n*Прервано пользователем*"
-                    await db.commit()
-                    log.info(f"Message {msg.id} updated with stop note. Content length: {len(msg.content)}")
-                # Сессия закроется автоматически при выходе из async with
+            msg = result.scalar_one_or_none()
+            if msg:
+                final_text = last_text if last_text else msg.content
+                msg.content = final_text + "\n\n*Прервано пользователем*"
+                await db.commit()
+                log.info(f"Message {msg.id} updated with stop note. Content length: {len(msg.content)}")
         return {"status": "ok"}
+    except HTTPException:
+        raise
     except Exception as e:
         log.error(f"Error in stop_chat: {e}")
         return {"status": "error"}
@@ -329,8 +346,13 @@ async def delete_message(request: Request, message_id: int):
     try:
         from ..core.config import JWT_SECRET, JWT_ALGORITHM
         import jwt
-        jwt.decode(auth_header.split(' ')[1], JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    except:
+        token_data = jwt.decode(auth_header.split(' ')[1], JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    requester_id = token_data.get('sub')
+    is_superadmin = token_data.get('role') == 'superadmin'
+    if not requester_id and not is_superadmin:
         raise HTTPException(status_code=401, detail="Invalid token")
 
     from ..services.db_service import (
@@ -353,6 +375,8 @@ async def delete_message(request: Request, message_id: int):
                 select(ChatSession.client_id).where(ChatSession.session_id == msg.session_id)
             )
             client_id = session_res.scalar_one_or_none()
+            if not is_superadmin and requester_id != client_id:
+                raise HTTPException(status_code=403, detail="Access denied")
 
             # Считаем размер вложений
             freed_size = 0
@@ -390,16 +414,18 @@ async def text_to_speech(request: Request, _ = Depends(tts_limiter)):
             text = data.get('text', '')
             voice_param = data.get('voice')
             client_id = data.get('client_id') or request.query_params.get('client_id', 'mitia_assistant')
+            assistant_id = data.get('assistant_id') or request.query_params.get('assistant_id')
         else:
             text = request.query_params.get('text', '')
             voice_param = request.query_params.get('voice')
             client_id = request.query_params.get('client_id', 'mitia_assistant')
+            assistant_id = request.query_params.get('assistant_id')
     except:
         return JSONResponse(status_code=400, content={"error": "Invalid JSON or parameters"})
 
     if not text: return {"error": "No text"}
     
-    cfg = await get_client_config(client_id)
+    cfg = await get_client_config(client_id, assistant_id=assistant_id)
     voice = voice_param or cfg.raw.get('bot_settings', {}).get('tts_voice', 'Nec_24000')
     
     # Генерируем локально

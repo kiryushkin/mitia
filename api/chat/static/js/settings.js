@@ -30,8 +30,8 @@ window.getCollapsedCardsStorageKey = function() {
     return `collapsed_cards:${clientId}`;
 };
 
-window.toggleCardCollapse = function(headerEl) {
-    const card = headerEl.closest('.bento-card');
+window.toggleCardCollapse = function(triggerEl) {
+    const card = triggerEl.closest('.bento-card');
     if (card) {
         card.classList.toggle('collapsed');
 
@@ -101,8 +101,6 @@ export const AppearanceModule = {
 
     async init() {
         await loadGoldenStandard();
-        
-        this.clearAllMyTempFiles();
 
         this.state.theme = { ...GOLDEN_STANDARD };
 
@@ -232,11 +230,33 @@ export const AppearanceModule = {
         const asString = String(url).trim();
         if (!asString) return '';
 
+        const tryExtractFromQuery = (search) => {
+            if (!search) return '';
+            const params = new URLSearchParams(search);
+            const keys = ['file_url', 'file', 'path', 'file_path', 'url'];
+            for (const key of keys) {
+                const value = params.get(key);
+                if (!value) continue;
+                try {
+                    return decodeURIComponent(value);
+                } catch (_) {
+                    return value;
+                }
+            }
+            return '';
+        };
+
         try {
             const parsed = new URL(asString, window.location.origin);
+            const fromQuery = tryExtractFromQuery(parsed.search);
+            if (fromQuery) return this.normalizeFileUrl(fromQuery);
             return parsed.pathname;
         } catch (_) {
-            return asString.split('?')[0].split('#')[0];
+            const [clean] = asString.split('#');
+            const [pathPart, queryPart] = clean.split('?');
+            const fromQuery = tryExtractFromQuery(queryPart ? `?${queryPart}` : '');
+            if (fromQuery) return this.normalizeFileUrl(fromQuery);
+            return pathPart || '';
         }
     },
 
@@ -262,13 +282,51 @@ export const AppearanceModule = {
             { key: 'bot_avatar', previewId: 'bot-avatar-preview' },
             { key: 'user_avatar', previewId: 'user-avatar-preview' },
             { key: 'operator_avatar', previewId: 'operator-avatar-preview' },
-            { key: 'profile_avatar', previewId: null },
-            { key: 'inline_btn_accent_img', previewId: null },
-            { key: 'inline_btn_neutral_img', previewId: null },
-            { key: 'inline_btn_info_img', previewId: null }
+            { key: 'profile_avatar', previewId: 'profile-avatar-preview' },
+            { key: 'inline_btn_accent_img', previewId: 'inline-btn-accent-img-preview' },
+            { key: 'inline_btn_neutral_img', previewId: 'inline-btn-neutral-img-preview' },
+            { key: 'inline_btn_info_img', previewId: 'inline-btn-info-img-preview' }
         ];
 
-        this._onStorageFileDeletedForAppearance = (event) => {
+        const previewIdByKey = new Map(
+            imageFieldMappings
+                .filter(({ key }) => Boolean(key))
+                .map(({ key, previewId }) => [key, previewId || null])
+        );
+
+        const resolvePreviewId = (key) => {
+            if (!key) return null;
+            const mapped = previewIdByKey.get(key);
+            if (mapped) return mapped;
+
+            const fallbackMap = {
+                widget_img: 'widget-img-preview',
+                header_logo: 'header-logo-preview',
+                window_bg_img: 'chat-window-img-preview',
+                chat_window_bg_img: 'chat-window-img-preview',
+                welcome_img: 'welcome-img-preview',
+                msg_bot_avatar: 'msg-bot-avatar-preview',
+                msg_user_avatar: 'msg-user-avatar-preview',
+                msg_operator_avatar: 'msg-operator-avatar-preview',
+                bot_avatar: 'bot-avatar-preview',
+                user_avatar: 'user-avatar-preview',
+                operator_avatar: 'operator-avatar-preview',
+                profile_avatar: 'profile-avatar-preview',
+                inline_btn_accent_img: 'inline-btn-accent-img-preview',
+                inline_btn_neutral_img: 'inline-btn-neutral-img-preview',
+                inline_btn_info_img: 'inline-btn-info-img-preview'
+            };
+            return fallbackMap[key] || null;
+        };
+
+        const clearImagePreviewIfPresent = (key) => {
+            const previewId = resolvePreviewId(key);
+            if (!previewId) return;
+            if (!document.getElementById(previewId)) return;
+            this.updateImagePreview(previewId, null, key);
+        };
+
+        this._onStorageFileDeletedForAppearance = async (event) => {
             const filePaths = (event && event.detail && Array.isArray(event.detail.filePaths))
                 ? event.detail.filePaths
                 : [];
@@ -289,7 +347,7 @@ export const AppearanceModule = {
 
             let hasChanges = false;
 
-            imageFieldMappings.forEach(({ key, previewId }) => {
+            imageFieldMappings.forEach(({ key }) => {
                 const currentUrl = this.state.theme[key];
                 const normalizedCurrent = this.normalizeFileUrl(currentUrl);
                 if (!normalizedCurrent) return;
@@ -302,13 +360,32 @@ export const AppearanceModule = {
                 this.state.theme[key] = null;
                 hasChanges = true;
 
-                if (previewId && document.getElementById(previewId)) {
-                    this.updateImagePreview(previewId, null, key);
-                }
+                clearImagePreviewIfPresent(key);
             });
 
-            if (hasChanges) {
-                this.syncWithWidget();
+            if (!hasChanges) return;
+
+            this.fillForm({ theme: this.state.theme });
+            this.syncWithWidget();
+
+            try {
+                const clientId = localStorage.getItem('chat_client_id');
+                const token = localStorage.getItem('chatadmin_auth_token');
+                const assistantId = window.AdminApp?.getActiveAssistantId?.();
+                const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                await fetch(`/api/chat/admin/config?client_id=${clientId}${assistantQuery}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        client_id: clientId,
+                        theme: { ...this.state.theme }
+                    })
+                });
+            } catch (error) {
+                console.warn('Failed to persist appearance cleanup after storage delete', error);
             }
         };
 
@@ -514,7 +591,9 @@ export const AppearanceModule = {
         try {
             const clientId = localStorage.getItem('chat_client_id') || 'mitia_assistant';
             const token = localStorage.getItem('chatadmin_auth_token');
-            const res = await fetch(`/api/chat/admin/config?client_id=${clientId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const assistantId = window.AdminApp?.getActiveAssistantId?.();
+            const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+            const res = await fetch(`/api/chat/admin/config?client_id=${clientId}${assistantQuery}`, { headers: { 'Authorization': `Bearer ${token}` } });
             const data = await res.json();
             if (data.status === 'success') {
                 this.state.theme = data.config.theme || {};
@@ -533,18 +612,6 @@ export const AppearanceModule = {
                     bot_settings: JSON.parse(JSON.stringify(this.state.bot_settings))
                 };
                 
-                if (this.state.theme) {
-                    const previewKeys = [
-                        'msg_bot_preview_enabled', 
-                        'msg_user_preview_enabled', 
-                        'msg_operator_preview_enabled',
-                        'welcome_preview_enabled'
-                    ];
-                    previewKeys.forEach(key => {
-                        this.state.theme[key] = false;
-                    });
-                }
-
                 this.fillForm(data.config);
                 
                 window.dispatchEvent(new Event('config_loaded'));
@@ -618,7 +685,9 @@ export const AppearanceModule = {
         }
 
         try {
-            const res = await fetch(`/api/chat/admin/config?client_id=${clientId}`, {
+            const assistantId = window.AdminApp?.getActiveAssistantId?.();
+            const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+            const res = await fetch(`/api/chat/admin/config?client_id=${clientId}${assistantQuery}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -628,6 +697,29 @@ export const AppearanceModule = {
             });
             const result = await res.json();
             if (result.status === 'success') {
+                if (result.config) {
+                    this.state.theme = result.config.theme || this.state.theme || {};
+                    this.state.bot_settings = result.config.bot_settings || this.state.bot_settings || {};
+                    this.state.contacts = result.config.contacts || this.state.contacts || {};
+                    this.state.legal = result.config.legal || this.state.legal || {};
+                    this.state.legal_data = result.config.legal_data || this.state.legal_data || {};
+                    this.state.ui_settings = result.config.ui_settings || this.state.ui_settings || {};
+                    this.state.notifications = result.config.notifications || this.state.notifications || {};
+                    this.state.allowed_origins = result.config.allowed_origins || this.state.allowed_origins || [];
+                    this.fillForm(result.config);
+
+                    const imageMappings = [
+                        { id: 'widget-img-preview', url: this.state.theme.widget_img, key: 'widget_img' },
+                        { id: 'header-logo-preview', url: this.state.theme.header_logo, key: 'header_logo' },
+                        { id: 'chat-window-img-preview', url: this.state.theme.chat_window_bg_img || this.state.theme.window_bg_img, key: 'window_bg_img' },
+                        { id: 'welcome-img-preview', url: this.state.theme.welcome_img, key: 'welcome_img' },
+                        { id: 'bot-avatar-preview', url: this.state.theme.bot_avatar, key: 'bot_avatar' },
+                        { id: 'user-avatar-preview', url: this.state.theme.user_avatar, key: 'user_avatar' },
+                        { id: 'operator-avatar-preview', url: this.state.theme.operator_avatar, key: 'operator_avatar' }
+                    ];
+                    imageMappings.forEach((m) => this.updateImagePreview(m.id, m.url, m.key));
+                }
+
                 if (saveBtn) {
                     saveBtn.classList.add('btn-success-state');
                     saveBtn.innerHTML = '<span>Сохранено!</span>';
@@ -881,7 +973,9 @@ export const AppearanceModule = {
             try {
                 const clientId = localStorage.getItem('chat_client_id');
                 const token = localStorage.getItem('chatadmin_auth_token');
-                const res = await fetch(`/api/chat/admin/upload-file?client_id=${clientId}&field_id=${settingKey}`, { 
+                const assistantId = window.AdminApp?.getActiveAssistantId?.();
+                const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                const res = await fetch(`/api/chat/admin/upload-file?client_id=${clientId}&field_id=${settingKey}${assistantQuery}`, { 
                     method: 'POST', 
                     headers: { 'Authorization': `Bearer ${token}` }, 
                     body: formData 
@@ -914,7 +1008,9 @@ export const AppearanceModule = {
         try {
             const clientId = localStorage.getItem('chat_client_id');
             const token = localStorage.getItem('chatadmin_auth_token');
-            await fetch(`/api/chat/admin/delete-temp-file?client_id=${clientId}&field_id=${fieldId}`, {
+            const assistantId = window.AdminApp?.getActiveAssistantId?.();
+            const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+            await fetch(`/api/chat/admin/delete-temp-file?client_id=${clientId}&field_id=${fieldId}${assistantQuery}`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

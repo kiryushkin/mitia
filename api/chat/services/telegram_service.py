@@ -4,19 +4,20 @@ Telegram Bot Integration Service.
 отправляет ответы ИИ обратно в Telegram.
 """
 import hashlib
-from typing import Optional, Literal
+from typing import Optional
 
 import httpx
 
 from ..core.config import log, TELEGRAM_CONFIG
 from ..services.clients import list_clients, get_client_config
-from ..services.integrations_service import get_integration_settings
+from ..services.integrations_service import get_integration_settings, list_integration_settings
 from ..services.db_service import (
     AsyncSessionLocal, get_or_create_session, save_chat_message, is_operator_mode,
     download_and_save_file
 )
 from ..services.chat_service import chat_service, extract_response_text, AskData
 from .cache_service import cache_service
+from .stt_service import transcribe_voice
 
 TG_API = TELEGRAM_CONFIG.get("api_url", "https://api.telegram.org")
 TG_PROXY = TELEGRAM_CONFIG.get("proxy")
@@ -50,36 +51,42 @@ def _token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()[:16]
 
 
-async def register_bot_token(client_id: str, bot_token: str):
+async def register_bot_token(client_id: str, bot_token: str, assistant_id: str | None = None):
     if bot_token:
-        cache_service.set(f"tg_bot_token:{_token_hash(bot_token)}", client_id)
+        cache_service.set(
+            f"tg_bot_token:{_token_hash(bot_token)}",
+            {"client_id": client_id, "assistant_id": assistant_id}
+        )
 
 
-async def find_client_by_token(bot_token: str) -> Optional[str]:
-    client_id = cache_service.get(f"tg_bot_token:{_token_hash(bot_token)}")
-    if client_id:
-        return client_id
+async def find_client_by_token(bot_token: str) -> Optional[dict]:
+    cached = cache_service.get(f"tg_bot_token:{_token_hash(bot_token)}")
+    if isinstance(cached, dict) and cached.get("client_id"):
+        return cached
+    if isinstance(cached, str):
+        return {"client_id": cached, "assistant_id": None}
     try:
         clients = await list_clients()
         for c in clients:
             cid = c
             if not cid:
                 continue
-            settings = await get_integration_settings(cid, "telegram")
-            if settings.get("bot_token") == bot_token and settings.get("enabled"):
-                cache_service.set(f"tg_bot_token:{_token_hash(bot_token)}", cid)
-                return cid
+            for assistant_id, settings in await list_integration_settings(cid, "telegram"):
+                if settings.get("bot_token") == bot_token and settings.get("enabled"):
+                    payload = {"client_id": cid, "assistant_id": assistant_id}
+                    cache_service.set(f"tg_bot_token:{_token_hash(bot_token)}", payload)
+                    return payload
     except Exception as e:
         log.error(f"Fallback client search failed: {e}")
     return None
 
 
-async def get_or_create_tg_session(client_id: str, tg_chat_id: int, from_user: dict = None) -> str:
-    cache_key = f"tg_session:{client_id}:{tg_chat_id}"
+async def get_or_create_tg_session(client_id: str, tg_chat_id: int, from_user: dict = None, assistant_id: str | None = None) -> str:
+    cache_key = f"tg_session:{client_id}:{assistant_id or 'main'}:{tg_chat_id}"
     session_id = cache_service.get(cache_key)
     if session_id:
         return session_id
-    session_id = f"tg-{client_id}-{tg_chat_id}"
+    session_id = f"tg-{client_id}-{assistant_id or 'main'}-{tg_chat_id}"
     
     # Собираем информацию о пользователе
     user_info = {}
@@ -90,12 +97,11 @@ async def get_or_create_tg_session(client_id: str, tg_chat_id: int, from_user: d
             "username": from_user.get("username"),
             "platform": "telegram"
         }
-        # Если есть телефон в метаданных (может быть передан при первом контакте)
         if from_user.get("phone_number"):
             user_info["phone"] = from_user.get("phone_number")
 
     async with AsyncSessionLocal() as db:
-        await get_or_create_session(session_id, client_id, metadata=user_info)
+        await get_or_create_session(session_id, client_id, metadata=user_info, assistant_id=assistant_id)
     cache_service.set(cache_key, session_id)
     return session_id
 
@@ -192,84 +198,82 @@ async def get_telegram_user_photo(client_id: str, bot_token: str, user_id: int) 
 async def handle_telegram_message(
     client_id: str, bot_token: str, tg_chat_id: int,
     user_text: str, from_user: dict,
+    assistant_id: str | None = None,
+    attachments: list[dict] | None = None,
 ) -> bool:
-    # Получаем фото пользователя
     photo_url = await get_telegram_user_photo(client_id, bot_token, from_user.get("id"))
 
-    # Всегда обновляем метаданные в базе при новом сообщении
     user_info = {
         "first_name": from_user.get("first_name"),
         "last_name": from_user.get("last_name"),
         "username": from_user.get("username"),
+        "user_id": from_user.get("id"),
         "photo": photo_url,
         "platform": "telegram"
     }
-    session_id = f"tg-{client_id}-{tg_chat_id}"
-    
-    async with AsyncSessionLocal() as db:
-        await get_or_create_session(session_id, client_id, metadata=user_info)
+    if from_user.get("phone_number"):
+        user_info["phone"] = from_user["phone_number"]
+    session_id = f"tg-{client_id}-{assistant_id or 'main'}-{tg_chat_id}"
 
-    # Кэшируем только ID сессии для быстрого доступа в других местах
-    cache_key = f"tg_session:{client_id}:{tg_chat_id}"
+    async with AsyncSessionLocal() as db:
+        await get_or_create_session(session_id, client_id, metadata=user_info, assistant_id=assistant_id)
+
+    cache_key = f"tg_session:{client_id}:{assistant_id or 'main'}:{tg_chat_id}"
     cache_service.set(cache_key, session_id)
 
-    # Если это команда /start, отправляем приветственное сообщение из настроек
     if user_text.strip().lower() == "/start":
         try:
-            config = await get_client_config(client_id)
+            config = await get_client_config(client_id, assistant_id=assistant_id)
             welcome_msg = config.welcome_msg
             await send_telegram_message(bot_token, tg_chat_id, welcome_msg)
             return True
         except Exception as e:
             log.error(f"Error sending welcome message for /start: {e}")
-            # В случае ошибки продолжаем обычную обработку
 
     is_operator = await is_operator_mode(session_id)
 
-    # Проверяем, включена ли интеграция для этого клиента
-    settings = await get_integration_settings(client_id, "telegram")
+    settings = await get_integration_settings(client_id, "telegram", assistant_id=assistant_id)
     if not settings.get("enabled"):
         log.warning(f"TG message ignored: integration disabled for client {client_id}")
         return False
 
-    # Режим ассистента: работает если включен глобально И сессия не в режиме оператора
     assistant_enabled = settings.get("assistant_enabled", False)
 
     if is_operator or not assistant_enabled:
-        await save_chat_message(session_id, "user", user_text)
-        
-        # Уведомляем оператора о новом сообщении (не как лид, а как сообщение в чате)
-        user_name = from_user.get("first_name", "")
-        if from_user.get("last_name"):
-            user_name += f" {from_user.get('last_name')}"
+        await save_chat_message(session_id, "user", user_text, attachments=attachments)
+
+        user_name = " ".join(filter(None, [from_user.get("first_name"), from_user.get("last_name")]))
         username = from_user.get("username")
         user_display = f"{user_name} (@{username})" if username else user_name
-        
-        notification_text = (
-            f"💬 <b>Новое сообщение в чате!</b>\n"
-            f"От: {user_display}\n"
-            f"Текст: {user_text}\n\n"
-            f"<i>Режим: {'Оператор' if is_operator else 'Ассистент выключен'}</i>"
+        from .operator_notification_service import (
+            build_incoming_message_notification,
+            notify_operators,
         )
-        await notify_admins(client_id, notification_text, event_type="message")
-        
-        # Если ИИ не активен, отправляем автоответ (только если он включен и настроен)
-        if settings.get("autoreply_enabled") and settings.get("autoreply_message"):
-            autoreply_msg = settings.get("autoreply_message")
-            await send_telegram_message(bot_token, tg_chat_id, autoreply_msg)
-            await save_chat_message(session_id, "assistant", autoreply_msg)
+        await notify_operators(
+            client_id,
+            build_incoming_message_notification(
+                source="telegram",
+                sender=user_display,
+                message=user_text,
+                is_operator=bool(is_operator),
+            ),
+            assistant_id=assistant_id,
+        )
+
         return True
 
     await send_telegram_typing(bot_token, tg_chat_id)
 
     data = AskData(
         client_id=client_id,
+        assistant_id=assistant_id,
         session_id=session_id,
         message=user_text,
         token=session_id,
         context=None,
         voice_output=False,
         stream=False,
+        attachments=attachments,
     )
 
     try:
@@ -387,7 +391,7 @@ async def notify_operator_takeover(client_id: str, session_id: str, operator_nam
         return
     await send_telegram_message(
         bot_token, tg_chat_id,
-        f"👤 <b>{operator_name}</b> подключился к диалогу. ИИ-ассистент временно отключён."
+        f"<b>{operator_name}</b> подключился к диалогу. ИИ-ассистент временно отключён."
     )
 
 
@@ -451,7 +455,7 @@ async def send_operator_message_to_tg(
         return False
     
     # Форматируем сообщение с именем оператора
-    display_message = f"👤 <b>{operator_name}</b>: {message}" if message else ""
+    display_message = f"<b>{operator_name}</b>: {message}" if message else ""
     
     success = True
     if display_message:
@@ -470,50 +474,13 @@ async def send_operator_message_to_tg(
 async def notify_admins(
     client_id: str,
     message: str,
-    event_type: Literal["lead", "contact", "message"] = "message"
-):
-    """Отправляет уведомление всем администраторам клиента."""
-    settings = await get_integration_settings(client_id, "telegram")
-    notifications_settings = await get_integration_settings(client_id, "notifications")
-    bot_token = settings.get("bot_token")
-    admin_ids_raw = notifications_settings.get("admin_id", settings.get("admin_id", ""))
-    enabled = notifications_settings.get("enabled", False)
+    event_type: str = "message",
+    assistant_id: str | None = None,
+) -> None:
+    """Backward-compatible alias for the unified operator notifier."""
+    from .operator_notification_service import notify_operators
 
-    if event_type == "lead":
-        event_enabled = notifications_settings.get("notify_leads")
-    elif event_type == "contact":
-        event_enabled = notifications_settings.get("notify_contacts")
-    else:
-        event_enabled = notifications_settings.get("notify_messages")
-
-    if event_enabled is None:
-        event_enabled = enabled
-
-    if not bot_token or not admin_ids_raw or not enabled or not event_enabled:
-        log.warning(
-            f"[NOTIFY_ADMINS] Skip: token={bool(bot_token)}, ids={bool(admin_ids_raw)}, "
-            f"enabled={enabled}, event_type={event_type}, event_enabled={event_enabled}"
-        )
-        return
-
-    # Разделяем по запятой или точке с запятой
-    import re
-    admin_ids = re.split(r'[;,]', str(admin_ids_raw))
-
-    for admin_id in admin_ids:
-        admin_id = admin_id.strip()
-        if not admin_id:
-            continue
-
-        # Очищаем от меток (например, "Иван:12345" -> "12345")
-        if ":" in admin_id:
-            admin_id = admin_id.split(":")[-1].strip()
-
-        try:
-            log.info(f"[NOTIFY_ADMINS] Sending to {admin_id} for client {client_id}")
-            await send_telegram_message(bot_token, int(admin_id), message)
-        except Exception as e:
-            log.error(f"Failed to notify admin {admin_id}: {e}")
+    await notify_operators(client_id, message, event_type, assistant_id)
 
 
 async def run_polling():
@@ -524,10 +491,11 @@ async def run_polling():
     import asyncio
     log.info("Starting Telegram Polling service...")
     
-    # Список токенов, для которых мы уже удалили вебхук в этой сессии
+    # Токены, для которых мы уже удалили вебхук в этой сессии
     cleaned_tokens = set()
-    
-    offset = 0
+    # Отдельный offset getUpdates на каждый бот-токен: общий offset затирал
+    # апдейты разных ботов друг другом.
+    offsets: dict[str, int] = {}
     while True:
         try:
             clients = await list_clients()
@@ -539,95 +507,128 @@ async def run_polling():
                 
                 if not cid: continue
                 
-                settings = await get_integration_settings(cid, "telegram")
-                # Если настройки вернулись строкой, парсим
-                if isinstance(settings, str):
-                    try:
-                        import json
-                        settings = json.loads(settings)
-                    except: settings = {}
-                
-                token = settings.get("bot_token")
-                enabled = settings.get("enabled")
-                
-                if not token or not enabled:
-                    if cid in cleaned_tokens:
-                        log.info(f"[TG_POLLING] Integration disabled for {cid}, removing from active.")
-                        cleaned_tokens.remove(cid)
-                    continue
-                
-                # Логируем только если это новый клиент или мы только что включили его
-                if cid not in cleaned_tokens:
-                    log.info(f"TG Polling active for {cid}, token: ...{token[-5:]}")
-                    log.info(f"Cleaning up webhook for {cid} to enable Polling...")
-                    await delete_webhook(token)
-                    cleaned_tokens.add(cid)
-                
-                # Опрашиваем Telegram
-                url = f"{TG_API}/bot{token}/getUpdates"
-                async with get_tg_client(timeout=5) as client:
-                    resp = await client.get(url, params={"offset": offset, "timeout": 10})
-                    if resp.status_code != 200:
+                # Каждый ассистент аккаунта может иметь свой Telegram-бот.
+                for assistant_id, settings in await list_integration_settings(cid, "telegram"):
+                    if isinstance(settings, str):
+                        try:
+                            import json
+                            settings = json.loads(settings)
+                        except Exception:
+                            settings = {}
+
+                    token = settings.get("bot_token")
+                    enabled = settings.get("enabled")
+
+                    if not token or not enabled:
+                        if token and token in cleaned_tokens:
+                            log.info(f"[TG_POLLING] Integration disabled for {cid}/{assistant_id}, removing from active.")
+                            cleaned_tokens.discard(token)
+                            offsets.pop(token, None)
                         continue
-                    
-                    data = resp.json()
-                    if not data.get("ok"):
-                        log.error(f"TG Polling error for {cid}: {data}")
-                        continue
-                        
-                    for update in data.get("result", []):
-                        offset = update["update_id"] + 1
-                        
-                        if "message" not in update:
+
+                    # Удаляем вебхук один раз на токен, чтобы polling заработал.
+                    if token not in cleaned_tokens:
+                        log.info(f"TG Polling active for {cid}/{assistant_id}, token: ...{token[-5:]}")
+                        log.info("Cleaning up webhook to enable Polling...")
+                        await delete_webhook(token)
+                        cleaned_tokens.add(token)
+
+                    # Опрашиваем Telegram
+                    url = f"{TG_API}/bot{token}/getUpdates"
+                    async with get_tg_client(timeout=5) as client:
+                        resp = await client.get(url, params={"offset": offsets.get(token, 0), "timeout": 10})
+                        if resp.status_code != 200:
                             continue
-                            
-                        message = update["message"]
-                        tg_chat_id = message.get("chat", {}).get("id")
-                        user_text = message.get("text") or ""
-                        from_user = message.get("from", {})
 
-                        # Обработка вложений в Telegram — скачиваем файлы
-                        attachment_links = []
-                        session_id = f"tg-{cid}-{tg_chat_id}"
+                        data = resp.json()
+                        if not data.get("ok"):
+                            log.error(f"TG Polling error for {cid}/{assistant_id}: {data}")
+                            continue
 
-                        if "photo" in message:
-                            photo = message["photo"][-1]
-                            file_url = await get_telegram_file_url(token, photo["file_id"])
-                            if file_url:
-                                local_url = await download_and_save_file(
-                                    file_url, cid, session_id=session_id,
-                                    file_name="photo.jpg", category="chat_file"
+                        for update in data.get("result", []):
+                            offsets[token] = update["update_id"] + 1
+
+                            if "message" not in update:
+                                continue
+
+                            message = update["message"]
+                            tg_chat_id = message.get("chat", {}).get("id")
+                            user_text = message.get("text") or ""
+                            from_user = message.get("from", {})
+
+                            # Обработка вложений в Telegram — скачиваем файлы
+                            attachment_links = []
+                            attachments = []
+                            session_id = f"tg-{cid}-{assistant_id or 'main'}-{tg_chat_id}"
+
+                            if "photo" in message:
+                                photo = message["photo"][-1]
+                                file_url = await get_telegram_file_url(token, photo["file_id"])
+                                if file_url:
+                                    local_url = await download_and_save_file(
+                                        file_url, cid, session_id=session_id,
+                                        file_name="photo.jpg", category="chat_file", assistant_id=assistant_id
+                                    )
+                                    attachment_links.append(f"🖼 Фото: {local_url or file_url}")
+                                    if local_url:
+                                        attachments.append({"name": "photo.jpg", "content_type": "image/jpeg", "local_url": local_url})
+                            if "document" in message:
+                                doc = message["document"]
+                                file_url = await get_telegram_file_url(token, doc["file_id"])
+                                name = doc.get("file_name", "файл")
+                                if file_url:
+                                    local_url = await download_and_save_file(
+                                        file_url, cid, session_id=session_id,
+                                        file_name=name, category="chat_file", assistant_id=assistant_id
+                                    )
+                                    attachment_links.append(f"📄 Файл {name}: {local_url or file_url}")
+                                    if local_url:
+                                        attachments.append({"name": name, "content_type": doc.get("mime_type", "application/octet-stream"), "local_url": local_url})
+                            if "video" in message:
+                                video = message["video"]
+                                file_url = await get_telegram_file_url(token, video["file_id"])
+                                if file_url:
+                                    local_url = await download_and_save_file(
+                                        file_url, cid, session_id=session_id,
+                                        file_name="video.mp4", category="chat_file", assistant_id=assistant_id
+                                    )
+                                    attachment_links.append(f"🎥 Видео: {local_url or file_url}")
+                                    if local_url:
+                                        attachments.append({"name": "video.mp4", "content_type": "video/mp4", "local_url": local_url})
+                            audio_payload = message.get("voice") or message.get("audio")
+                            if audio_payload:
+                                is_voice = "voice" in message
+                                default_name = "voice.ogg" if is_voice else "audio.mp3"
+                                content_type = "audio/ogg" if is_voice else (audio_payload.get("mime_type") or "audio/mpeg")
+                                file_name = audio_payload.get("file_name") or default_name
+                                file_url = await get_telegram_file_url(token, audio_payload["file_id"])
+                                if file_url:
+                                    local_url = await download_and_save_file(
+                                        file_url, cid, session_id=session_id,
+                                        file_name=file_name, category="chat_file", assistant_id=assistant_id
+                                    )
+                                    attachment_links.append(f"🎤 Аудио: {local_url or file_url}")
+                                    if local_url:
+                                        attachments.append({"name": file_name, "content_type": content_type, "local_url": local_url})
+                                        transcript = await transcribe_voice(local_url)
+                                        if transcript:
+                                            attachment_links.append(f"📝 Расшифровка аудио: {transcript}")
+
+                            if attachment_links:
+                                extra_text = "\n".join(attachment_links)
+                                user_text = f"{user_text}\n\n{extra_text}".strip()
+
+                            if tg_chat_id and (user_text or attachment_links):
+                                log.info(f"TG Polling: New message from {tg_chat_id}")
+                                await handle_telegram_message(
+                                    cid,
+                                    token,
+                                    tg_chat_id,
+                                    user_text or "",
+                                    from_user,
+                                    assistant_id=assistant_id,
+                                    attachments=attachments,
                                 )
-                                attachment_links.append(f"🖼 Фото: {local_url or file_url}")
-                        if "document" in message:
-                            doc = message["document"]
-                            file_url = await get_telegram_file_url(token, doc["file_id"])
-                            name = doc.get("file_name", "файл")
-                            if file_url:
-                                local_url = await download_and_save_file(
-                                    file_url, cid, session_id=session_id,
-                                    file_name=name, category="chat_file"
-                                )
-                                attachment_links.append(f"📄 Файл {name}: {local_url or file_url}")
-                        if "video" in message:
-                            video = message["video"]
-                            file_url = await get_telegram_file_url(token, video["file_id"])
-                            if file_url:
-                                local_url = await download_and_save_file(
-                                    file_url, cid, session_id=session_id,
-                                    file_name="video.mp4", category="chat_file"
-                                )
-                                attachment_links.append(f"🎥 Видео: {local_url or file_url}")
-
-                        if attachment_links:
-                            extra_text = "\n".join(attachment_links)
-                            user_text = f"{user_text}\n\n{extra_text}".strip()
-
-                        if tg_chat_id and (user_text or attachment_links):
-                            log.info(f"TG Polling: New message from {tg_chat_id}")
-                            await handle_telegram_message(
-                                cid, token, tg_chat_id, user_text or "", from_user
-                            )
                             
         except httpx.ReadTimeout:
             # Для long polling таймаут — штатная ситуация (нет новых апдейтов)

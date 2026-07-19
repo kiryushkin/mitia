@@ -10,7 +10,8 @@ const ENDPOINTS = {
   login: '/login-user',
   signup: '/register',
   reset: '/reset-password',
-  confirm_reset: '/confirm-reset'
+  confirm_reset: '/confirm-reset',
+  registration_lock: '/superadmin/registration-lock-public'
 };
 
 const state = { 
@@ -25,7 +26,10 @@ const state = {
             (new URLSearchParams(window.location.search).get('mode') === 'reset' ? 'reset' :
             (sessionStorage.getItem(AUTH_MODE_KEY) || 'login'))))),
   registeredEmail: '',
-  loginAttempts: 0
+  loginAttempts: 0,
+  registrationLockEnabled: document.body.dataset.registrationLockEnabled === 'true',
+  registrationLockTitle: document.body.dataset.registrationLockTitle || 'Регистрация временно недоступна',
+  registrationLockMessage: document.body.dataset.registrationLockMessage || 'Мы временно закрыли регистрацию новых пользователей. Попробуйте позже.'
 };
 
 function $(selector, root = document) { return root.querySelector(selector); }
@@ -39,6 +43,17 @@ function setAuthMode(mode) {
   if (newUrl && window.location.pathname !== newUrl) {
     history.pushState(null, '', newUrl);
   }
+}
+async function refreshRegistrationLockState() {
+  try {
+    const res = await fetch(`${API_BASE}${ENDPOINTS.registration_lock}`);
+    const data = await res.json();
+    if (data.status === 'success' && data.settings) {
+      state.registrationLockEnabled = Boolean(data.settings.enabled);
+      state.registrationLockTitle = data.settings.title || state.registrationLockTitle;
+      state.registrationLockMessage = data.settings.message || state.registrationLockMessage;
+    }
+  } catch (_) {}
 }
 function isLocked() { return Date.now() < Number(localStorage.getItem(LOCK_STORAGE_KEY) || 0); }
 
@@ -79,6 +94,15 @@ function renderAuthScreen() {
     const frag = cloneTemplate('tmpl-message');
     const title = frag.querySelector('.welcome-msg__title');
     if (title) { title.textContent = 'Ссылка недействительна'; title.classList.add('welcome-msg__title--error'); }
+    return frag;
+  }
+
+  if (mode === 'signup' && state.registrationLockEnabled) {
+    const frag = cloneTemplate('tmpl-registration-locked');
+    const title = frag.querySelector('#registration-lock-title');
+    const message = frag.querySelector('#registration-lock-message');
+    if (title) title.textContent = state.registrationLockTitle;
+    if (message) message.textContent = state.registrationLockMessage;
     return frag;
   }
 
@@ -147,6 +171,10 @@ async function attemptLogin(e) {
     payload = { email, password };
     endpoint = ENDPOINTS.login;
   } else if (mode === 'signup') {
+    if (state.registrationLockEnabled) {
+      if (submitBtn) { submitBtn.innerText = originalBtnText; submitBtn.disabled = false; }
+      return showErrorScreen(state.registrationLockMessage || 'Регистрация временно недоступна');
+    }
     const email = $('#signup-email')?.value.trim();
     const password = $('#signup-password')?.value.trim();
     if (!email && !password) {
@@ -228,6 +256,17 @@ async function attemptLogin(e) {
     if (mode === 'signup') {
       state.loading = false;
       state.registeredEmail = payload.email;
+      if (data.auto_verified) {
+        document.body.classList.add('login-success');
+        const frag = cloneTemplate('tmpl-message');
+        const title = frag.querySelector('.welcome-msg__title');
+        if (title) title.textContent = data.message || 'Регистрация успешна! Можно войти.';
+        const app = $('#app');
+        app.innerHTML = '';
+        app.appendChild(frag);
+        setTimeout(() => { setAuthMode('login'); renderApp(); }, 2500);
+        return;
+      }
       setAuthMode('confirm');
       renderApp();
     } else if (mode === 'reset') {
@@ -259,8 +298,6 @@ async function attemptLogin(e) {
       localStorage.setItem('chat_user_email', payload.email);
       localStorage.setItem('chat_initial_balance', data.balance || 0);
       sessionStorage.clear();
-      const keysToRemove = ['chat_user_email', 'chat_initial_balance'];
-      keysToRemove.forEach(key => localStorage.removeItem(key));
       document.body.classList.add('login-success');
       const frag = cloneTemplate('tmpl-message');
       const title = frag.querySelector('.welcome-msg__title');
@@ -285,6 +322,10 @@ async function attemptLogin(e) {
 async function renderApp() {
   const app = $('#app');
   if (!app) return;
+
+  if (state.authMode === 'signup') {
+    await refreshRegistrationLockState();
+  }
 
   if (isLocked()) {
     const updateTimer = () => {
@@ -352,8 +393,6 @@ async function renderApp() {
     if (document.activeElement) document.activeElement.blur();
   }, 50);
 
-
-
   document.querySelectorAll('.toggle-password-btn').forEach((btn) => {
     btn.onclick = () => {
       const wrapper = btn.closest('.password-input-wrapper');
@@ -365,33 +404,5 @@ async function renderApp() {
     };
   });
 }
-
-document.addEventListener('click', (e) => {
-  const link = e.target.closest('[data-doc-placeholder]');
-  if (!link) return;
-  e.preventDefault();
-  alert('Документ в процессе написания. Скоро опубликуем.');
-});
-
-document.addEventListener('click', (e) => {
-  const supportLink = e.target.closest('#open-support-chat');
-  if (supportLink) {
-    e.preventDefault();
-    const widget = window.Mitya || window.MityaWidget;
-    if (widget) {
-      if (typeof widget.open === 'function') widget.open();
-      else if (typeof widget.openChat === 'function') widget.openChat();
-      else if (typeof widget.toggle === 'function') widget.toggle();
-    } else {
-      alert('Чат поддержки загружается, попробуйте через секунду.');
-    }
-    return;
-  }
-
-  const link = e.target.closest('[data-doc-placeholder]');
-  if (!link) return;
-  e.preventDefault();
-  alert('Документ в процессе написания. Скоро опубликуем.');
-});
 
 document.addEventListener('DOMContentLoaded', renderApp);

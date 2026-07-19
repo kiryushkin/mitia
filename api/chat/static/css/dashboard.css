@@ -1,40 +1,86 @@
 .dashboard-view {animation:fadeIn .4s ease-out}
-.dashboard-grid {display:grid; grid-template-columns:1fr 1fr}
+#card-faq {grid-area:faq; padding:30px !important; -webkit-transform: translateZ(0); transform: translateZ(0); -webkit-perspective: 1000; perspective: 1000; backface-visibility: hidden; -webkit-backface-visibility: hidden}
+.faq-chart-container {height:280px; margin-top:20px}
 .dashboard-view .card-title {font-size:clamp(16px,2.5vw,20px) !important; font-weight:800 !important; color:var(--text-main) !important; text-transform:none !important; letter-spacing:normal !important; margin-bottom:0 !important}
 .stat-card {background:var(--bg-card) !important; border:1px solid var(--border) !important; border-radius:24px !important; padding:25px !important; display:flex; flex-direction:column; justify-content:space-between; position:relative; overflow:hidden}
 .stat-header {display:flex; justify-content:space-between; align-items:center; z-index:2}
 .stat-value {font-size:38px !important; font-weight:800 !important; color:var(--text-main) !important; line-height:1; z-index:2}
-.analytics-card {padding:24px !important; flex-shrink:1; min-width:0; max-width:100%; will-change:width,height; transition:none !important}
+.analytics-card {padding:24px !important; flex-shrink:1; min-width:0; max-width:100%; -webkit-transform: translateZ(0); transform: translateZ(0); transition:none !important; content-visibility:visible; contain-intrinsic-size:auto}
+#card-analytics-filters {content-visibility:visible; contain-intrinsic-size:auto}
+#card-faq {content-visibility:visible; contain-intrinsic-size:auto}
+#card-analytics-results {content-visibility:visible; contain-intrinsic-size:auto}
+#card-analytics-mode-funnel {content-visibility:visible; contain-intrinsic-size:auto}
 .analytics-card .card-title {color:var(--text-main) !important; font-size:clamp(16px,2.5vw,20px) !important; font-weight:800 !important}
-.analytics-main-chart-container {min-height:300px; height:auto; margin-top:20px; margin-bottom:0}
+.analytics-main-chart-container {min-height:300px; height:clamp(300px,36vh,460px); max-height:460px; margin-top:20px; margin-bottom:0; overflow:hidden}
+.demand-heatmap-container {overflow:hidden; padding:12px 2px 4px; display:flex; flex-direction:column; justify-content:center}
+.demand-heatmap-scroll {width:100%; min-width:0; overflow:hidden}
+.demand-heatmap-grid {display:grid; grid-template-columns:30px repeat(var(--heat-columns),minmax(0,1fr)); gap:7px; align-items:center; width:100%; min-width:0}
+.demand-heatmap-hour {font-size:11px; color:rgba(255,255,255,.58); text-align:center; white-space:nowrap}
+.demand-heatmap-day {font-size:12px; color:rgba(255,255,255,.78); font-weight:600}
+.demand-heatmap-cell {display:block; width:100%; min-width:0; height:clamp(24px,4vh,38px); border-radius:7px; background:rgba(112,0,255,var(--heat-alpha)); border:1px solid rgba(255,255,255,.06); transition:transform .15s ease,outline-color .15s ease}
+.demand-heatmap-cell:hover {outline:1px solid rgba(255,255,255,.72); transform:scale(1.04)}
+.demand-heatmap-footer {display:flex; align-items:center; gap:8px; margin:18px 0 0 37px; color:rgba(255,255,255,.52); font-size:11px; line-height:1.3}
+.demand-heatmap-scale {width:76px; height:8px; border-radius:999px; background:linear-gradient(90deg,rgba(112,0,255,.08),rgba(112,0,255,1)); border:1px solid rgba(255,255,255,.06)}
+.demand-heatmap-metric {color:rgba(255,255,255,.62)}
+.demand-heatmap-period {margin-left:auto; color:rgba(255,255,255,.68); text-align:right}
+.analytics-card.is-expanded .demand-heatmap-scroll {overflow-x:auto; overflow-y:hidden; padding-bottom:8px}
+.analytics-card.is-expanded .demand-heatmap-grid {min-width:940px; grid-template-columns:34px repeat(var(--heat-columns),minmax(28px,1fr)); gap:4px}
+.analytics-card.is-expanded .demand-heatmap-cell {height:clamp(28px,5vh,48px); border-radius:5px}
 .analytics-card.is-expanded {position:relative; z-index:20; height:100%; min-height:0; display:flex; flex-direction:column; overflow:visible; will-change:width,height; transition:none !important}
-.analytics-card.is-expanded .analytics-main-chart-container {flex:1 1 auto; min-height:320px; height:auto; overflow:visible}
+.analytics-card.is-expanded#card-faq {display:flex; flex-direction:column; min-height:0 !important; height:100% !important; max-height:100% !important; flex:1 1 auto !important; overflow:hidden !important}
+.analytics-card.is-expanded#card-faq #faq-container {flex:1 1 auto; min-height:0 !important; overflow-y:auto !important; max-height:none !important; transform:translateZ(0); will-change:transform; overscroll-behavior:contain}
+#card-faq.is-expanded {height:100% !important; min-height:0 !important; max-height:100% !important; flex:1 1 auto !important; overflow:hidden !important}
+.analytics-card.is-expanded .analytics-main-chart-container {flex:0 0 auto; min-height:320px; height:clamp(320px,44vh,620px); max-height:620px; overflow:hidden}
+.analytics-card.is-expanded#card-analytics-platforms .analytics-main-chart-container,
+.analytics-card.is-expanded#card-analytics-messages .analytics-main-chart-container,
+.analytics-card.is-expanded#card-analytics-results .analytics-main-chart-container,
+.analytics-card.is-expanded#card-analytics-mode-funnel .analytics-main-chart-container {flex:1 1 auto; min-height:0; height:auto; max-height:none}
 body.analytics-expanded-open {overflow:hidden}
+body.analytics-expanded-open.analytics-faq-expanded {overflow:hidden !important}
+body.analytics-expanded-open.analytics-faq-expanded .appearance-view {height:100dvh !important; min-height:0 !important; overflow:hidden !important}
+body.analytics-expanded-open.analytics-faq-expanded .appearance-grid {height:100% !important; min-height:0 !important; overflow:hidden !important; align-items:flex-start}
+body.analytics-expanded-open.analytics-faq-split-scroll {overflow:hidden !important}
+body.analytics-expanded-open.analytics-faq-split-scroll .appearance-view {height:100dvh !important; overflow:hidden !important}
+body.analytics-expanded-open.analytics-faq-split-scroll .appearance-grid {height:100% !important; min-height:0 !important; overflow:hidden !important}
+body.analytics-expanded-open.safari-faq-dual-scroll {overflow:hidden !important}
+body.analytics-expanded-open.safari-faq-dual-scroll .appearance-view {height:100dvh !important; overflow:hidden !important}
+body.analytics-expanded-open.safari-faq-dual-scroll .appearance-grid {height:100% !important; min-height:0 !important; overflow:hidden !important}
+body.analytics-expanded-open.safari-faq-dual-scroll #profile-left-column.analytics-split-filters-visible {flex:0 0 33.333333% !important; width:33.333333% !important; min-width:33.333333% !important; max-width:33.333333% !important}
+body.analytics-expanded-open.safari-faq-dual-scroll #profile-right-column.analytics-focus-active.analytics-faq-safari-dual-column {flex:1 1 auto !important; width:auto !important; max-width:none !important}
 #profile-middle-column.analytics-focus-active,#profile-right-column.analytics-focus-active {flex:1 1 auto !important; width:auto !important; max-width:none !important; height:100% !important; overflow:hidden !important; will-change:flex,width; transition:none !important}
+body.analytics-expanded-open #profile-left-column,body.analytics-expanded-open #profile-left-column > .bento-card {transition:none !important; animation:none !important}
+#profile-right-column.analytics-focus-active.analytics-faq-expanded-column {height:100% !important; min-height:0 !important; overflow:hidden !important; align-items:stretch !important}
+#profile-right-column.analytics-focus-active.analytics-faq-split-column,#profile-right-column.analytics-focus-active.analytics-faq-safari-dual-column {height:100% !important; overflow-y:auto !important; overflow-x:hidden !important; -webkit-overflow-scrolling:touch; align-items:stretch !important}
 #profile-middle-column.analytics-focus-active .analytics-card:not(.is-expanded),#profile-right-column.analytics-focus-active .analytics-card:not(.is-expanded) {display:none !important}
-#profile-middle-column.analytics-hidden,#profile-right-column.analytics-hidden,#profile-left-column.analytics-hidden {display:none !important}
+#profile-right-column.analytics-focus-active.analytics-faq-expanded-column #card-faq { display: block !important; }
+#profile-middle-column.analytics-hidden,#profile-right-column.analytics-hidden {display:none !important}
+#profile-left-column.analytics-hidden {display:none !important}
+#profile-left-column.analytics-split-filters-visible {display:flex !important; height:100% !important; overflow-y:auto !important; overflow-x:hidden !important; -webkit-overflow-scrolling:touch}
+body.analytics-expanded-open.safari-faq-dual-scroll #profile-left-column.analytics-split-filters-visible {height:100% !important; overflow-y:auto !important; overflow-x:hidden !important; -webkit-overflow-scrolling:touch}
+body.analytics-expanded-open #profile-left-column.analytics-hidden {display:flex !important; flex:0 0 0 !important; width:0 !important; min-width:0 !important; max-width:0 !important; overflow:hidden !important; opacity:0 !important; pointer-events:none !important}
+body.analytics-expanded-open #profile-left-column.analytics-split-filters-visible {flex:0 0 33.333333% !important; width:33.333333% !important; min-width:33.333333% !important; max-width:33.333333% !important; opacity:1 !important; pointer-events:auto !important; box-sizing:border-box}
+body.analytics-expanded-open #card-analytics-filters {backdrop-filter:none !important; -webkit-backdrop-filter:none !important}
+body.analytics-expanded-open #card-analytics-filters .settings-form {will-change:auto}
 .analytics-expanded-only {display:none !important}
 .analytics-card.is-expanded .analytics-expanded-only {display:flex !important}
 .analytics-card.is-expanded .analytics-collapsed-only {display:none !important}
-.main-chart-container {width:100%; min-height:420px; position:relative; margin-top:20px; padding-bottom:0; max-width:100%; overflow:visible}
-.main-chart-container canvas {display:block; width:100% !important; max-width:100% !important; height:100% !important; min-height:260px}
+.main-chart-container {width:100%; min-height:420px; position:relative; margin-top:50px; padding-bottom:0; max-width:100%; overflow:visible}
+.main-chart-container canvas,.analytics-main-chart-container canvas {display:block; width:100% !important; max-width:100% !important; height:100% !important; min-height:0 !important; max-height:100% !important}
 .chart-legend {display:flex; flex-wrap:wrap; gap:12px 20px; margin-top:20px; margin-bottom:0; justify-content:center; max-width:100%}
 .legend-item {display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted)}
 .legend-item i {width:10px; height:10px; border-radius:50%; display:inline-block}
 .legend-item.accent i {background:var(--accent)}
 .legend-item.white i {background:var(--white)}
-#card-faq {grid-area:faq; padding:30px !important}
-.faq-chart-container {height:280px; margin-top:20px}
-#card-insight {grid-area:insight; background:linear-gradient(135deg,rgba(225,253,113,.05) 0,rgba(5,5,5,0) 100%) !important; border:1px solid rgba(225,253,113,.1) !important; box-shadow: inset 8px 0 20px -6px rgba(112, 0, 255, 0.3) !important;}
 .stat-icon {width:32px; height:32px; border-radius:10px; background:rgba(255,255,255,.05); display:flex; align-items:center; justify-content:center; color:var(--text-muted)}
 .stat-value-group {z-index:2}
 .stat-label {font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; opacity:.6; margin-bottom:5px; display:block}
-.sparkline-canvas {position:absolute; bottom:-10px; left:-10px; width:calc(100% + 20px) !important; height:50% !important; z-index:1; opacity:.3; pointer-events:none}
-.ai-insight-card {padding:30px !important; border:1px solid var(--border)}
-.insight-text {font-size:16px; line-height:1.5; color:var(--text-main)}
 .faq-card {padding:25px !important}
-#faq-container {display:flex; flex-direction:column; gap:10px; min-height:0; overflow:visible}
-.analytics-card.is-expanded #faq-container {overflow-y:auto; padding-right:4px; max-height:calc(100vh - 220px)}
+#faq-container {display:flex; flex-direction:column; gap:10px; min-height:1px; overflow:visible; margin-top:50px; -webkit-transform: translateZ(0); transform: translateZ(0); -webkit-backface-visibility: hidden; backface-visibility: hidden}
+.analytics-card.is-expanded #faq-container {overflow-y:visible !important; padding-right:0; max-height:none !important}
+.faq-day-block {border:1px solid var(--border); border-radius:12px; padding:10px; background:rgba(255,255,255,.02)}
+.faq-day-title {font-size:12px; font-weight:700; color:var(--text-main); margin-bottom:8px}
+.faq-day-empty {font-size:12px; color:var(--text-muted)}
+.faq-collapse-hint {opacity:.78}
 #case-history-container {display:flex; flex-direction:column; gap:12px; min-height:0; overflow:visible}
 .analytics-card.is-expanded #case-history-container {overflow-y:auto; padding-right:4px; max-height:calc(100vh - 220px)}
 #close-reasons-container {display:flex; flex-direction:column; gap:12px; min-height:0; overflow:visible}
@@ -62,8 +108,7 @@ body.analytics-expanded-open {overflow:hidden}
 .close-reasons-row-name {color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .close-reasons-row-count {color:var(--white); font-weight:700}
 .close-reasons-row-share {color:var(--text-muted)}
-@media (max-width:992px){.close-reasons-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:600px){.close-reasons-summary{grid-template-columns:1fr}}
+.geo-bar-bg {flex:1; height:4px; background:rgba(255,255,255,.05); margin:0 15px; border-radius:2px; overflow:hidden}
 .faq-chart-container {height:200px; margin-top:20px}
 .faq-bar-list {display:flex; flex-direction:column; gap:12px; margin-top:20px}
 .faq-bar-row {display:flex; align-items:center; gap:15px; width:100%}
@@ -74,27 +119,36 @@ body.analytics-expanded-open {overflow:hidden}
 .faq-rank-item {padding:8px 0}
 .faq-rank-title {margin-bottom:6px; font-size:16px; line-height:1.5; font-weight:400; color:var(--text-main); word-break:break-word}
 .faq-rank-line {display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px}
-.faq-rank-total {min-width:40px; text-align:right; font-family:monospace; color:var(--white); font-weight:700; font-size:12px}
-.faq-bar-track {height:8px; border:1px solid var(--border); background:rgba(255,255,255,.04); border-radius:999px; overflow:hidden}
+.faq-trend-item {margin-bottom:12px}
+.faq-trend-title {font-size:14px; color:var(--text-main); margin-bottom:6px; word-break:break-word}
+.faq-trend-line-row {display:flex; align-items:center; gap:12px}
+.faq-trend-svg {flex:1; height:34px; overflow:visible}
+.faq-trend-line-track {fill:none; stroke:rgba(255,255,255,0.05); stroke-width:1}
+.faq-trend-line {fill:none; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round}
+.faq-trend-total {min-width:32px; text-align:right; font-family:monospace; font-weight:700; color:var(--white); font-size:13px}
+.faq-trend-axis {display:flex; justify-content:space-between; margin-top:8px; padding:0 4px; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px}
+.faq-trend-axis-label {font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px}
+.faq-bar-track {height:8px; background:rgba(255,255,255,.04); border-radius:999px; overflow:hidden}
 .faq-bar-fill {height:100%; border-radius:999px; transition:width .5s ease}
 .geo-list,.faq-list {display:flex; flex-direction:column; gap:12px; margin-top:20px}
 .geo-item,.faq-item {display:flex; justify-content:space-between; align-items:center; padding:10px 15px; background:rgba(255,255,255,.03); border-radius:12px; font-size:13px}
-.geo-bar-bg {flex:1; height:4px; background:rgba(255,255,255,.05); margin:0 15px; border-radius:2px; overflow:hidden}
-.geo-bar-fill {height:100%; background:var(--accent); border-radius:2px}
 .period-selector {display:flex; align-items:center; gap:8px; background:transparent; padding:0; border:none}
-.period-btn {background:transparent; border:none; color:var(--text-muted); padding:6px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; transition:all var(--transition),transform .08s ease}
+.period-btn {background:transparent; border:none; color:var(--text-muted); padding:6px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; transition:all var(--transition), transform .08s ease}
+.period-btn:active {transform: scale(0.92) !important}
 .period-btn.active {background:var(--accent); color:var(--black); box-shadow:0 4px 15px rgba(225,253,113,.2)}
 .period-btn-calendar {padding:0 !important}
 .period-btn-calendar svg {width:16px; height:16px; opacity:1}
 .period-btn-calendar.active svg {opacity:1}
-.period-btn-calendar:active,.period-btn-calendar.is-pressed {transform:scale(0.96) !important}
+.period-btn-calendar:active,.period-btn-calendar.is-pressed {transform:scale(0.92) !important}
 .btn-activity-filters-toggle {padding:0 !important; width:32px; height:32px; display:flex; align-items:center; justify-content:center}
 .btn-activity-filters-toggle svg {width:16px; height:16px; opacity:1; display:block}
-.btn-analytics-expand,.btn-analytics-close {padding:0 !important; width:32px; height:32px; display:flex; align-items:center; justify-content:center}
-.btn-analytics-expand svg,.btn-analytics-close svg {width:16px; height:16px; display:block; opacity:1; stroke:var(--text-main)}
+.btn-analytics-expand,.btn-analytics-close {padding:0 !important; width:32px; height:32px; display:flex; align-items:center; justify-content:center; transition: transform .08s ease, background .2s ease}
+.btn-analytics-expand:active,.btn-analytics-close:active {transform: scale(0.92); background: rgba(255,255,255,0.05)}
+.btn-analytics-expand svg,.btn-analytics-close svg {width:16px; height:16px; display:block; opacity:1; stroke:var(--text-muted)}
 .btn-activity-filters-toggle:hover {background:rgba(255,255,255,.05)}
 .btn-activity-filters-toggle.active {background:rgba(255,255,255,.08); color:var(--text-main); box-shadow:none}
-.chart-tab-btn {background:transparent; border:none; color:var(--text-muted); padding:6px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; transition:all var(--transition),transform .08s ease; white-space:nowrap}
+.chart-tab-btn {background:transparent; border:none; color:var(--text-muted); padding:6px 16px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; transition:all var(--transition), transform .08s ease; white-space:nowrap}
+.chart-tab-btn:active {transform: scale(0.92) !important}
 .chart-tab-btn.active {background:var(--accent); color:var(--black); box-shadow:0 4px 15px rgba(225,253,113,.2)}
 .chart-tab-btn:hover:not(.active) {color:var(--text-main); background:rgba(255,255,255,.05)}
 .btn-calendar-apply {background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; padding:6px 10px; font-size:12px; font-weight:700; color:var(--text-main); box-shadow:none}
@@ -107,27 +161,35 @@ body.analytics-expanded-open {overflow:hidden}
 .activity-filter-head {display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; color:var(--text-main); font-size:12px; font-weight:700}
 .activity-series-controls {display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; margin-bottom:0}
 .activity-series-item {display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; padding:6px 10px; font-size:12px; color:var(--text-muted); cursor:pointer}
-.activity-filter-btn {background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; padding:6px 10px; font-size:12px; font-weight:700; color:var(--text-muted); cursor:pointer; transition:all var(--transition),transform .08s ease}
+.activity-filter-btn {background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; padding:6px 10px; font-size:12px; font-weight:700; color:var(--text-muted); cursor:pointer; transition:all var(--transition), transform .08s ease}
+.activity-filter-btn:active {transform: scale(0.92) !important}
 .activity-filter-btn:hover {color:var(--text-main); background:rgba(255,255,255,.08)}
 .activity-filter-btn.active {font-weight:800; background:rgba(255,255,255,.08); color:var(--text-main); border-color:rgba(255,255,255,.14); box-shadow:none}
 .profile-calendar-wrapper {position:absolute; top:0; left:0; width:100%; height:100%; z-index:100; background:transparent; backdrop-filter:none; -webkit-backdrop-filter:none; display:flex; flex-direction:column; justify-content:flex-start; padding:24px; border-radius:24px}
 .analytics-card.is-calendar-open > .card-header-flex,.analytics-card.is-calendar-open > .activity-filters-grid,.analytics-card.is-calendar-open > .analytics-main-chart-container,.analytics-card.is-calendar-open .card-header-flex,.analytics-card.is-calendar-open .card-title,.analytics-card.is-calendar-open .period-selector {display:none !important}
 .analytics-card.is-calendar-open > .profile-calendar-wrapper {position:relative; top:auto; left:auto; width:100%; height:100%; min-height:420px}
 .profile-calendar {width:100%; margin-top:12px; flex:1; display:flex; align-items:stretch}
-.card-subtitle {font-size:14px; color:rgba(255,255,255,0.5); margin-top:4px; font-weight:400; line-height:1.4}
-.card-header-flex {align-items:flex-start !important}
-.collapse-icon {width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid var(--text-muted); transition:transform .3s ease; flex-shrink:0; margin-right:4px; display:block}
-.is-collapsed .collapse-icon {transform:rotate(-90deg)}
+.card-subtitle {font-size:16px; color:var(--text-muted); margin-top:25px; font-weight:400; line-height:1.4}
+.card-header-flex {align-items:flex-start !important; gap: 15px}
+#card-analytics-filters .card-actions-mini {display:flex; gap:8px}
+#card-analytics-filters .icon-btn-sm {background:rgba(255,255,255,0.04) !important; border:1px solid var(--border) !important; box-sizing:border-box; color:var(--white) !important; cursor:pointer; opacity:.6; display:flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:10px; padding:0 !important; line-height:0; flex-shrink:0; transform:translateZ(0); transition:all .2s ease}
+#card-analytics-filters .icon-btn-sm:hover {opacity:1; background:rgba(255,255,255,0.05) !important; background-color:rgba(255,255,255,0.05) !important}
+#card-analytics-filters .icon-btn-sm:active {transform:scale(0.92); background:rgba(255,255,255,0.05) !important; background-color:rgba(255,255,255,0.05) !important}
+#card-analytics-filters .icon-btn-sm:focus-visible {opacity:1; background:rgba(255,255,255,0.05) !important; background-color:rgba(255,255,255,0.05) !important; outline:none}
+#card-analytics-filters .analytics-filters-collapse-btn {display:none !important}
+#card-analytics-filters .analytics-filters-collapse-btn svg {transition:transform var(--transition)}
+#card-analytics-filters.is-collapsed .analytics-filters-collapse-btn svg {transform:rotate(-90deg)}
+#card-analytics-filters:not(.is-collapsed) .analytics-filters-collapse-btn {background:rgba(255,255,255,0.05) !important; border-color:rgba(255,255,255,0.1) !important; opacity:1 !important}
+#card-analytics-filters:not(.is-collapsed) .analytics-filters-collapse-btn:hover {background:rgba(255,255,255,0.05) !important; border-color:rgba(255,255,255,0.1) !important; color:var(--white) !important}
+#card-analytics-filters .analytics-filters-collapse-btn:focus,#card-analytics-filters .analytics-filters-collapse-btn:focus-visible,#card-analytics-filters .analytics-filters-collapse-btn:active {outline:none !important; box-shadow:none !important}
+#card-analytics-filters .analytics-filters-collapse-btn:active {border-color:rgba(255,255,255,0.1) !important}
+#card-analytics-filters .card-actions-mini > button {transition:background .2s ease,opacity .2s ease,transform .08s ease,color .2s ease,border-color .2s ease}
+#card-analytics-filters .card-actions-mini > button:active {transform:scale(0.92)}
+#card-analytics-filters > .card-description {margin-top:25px}
+#card-analytics-filters .settings-form {transition:all .3s ease; overflow:hidden; max-height:1000px}
+#card-analytics-filters.is-collapsed .settings-form {max-height:0 !important; margin-top:0 !important; opacity:0; pointer-events:none}
+body.analytics-expanded-open #profile-left-column.analytics-split-filters-visible #card-analytics-filters .settings-form {transition:none !important}
 .mobile-only {display:none}
-@media (max-width:1024px) {.card-title-group {cursor:pointer}
- .mobile-only {display:block}
- .collapse-icon.mobile-only {display:block}
- .btn-analytics-expand {display:none !important}
- #card-analytics-filters.is-collapsed .collapse-icon {transform:rotate(-90deg)}
- #card-analytics-filters .settings-form {transition:all .3s ease; overflow:hidden; max-height:1000px}
- #card-analytics-filters.is-collapsed .settings-form {max-height:0 !important; margin-top:0 !important; opacity:0; pointer-events:none}
- #card-analytics-filters.is-collapsed {padding-bottom:15px !important}
-}
 .analytics-card .profile-calendar-wrapper .calendar-weekday {font-size:clamp(14px,1.15vw,18px); padding:clamp(6px,0.55vw,10px) 0}
 .analytics-card .profile-calendar-wrapper .calendar-day {font-size:clamp(18px,1.5vw,24px); border-radius:clamp(12px,0.9vw,16px)}
 .analytics-card .profile-calendar-wrapper .calendar-picker-panel {background:transparent; border:1px solid var(--border); box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none}
@@ -140,7 +202,9 @@ body.analytics-expanded-open {overflow:hidden}
 .profile-calendar-toolbar-center {display:flex; justify-content:center; align-items:center; min-width:0}
 .profile-calendar-actions-right {display:flex; gap:8px; align-items:center; justify-content:flex-end}
 .btn-calendar-reset {width:32px; height:32px; padding:0 !important; display:flex; align-items:center; justify-content:center}
-.period-btn.is-pressed,.chart-tab-btn.is-pressed,.activity-filter-btn.is-pressed,.calendar-nav-btn.is-pressed,.calendar-day.is-pressed {transform:scale(0.96) !important}
+.calendar-nav-btn {background:transparent; border:none; color:var(--text-main); width:32px; height:32px; border-radius:8px; cursor:pointer; display:flex !important; align-items:center !important; justify-content:center !important; font-size:20px !important; line-height:1 !important; transition:all var(--transition); padding:0 !important; flex-shrink:0}
+.calendar-nav-btn.is-disabled {opacity:0.3; cursor:not-allowed}
+.calendar-nav-btn:hover:not(.is-disabled) {background:rgba(255,255,255,0.05)}
 .analytics-page-view {height:100%}
 .analytics-page-grid {grid-template-columns:minmax(130px,170px) minmax(150px,190px) minmax(0,1fr); height:100%; overflow:hidden}
 .analytics-page-grid .analytics-col {min-width:0; height:100%; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; -ms-overflow-style:none}
@@ -154,64 +218,117 @@ body.analytics-expanded-open {overflow:hidden}
 #analytics-period-buttons .analytics-period-btn,#analytics-mode-buttons .analytics-mode-btn {border:1px solid var(--border)}
 .analytics-mode-chart-card {padding:24px !important}
 .analytics-mode-note {display:none !important}
-.analytics-mode-chart-wrap {min-height:260px; height:auto; margin-top:20px !important; margin-bottom:0}
-#card-analytics-mode-share .analytics-mode-chart-wrap {min-height:220px !important; height:220px !important; display:flex; align-items:center; justify-content:center}
-#card-analytics-mode-share .analytics-mode-chart-wrap canvas {position:relative !important; inset:auto !important; width:210px !important; height:210px !important; max-width:210px !important; max-height:210px !important; min-height:0 !important}
-#card-analytics-mode-funnel .analytics-mode-chart-wrap {min-height:340px; height:340px}
-@media (max-width:768px) {.analytics-mode-chart-wrap {min-height:260px; height:260px}
-#card-analytics-mode-share .analytics-mode-chart-wrap {min-height:180px !important; height:180px !important}
-#card-analytics-mode-share .analytics-mode-chart-wrap canvas {width:170px !important; height:170px !important; max-width:170px !important; max-height:170px !important}
-#card-analytics-mode-funnel .analytics-mode-chart-wrap {min-height:280px; height:280px}
-}
+.analytics-mode-chart-wrap {min-height:260px; height:auto; margin-top:50px !important; margin-bottom:0}
+#card-analytics-mode-share .analytics-mode-chart-wrap {margin-top:20px !important; min-height:300px !important; height:clamp(300px,36vh,460px) !important; max-height:460px !important; display:flex; align-items:center; justify-content:center}
+#card-analytics-mode-share .analytics-mode-chart-wrap canvas {position:relative !important; inset:auto !important; width:100% !important; max-width:100% !important; height:100% !important; max-height:100% !important; min-height:0 !important}
+#card-analytics-mode-funnel .analytics-mode-chart-wrap,
+#card-analytics-mode-trend .analytics-mode-chart-wrap {margin-top:50px !important; min-height:300px; height:clamp(300px,36vh,460px); max-height:460px}
+.analytics-card.is-expanded#card-analytics-mode-funnel .analytics-mode-chart-wrap {min-height:0; height:auto; max-height:none}
 .analytics-weekdays-grid {display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:8px}
 .analytics-weekday-item {border:1px solid var(--border); border-radius:10px; padding:10px 0; text-align:center; color:var(--text-main); font-weight:700; background:rgba(255,255,255,.02)}
 .analytics-placeholder {margin-top:20px; border:1px dashed rgba(255,255,255,.18); border-radius:14px; padding:14px; background:rgba(255,255,255,.02)}
 .analytics-placeholder-title {font-size:14px; font-weight:700; color:var(--text-main)}
 .analytics-placeholder-text {margin-top:6px; font-size:12px; color:var(--text-muted); line-height:1.45}
-@media (max-width:1200px) {.dashboard-grid {grid-template-columns:repeat(2,1fr)}
-.ai-insight-card {grid-column:span 2}
-}
-@media (max-width:992px) {.dashboard-grid {grid-template-columns:1fr 1fr}
- .stat-card {padding:15px !important}
- .stat-value {font-size:28px !important}
-}
-@media (max-width:600px) {.dashboard-grid {grid-template-columns:1fr}
-}
-@media (max-width:768px) {.dashboard-grid {grid-template-columns:1fr}
-.ai-insight-card {grid-column:span 1}
-.chart-tab-btn {padding:5px 12px; font-size:11px}
-.analytics-main-chart-container {min-height:300px; height:auto; margin-top:20px}
-.analytics-card.is-expanded .analytics-main-chart-container {min-height:260px}
-.analytics-page-grid {grid-template-columns:1fr; height:auto; overflow:visible}
-.analytics-page-grid .analytics-col {height:auto; overflow:visible}
+.analytics-card.is-empty .analytics-main-chart-container canvas {display:block !important; opacity:.38; filter:saturate(.28) brightness(.72); transition:opacity .2s ease,filter .2s ease}
+.analytics-card.is-empty .demand-heatmap-grid {opacity:.42; filter:saturate(.35) brightness(.78)}
+.analytics-card.is-empty .analytics-main-chart-container {position:relative}
+.analytics-empty-state {position:absolute; inset:0; z-index:2; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding:0 18px 28px; gap:14px; pointer-events:none; background:linear-gradient(180deg,transparent 48%,rgba(10,10,16,.72) 100%)}
+.analytics-card.is-empty:not(#card-faq) .analytics-empty-state {display:none}
+.analytics-empty-state--block {position:relative; inset:auto; margin-top:18px; min-height:180px; pointer-events:auto}
+#card-faq .analytics-empty-state--block {background:none; padding:0; backdrop-filter:none; -webkit-backdrop-filter:none}
+.analytics-empty-state-text {max-width:280px; text-align:center; font-size:16px; font-weight:700; color:var(--text-muted); line-height:1.4}
+.analytics-empty-silhouette {width:min(86%,440px); height:min(60%,220px); position:relative; display:flex; align-items:center; justify-content:center; filter:drop-shadow(0 14px 22px rgba(0,0,0,.35))}
+.analytics-empty-silhouette > * {display:none}
+.silhouette-line,.silhouette-bars,.silhouette-mixed {opacity:.95}
+.silhouette-line {position:relative; width:92%; height:58%}
+.silhouette-line span {position:absolute; inset:0; background:rgba(255,255,255,.1); clip-path:polygon(0% 88%, 14% 72%, 26% 79%, 42% 52%, 56% 64%, 70% 36%, 84% 44%, 100% 18%, 100% 100%, 0% 100%); border-radius:8px}
+.silhouette-bars {display:flex; align-items:flex-end; justify-content:space-between; gap:10px; width:86%; height:66%}
+.silhouette-bars span {display:block; flex:1; border-radius:8px 8px 4px 4px; background:rgba(255,255,255,.1)}
+.silhouette-bars span:nth-child(1){height:28%}
+.silhouette-bars span:nth-child(2){height:54%}
+.silhouette-bars span:nth-child(3){height:38%}
+.silhouette-bars span:nth-child(4){height:72%}
+.silhouette-bars span:nth-child(5){height:46%}
+.silhouette-mixed {position:relative; width:92%; height:72%}
+.silhouette-mixed .silhouette-bars {position:absolute; left:0; right:0; bottom:0; width:100%; height:78%}
+.silhouette-mixed .silhouette-line {position:absolute; left:0; right:0; top:6%; width:100%; height:62%}
+.silhouette-mixed .silhouette-line span {background:rgba(255,255,255,.16)}
+.silhouette-mixed .silhouette-bars span {background:rgba(255,255,255,.08)}
+.analytics-empty-state--line .silhouette-line {display:block}
+.analytics-empty-state--bars .silhouette-bars {display:flex}
+.analytics-empty-state--mixed .silhouette-mixed {display:block}
+.analytics-main-chart-container canvas{filter:drop-shadow(0 0 5px rgba(112,0,255,0.05))}
+.analytics-card.is-expanded#card-analytics-mode-trend .analytics-main-chart-container {flex:1 1 auto; min-height:0; height:auto; max-height:none}
+.analytics-card.is-expanded#card-analytics-mode-trend .analytics-mode-chart-wrap {min-height:0; height:auto; max-height:none}
+
+/* Safari fallback only for collapsed state */
+.analytics-card#card-analytics-results:not(.is-expanded):not(.is-calendar-open) .card-header-flex,
+.analytics-card#card-faq:not(.is-expanded):not(.is-calendar-open) .card-header-flex,
+.analytics-card#card-analytics-mode-funnel:not(.is-expanded):not(.is-calendar-open) .card-header-flex {display:flex !important; visibility:visible !important; opacity:1 !important}
+.analytics-card#card-analytics-results:not(.is-expanded):not(.is-calendar-open) .card-header-flex > div,
+.analytics-card#card-faq:not(.is-expanded):not(.is-calendar-open) .card-header-flex > div,
+.analytics-card#card-analytics-mode-funnel:not(.is-expanded):not(.is-calendar-open) .card-header-flex > div {display:block !important; visibility:visible !important; opacity:1 !important}
+.analytics-card#card-analytics-results:not(.is-expanded):not(.is-calendar-open) .card-title,
+.analytics-card#card-analytics-results:not(.is-expanded):not(.is-calendar-open) .card-subtitle,
+.analytics-card#card-faq:not(.is-expanded):not(.is-calendar-open) .card-title,
+.analytics-card#card-faq:not(.is-expanded):not(.is-calendar-open) .card-subtitle,
+.analytics-card#card-analytics-mode-funnel:not(.is-expanded):not(.is-calendar-open) .card-title,
+.analytics-card#card-analytics-mode-funnel:not(.is-expanded):not(.is-calendar-open) .card-subtitle {display:block !important; visibility:visible !important; opacity:1 !important}
+.analytics-card#card-analytics-results:not(.is-expanded):not(.is-calendar-open) .period-selector,
+.analytics-card#card-faq:not(.is-expanded):not(.is-calendar-open) .period-selector,
+.analytics-card#card-analytics-mode-funnel:not(.is-expanded):not(.is-calendar-open) .period-selector {display:flex !important; visibility:visible !important; opacity:1 !important}
+.analytics-card#card-analytics-results:not(.is-expanded):not(.is-calendar-open) .profile-calendar-wrapper,
+.analytics-card#card-faq:not(.is-expanded):not(.is-calendar-open) .profile-calendar-wrapper,
+.analytics-card#card-analytics-mode-funnel:not(.is-expanded):not(.is-calendar-open) .profile-calendar-wrapper {display:none !important}
+
+/* Media queries */
+@media (max-width:1200px) {
+    .dashboard-grid {grid-template-columns:repeat(2,1fr)}
 }
 
-.ai-thinking-indicator {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    margin-left: 12px;
-    height: 20px;
+@media (max-width:1024px) {
+    .mobile-only {display:block}
+    .btn-analytics-expand {display:none !important}
+    #card-analytics-filters .analytics-filters-collapse-btn {display:flex !important}
 }
 
-.ai-thinking-indicator span {
-    width: 4px;
-    height: 4px;
-    background-color: #7000FF;
-    border-radius: 50%;
-    display: inline-block;
-    animation: ai-thinking 1.4s infinite ease-in-out both;
-    box-shadow: 0 0 8px rgba(112, 0, 255, 0.6);
+@media (max-width:992px) {
+    .close-reasons-summary {grid-template-columns:repeat(2,minmax(0,1fr))}
+    .dashboard-grid {grid-template-columns:1fr 1fr}
+    .stat-card {padding:15px !important}
+    .stat-value {font-size:28px !important}
 }
 
-.ai-thinking-indicator span:nth-child(1) { animation-delay: -0.32s; }
-.ai-thinking-indicator span:nth-child(2) { animation-delay: -0.16s; }
+@media (max-width:768px) {
+    .dashboard-grid {grid-template-columns:1fr}
+    .chart-tab-btn {padding:5px 12px; font-size:11px}
 
-@keyframes ai-thinking {
-    0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
-    40% { transform: scale(1.0); opacity: 1; }
+    .analytics-main-chart-container {min-height:260px; height:clamp(260px,40vh,420px); max-height:420px; margin-top:20px}
+    .demand-heatmap-grid {grid-template-columns:27px repeat(var(--heat-columns),minmax(0,1fr)); gap:4px}
+    .demand-heatmap-hour {font-size:9px}
+    .demand-heatmap-cell {height:28px; border-radius:5px}
+    .demand-heatmap-footer {margin-left:31px; gap:5px; font-size:9px; flex-wrap:wrap}
+    .demand-heatmap-scale {width:52px}
+    .demand-heatmap-metric {flex-basis:100%}
+    .demand-heatmap-period {flex-basis:100%; margin-left:0; text-align:left}
+    .analytics-card.is-expanded .analytics-main-chart-container {min-height:260px; height:clamp(260px,46vh,520px); max-height:520px}
+    .analytics-card.is-expanded#card-analytics-platforms .analytics-main-chart-container,
+    .analytics-card.is-expanded#card-analytics-messages .analytics-main-chart-container,
+    .analytics-card.is-expanded#card-analytics-results .analytics-main-chart-container,
+    .analytics-card.is-expanded#card-analytics-mode-funnel .analytics-main-chart-container {min-height:0; height:auto; max-height:none}
+
+    .analytics-mode-chart-wrap {min-height:260px; height:clamp(260px,40vh,420px); max-height:420px}
+    #card-analytics-mode-share .analytics-mode-chart-wrap {margin-top:20px !important; min-height:260px !important; height:clamp(260px,40vh,420px) !important; max-height:420px !important}
+    #card-analytics-mode-share .analytics-mode-chart-wrap canvas {width:100% !important; max-width:100% !important; height:100% !important; max-height:100% !important}
+    #card-analytics-mode-funnel .analytics-mode-chart-wrap,
+    #card-analytics-mode-trend .analytics-mode-chart-wrap {margin-top:20px !important; min-height:260px; height:clamp(260px,40vh,420px); max-height:420px}
+    .analytics-card.is-expanded#card-analytics-mode-funnel .analytics-mode-chart-wrap {min-height:0; height:auto; max-height:none}
+
+    .analytics-page-grid {grid-template-columns:1fr; height:auto; overflow:visible}
+    .analytics-page-grid .analytics-col {height:auto; overflow:visible}
 }
 
-.analytics-main-chart-container canvas {
-    filter: drop-shadow(0 0 5px rgba(112, 0, 255, 0.05));
+@media (max-width:600px) {
+    .close-reasons-summary {grid-template-columns:1fr}
+    .dashboard-grid {grid-template-columns:1fr}
 }

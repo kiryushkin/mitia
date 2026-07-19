@@ -8,7 +8,7 @@ from ..core.config import log
 router = APIRouter(prefix="/api/chat/webhook", tags=["webhook"])
 
 @router.post("/email")
-async def email_webhook(request: Request, client_id: str, token: str):
+async def email_webhook(request: Request, client_id: str, token: str, assistant_id: str | None = None):
     """
     Принимает вебхук от почтового сервиса.
     Ожидаемый формат JSON:
@@ -21,7 +21,7 @@ async def email_webhook(request: Request, client_id: str, token: str):
     try:
         # 1. Проверка токена безопасности
         from ..services.clients import get_client_config
-        config = await get_client_config(client_id)
+        config = await get_client_config(client_id, assistant_id=assistant_id)
         
         # Получаем настройки email интеграции
         email_settings = config.raw.get('integrations', {}).get('email', {})
@@ -73,7 +73,7 @@ async def email_webhook(request: Request, client_id: str, token: str):
                 raise HTTPException(status_code=403, detail="Recipient not allowed")
 
         # Генерируем session_id на основе email отправителя, чтобы сохранять историю переписки
-        session_id = f"email_{hashlib.md5(sender.encode()).hexdigest()}"
+        session_id = f"email_{assistant_id or 'main'}_{hashlib.md5(sender.encode()).hexdigest()}"
         
         # Сохраняем информацию о ящике в метаданные сессии
         try:
@@ -95,7 +95,9 @@ async def email_webhook(request: Request, client_id: str, token: str):
         ask_data = AskRequest(
             message=message,
             client_id=client_id,
-            session_id=session_id
+            assistant_id=assistant_id,
+            session_id=session_id,
+            metadata={"assistant_id": assistant_id}
         )
         
         # Обрабатываем через ChatService (без стриминга)

@@ -1,7 +1,3 @@
-/**
- * Календарь для фильтра по дате (оригинальная реализация)
- */
-
 import { state } from '../state.js';
 
 const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь',
@@ -9,20 +5,214 @@ const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','
 
 let onDateSelect = null;
 
-/**
- * Инициализация календаря
- */
+function dateKey(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function parseDateKey(dateStr) {
+    if (!dateStr || typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
+    const date = new Date(`${dateStr}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return null;
+    return date;
+}
+
+function getTodayDateKey() {
+    return dateKey(new Date());
+}
+
+function formatDateShort(dateStr) {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}.${m}.${y}`;
+}
+
+function calculateQuickPeriodRange(period, bounds = getCalendarBounds()) {
+    if (!period) return null;
+
+    const maxDateObj = parseDateKey(bounds.max) || new Date();
+    let to = new Date(maxDateObj.getFullYear(), maxDateObj.getMonth(), maxDateObj.getDate());
+    let from = new Date(to);
+
+    if (period === 'today') {
+    } else if (period === 'yesterday') {
+        from.setDate(to.getDate() - 1);
+        to = new Date(from);
+    } else if (period === 'week') {
+        from.setDate(to.getDate() - 6);
+    } else if (period === 'month') {
+        from.setDate(to.getDate() - 29);
+    } else if (period === 'quarter') {
+        from.setDate(to.getDate() - 89);
+    } else if (period === 'year') {
+        from = new Date(to.getFullYear(), 0, 1);
+    } else {
+        return null;
+    }
+
+    return {
+        from: dateKey(from),
+        to: dateKey(to)
+    };
+}
+
+function isQuickPeriodAvailable(period, bounds = getCalendarBounds()) {
+    const range = calculateQuickPeriodRange(period, bounds);
+    if (!range) return false;
+    return range.from >= bounds.min && range.to <= bounds.max;
+}
+
+function updateQuickPeriodButtons() {
+    const bounds = getCalendarBounds();
+    document.querySelectorAll('.dialogs-period-btn').forEach((btn) => {
+        const period = btn.dataset.period;
+        const isAvailable = isQuickPeriodAvailable(period, bounds);
+        const isActive = period === state.periodPreset && isAvailable;
+
+        btn.classList.toggle('is-disabled', !isAvailable);
+        btn.classList.toggle('active', isActive);
+        btn.title = isAvailable ? '' : 'Период станет доступен после накопления данных';
+    });
+}
+
+export function applyQuickPeriod(period, triggerSelect = true) {
+    const bounds = getCalendarBounds();
+    if (!isQuickPeriodAvailable(period, bounds)) {
+        return;
+    }
+    let range = calculateQuickPeriodRange(period, bounds) || { from: bounds.max, to: bounds.max };
+    range = clampDateRange(range);
+
+    state.periodPreset = period;
+    state.dateRange = range;
+
+    const calendarTo = parseDateKey(range.to) || parseDateKey(bounds.max) || new Date();
+    state.calendarYear = calendarTo.getFullYear();
+    state.calendarMonth = calendarTo.getMonth();
+
+    renderCalendar();
+    if (triggerSelect && onDateSelect) onDateSelect();
+}
+
+function bindQuickPeriodButtons() {
+    document.querySelectorAll('.dialogs-period-btn').forEach((btn) => {
+        btn.onclick = () => {
+            const period = btn.dataset.period;
+            if (!period) return;
+
+            if (state.periodPreset === period) {
+                state.periodPreset = null;
+                state.dateRange = { from: null, to: null };
+                renderCalendar();
+                if (onDateSelect) onDateSelect();
+                return;
+            }
+
+            const bounds = getCalendarBounds();
+            const isAvailable = isQuickPeriodAvailable(period, bounds);
+            if (!isAvailable) {
+                const title = 'Период пока недоступен';
+                const text = `Период «${btn.textContent?.trim() || period}» станет доступен после накопления данных. Сейчас доступны даты: ${formatDateShort(bounds.min)} — ${formatDateShort(bounds.max)}.`;
+
+                if (typeof window.showAlert === 'function') {
+                    window.showAlert('tmpl-error-alert', { title, text });
+                } else {
+                    alert(text);
+                }
+                return;
+            }
+
+            applyQuickPeriod(period, true);
+        };
+    });
+}
+
+function getCalendarBounds() {
+    const todayKey = getTodayDateKey();
+    const rawMin = state.calendarBounds?.minDate || todayKey;
+    const rawMax = state.calendarBounds?.maxDate || todayKey;
+    let min = parseDateKey(rawMin) ? rawMin : todayKey;
+    let max = parseDateKey(rawMax) ? rawMax : todayKey;
+
+    if (max > todayKey) max = todayKey;
+    if (min > max) min = max;
+
+    return {
+        min,
+        max,
+        maxSource: state.calendarBounds?.maxSource || 'today'
+    };
+}
+
+function clampDateRange(range = state.dateRange) {
+    const bounds = getCalendarBounds();
+    let from = range?.from || null;
+    let to = range?.to || null;
+
+    if (from && !parseDateKey(from)) from = null;
+    if (to && !parseDateKey(to)) to = null;
+
+    if (!from && !to) {
+        return { from: null, to: null };
+    }
+
+    if (from && !to) {
+        return {
+            from: from < bounds.min ? bounds.min : from,
+            to: null
+        };
+    }
+
+    if (!from && to) {
+        return {
+            from: null,
+            to: to > bounds.max ? bounds.max : to
+        };
+    }
+
+    if (from > to) [from, to] = [to, from];
+    if (from < bounds.min) from = bounds.min;
+    if (to > bounds.max) to = bounds.max;
+    if (from > to) from = to;
+
+    return { from, to };
+}
+
 export function initCalendar(onSelect) {
     onDateSelect = onSelect;
-    const now = new Date();
-    state.calendarYear = now.getFullYear();
-    state.calendarMonth = now.getMonth();
-    renderCalendar();
+    const bounds = getCalendarBounds();
+    const maxDate = parseDateKey(bounds.max) || new Date();
+    state.calendarYear = maxDate.getFullYear();
+    state.calendarMonth = maxDate.getMonth();
+
+    bindQuickPeriodButtons();
+
+    if (state.periodPreset && isQuickPeriodAvailable(state.periodPreset, bounds)) {
+        applyQuickPeriod(state.periodPreset, false);
+    } else {
+        state.periodPreset = null;
+        state.dateRange = clampDateRange({ from: null, to: null });
+        renderCalendar();
+    }
 }
 
 export function renderCalendar() {
     const container = document.getElementById('calendar-single');
     if (!container) return;
+
+    updateQuickPeriodButtons();
+    state.dateRange = clampDateRange(state.dateRange);
+    const bounds = getCalendarBounds();
+    const currentMonthStart = dateKey(new Date(state.calendarYear, state.calendarMonth, 1));
+    const currentMonthEnd = dateKey(new Date(state.calendarYear, state.calendarMonth + 1, 0));
+
+    if (currentMonthEnd < bounds.min || currentMonthStart > bounds.max) {
+        const maxDate = parseDateKey(bounds.max) || new Date();
+        state.calendarYear = maxDate.getFullYear();
+        state.calendarMonth = maxDate.getMonth();
+    }
 
     container.innerHTML = '';
     container.appendChild(buildMonth(state.calendarYear, state.calendarMonth));
@@ -37,11 +227,23 @@ function buildMonth(year, month) {
     const header = document.createElement('div');
     header.className = 'calendar-month-header';
 
+    const monthStart = dateKey(new Date(year, month, 1));
+    const monthEnd = dateKey(new Date(year, month + 1, 0));
+    const bounds = getCalendarBounds();
+    const canPrev = monthStart > bounds.min;
+    const canNext = monthEnd < bounds.max;
+
     const prevBtn = document.createElement('button');
     prevBtn.className = 'calendar-nav-btn';
     prevBtn.type = 'button';
-    prevBtn.textContent = '‹';
-    prevBtn.onclick = () => navCalendar(-1);
+    prevBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+    prevBtn.title = canPrev ? 'Предыдущий месяц' : 'Данные доступны с даты регистрации';
+    if (canPrev) {
+        prevBtn.onclick = () => navCalendar(-1);
+    } else {
+        prevBtn.disabled = true;
+        prevBtn.classList.add('is-disabled');
+    }
 
     const title = document.createElement('div');
     title.className = 'calendar-month-title';
@@ -50,8 +252,18 @@ function buildMonth(year, month) {
     const nextBtn = document.createElement('button');
     nextBtn.className = 'calendar-nav-btn';
     nextBtn.type = 'button';
-    nextBtn.textContent = '›';
-    nextBtn.onclick = () => navCalendar(1);
+    nextBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+    nextBtn.title = canNext
+        ? 'Следующий месяц'
+        : (bounds.maxSource === 'snapshot'
+            ? 'Данные за более поздние даты пока не готовы'
+            : 'Выбор дат после текущего дня недоступен');
+    if (canNext) {
+        nextBtn.onclick = () => navCalendar(1);
+    } else {
+        nextBtn.disabled = true;
+        nextBtn.classList.add('is-disabled');
+    }
 
     header.appendChild(prevBtn);
     header.appendChild(title);
@@ -116,10 +328,24 @@ function buildDayCell(day, month, year, otherMonth) {
         cell.classList.add('today');
     }
 
-    const from = state.dateRange.from;
-    const to = state.dateRange.to;
+    const bounds = getCalendarBounds();
+    const outOfBounds = dateStr < bounds.min || dateStr > bounds.max;
 
-    if (from && !to && dateStr === from) {
+    if (outOfBounds) {
+        cell.classList.add('is-disabled');
+        cell.disabled = true;
+        cell.title = dateStr < bounds.min
+            ? 'Дата вне доступного периода: до регистрации'
+            : (bounds.maxSource === 'snapshot'
+                ? 'Данные за эту дату пока не подготовлены'
+                : 'Дата вне доступного периода: после текущего дня');
+    }
+
+    const normalized = clampDateRange(state.dateRange);
+    const from = normalized.from;
+    const to = normalized.to;
+
+    if (from && to && from === to && dateStr === from) {
         cell.classList.add('selected', 'single');
     } else {
         if (from && dateStr === from) cell.classList.add('selected', 'range-start');
@@ -128,47 +354,39 @@ function buildDayCell(day, month, year, otherMonth) {
     }
 
     cell.onclick = () => {
-        if (otherMonth) return;
+        if (otherMonth || outOfBounds) return;
 
-        const f = state.dateRange.from;
-        const t = state.dateRange.to;
+        const normalizedCurrent = clampDateRange(state.dateRange);
+        const f = normalizedCurrent.from;
+        const t = normalizedCurrent.to;
 
         if (!f && !t) {
-            // Ничего не выбрано → выбрать одну дату
-            state.dateRange = { from: dateStr, to: null };
-            if (onDateSelect) onDateSelect();
-        } else if (f && !t) {
-            // Выбрана одна дата
+            state.dateRange = { from: dateStr, to: dateStr };
+        } else if (f === t) {
             if (dateStr === f) {
-                // Та же дата → снять выделение
                 state.dateRange = { from: null, to: null };
-                if (onDateSelect) onDateSelect();
             } else {
-                // Другая дата → диапазон
                 state.dateRange = {
                     from: dateStr < f ? dateStr : f,
                     to: dateStr > f ? dateStr : f
                 };
-                if (onDateSelect) onDateSelect();
             }
-        } else if (f && t) {
-            // Выбран диапазон
-            if (dateStr === f) {
-                // Нажали на начало → остаётся только конец
-                state.dateRange = { from: t, to: null };
-                if (onDateSelect) onDateSelect();
-            } else if (dateStr === t) {
-                // Нажали на конец → снять всё
+        } else {
+            if (dateStr === f && dateStr === t) {
                 state.dateRange = { from: null, to: null };
-                if (onDateSelect) onDateSelect();
+            } else if (dateStr === f) {
+                state.dateRange = { from: t, to: t };
+            } else if (dateStr === t) {
+                state.dateRange = { from: f, to: f };
             } else {
-                // Нажали вне диапазона → начать новый выбор
-                state.dateRange = { from: dateStr, to: null };
-                if (onDateSelect) onDateSelect();
+                state.dateRange = { from: dateStr, to: dateStr };
             }
         }
 
+        state.dateRange = clampDateRange(state.dateRange);
+        state.periodPreset = 'custom';
         renderCalendar();
+        if (onDateSelect) onDateSelect();
     };
 
     return cell;
@@ -179,34 +397,41 @@ function navCalendar(delta) {
     let y = state.calendarYear;
     if (m < 0) { m = 11; y--; }
     if (m > 11) { m = 0; y++; }
+
+    const monthStart = dateKey(new Date(y, m, 1));
+    const monthEnd = dateKey(new Date(y, m + 1, 0));
+    const bounds = getCalendarBounds();
+
+    if (monthEnd < bounds.min || monthStart > bounds.max) {
+        return;
+    }
+
     state.calendarMonth = m;
     state.calendarYear = y;
     renderCalendar();
 }
 
-function dateKey(date) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-}
-
 function updateRangeInfo() {
     const info = document.getElementById('date-range-info');
     if (!info) return;
-    const from = state.dateRange.from;
-    const to = state.dateRange.to;
-    if (from && to) {
+
+    const bounds = getCalendarBounds();
+    const normalized = clampDateRange(state.dateRange);
+    state.dateRange = normalized;
+
+    const from = normalized.from;
+    const to = normalized.to;
+    if (from && to && from !== to) {
         info.textContent = `${formatDateShort(from)} — ${formatDateShort(to)}`;
-    } else if (from) {
-        info.textContent = `С ${formatDateShort(from)} — выберите конечную дату`;
+    } else if (from && to && from === to) {
+        info.textContent = `Дата: ${formatDateShort(from)}`;
     } else {
         info.textContent = '';
     }
+
+    const suffix = bounds.maxSource === 'snapshot'
+        ? 'Доступны даты до последнего подготовленного среза.'
+        : 'Выбор дат после текущего дня недоступен.';
+    info.title = `Границы: ${formatDateShort(bounds.min)} — ${formatDateShort(bounds.max)}. ${suffix}`;
 }
 
-function formatDateShort(dateStr) {
-    if (!dateStr) return '';
-    const [y, m, d] = dateStr.split('-');
-    return `${d}.${m}.${y}`;
-}

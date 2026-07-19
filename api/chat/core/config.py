@@ -3,11 +3,9 @@ import logging
 from logging.handlers import RotatingFileHandler
 from datetime import timedelta
 
-# Базовые пути
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
 
-# PostgreSQL
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if not DATABASE_URL:
     POSTGRES_USER = os.environ.get('POSTGRES_USER', os.environ.get('USER', 'postgres'))
@@ -17,12 +15,9 @@ if not DATABASE_URL:
     POSTGRES_DB = os.environ.get('POSTGRES_DB', 'mitia')
     DATABASE_URL = f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
-
-# Настройка логирования с ротацией
 log_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
 log_file = os.path.join(BASE_DIR, 'mitia.log')
 
-# Ротация: макс 5МБ, храним 5 старых файлов
 file_handler = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=5, encoding='utf-8')
 file_handler.setFormatter(log_formatter)
 file_handler.setLevel(logging.INFO)
@@ -39,7 +34,6 @@ logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('httpcore').setLevel(logging.WARNING)
 log = logging.getLogger('mitia_core')
 
-# Загрузка .env
 _env_path = os.path.join(ROOT_DIR, ".env")
 if os.path.isfile(_env_path):
     with open(_env_path, 'r') as f:
@@ -49,20 +43,17 @@ if os.path.isfile(_env_path):
                 k, v = line.split('=', 1)
                 os.environ[k.strip()] = v.strip().strip('"').strip("'")
 
-# GigaChat & Sber
 GIGACHAT_KEY = os.environ.get('GIGACHAT_KEY', '')
 GIGACHAT_MODEL = os.environ.get('GIGACHAT_MODEL', 'GigaChat')
 CERT_PATH = os.path.join(ROOT_DIR, "giga_certs.pem")
 CERT_VERIFY = CERT_PATH if os.path.exists(CERT_PATH) else True
 
-# Yandex Cloud
 YANDEX_API_KEY = os.environ.get('YANDEX_API_KEY', '')
 YANDEX_FOLDER_ID = os.environ.get('YANDEX_FOLDER_ID', '')
 YANDEX_MODEL = os.environ.get('YANDEX_MODEL', 'yandexgpt/latest')
 YANDEX_SEARCH_API_KEY = os.environ.get('YANDEX_SEARCH_API_KEY', '')
 YANDEX_SEARCH_FOLDER_ID = os.environ.get('YANDEX_SEARCH_FOLDER_ID', '')
 
-# JWT & Security
 ADMIN_TOKEN = os.environ.get('ADMIN_TOKEN')
 JWT_SECRET = os.environ.get('JWT_SECRET')
 ENVIRONMENT = os.environ.get('ENVIRONMENT', os.environ.get('APP_ENV', 'development')).strip().lower()
@@ -79,7 +70,7 @@ if not JWT_SECRET:
         log.warning("JWT_SECRET не задан. Сгенерирован временный ключ (только для non-production).")
 
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 часа
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 
 import jwt
 import hashlib
@@ -107,13 +98,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     if not hashed_password:
         return False
         
-    # Поддержка старого формата SHA-256 (простой хеш без префикса)
     if ":" not in hashed_password and "$" not in hashed_password:
         old_hash = hashlib.sha256(plain_password.encode()).hexdigest()
         return secrets.compare_digest(old_hash, hashed_password)
     
     try:
-        # Формат: pbkdf2:sha256:100000$salt$hash
         algorithm_part, salt, pwd_hash = hashed_password.split('$')
         _, hash_name, iterations = algorithm_part.split(':')
         
@@ -147,11 +136,9 @@ def deep_merge(base: dict, update: dict) -> dict:
         if isinstance(value, dict) and key in result and isinstance(result[key], dict):
             result[key] = deep_merge(result[key], value)
         else:
-            # ПРЯМОЕ ПЕРЕЗАПИСЫВАНИЕ: если ключ есть в update, берем его значение (даже если это "")
             result[key] = copy.deepcopy(value)
     return result
 
-# Mail (SMTP) - Используется для регистрации и уведомлений
 MAIL_CONFIG = {
     "user": os.environ.get('MAIL_USER', 'assistant@mitia.pro'),
     "password": os.environ.get('MAIL_PASSWORD', ''),
@@ -161,7 +148,6 @@ MAIL_CONFIG = {
     "port": int(os.environ.get('MAIL_PORT', 465))
 }
 
-# Telegram - Уведомления о лидах
 TELEGRAM_CONFIG = {
     "token": os.environ.get('TELEGRAM_BOT_TOKEN'),
     "chat_id": os.environ.get('TELEGRAM_CHAT_ID'),
@@ -169,13 +155,13 @@ TELEGRAM_CONFIG = {
     "api_url": os.environ.get('TELEGRAM_API_URL', 'https://api.telegram.org')
 }
 
-# ЮKassa
+PUBLIC_APP_URL = os.environ.get('PUBLIC_APP_URL', 'https://mitia.pro').rstrip('/')
+
 YOOKASSA_CONFIG = {
     "shop_id": os.environ.get('YOOKASSA_SHOP_ID'),
     "secret_key": os.environ.get('YOOKASSA_SECRET_KEY')
 }
 
-# MAX & VK (Заглушки для будущей интеграции или текущих вебхуков)
 MAX_CONFIG = {
     "bot_token": os.environ.get('MAX_BOT_TOKEN')
 }
@@ -192,26 +178,30 @@ HH_CONFIG = {
     "api_url": os.environ.get('HH_API_URL', 'https://api.hh.ru')
 }
 
-# Правилы тарификации (Сверяется с admin.js для отображения лимитов)
 TARIFF_RULES = {
     'start': {
         'name': 'Старт',
         'price': 0,
+        'year_price': 0,
         'base_limit': 30,
-        'base_cost': 15,
-        'reset_period_days': 30,
+        'reset_period_days': 0,
         'context_limit': 10,
+        'assistants_limit': 1,
+        'operators_limit': 1,
         'model': 'GigaChat',
         'available_models': ['GigaChat', 'yandexgpt/latest'],
-        'max_index_pages': 30, # Ограничиваем бесплатную нагрузку на индексатор
+        'max_index_pages': 30,
         'storage_limit': 1 * 1024 * 1024 * 1024 # 1GB
     },
     'business': {
         'name': 'Бизнес',
         'price': 3900,
+        'year_price': 39000,
         'base_limit': 1000,
-        'base_cost': 10,
+        'reset_period_days': 30,
         'context_limit': 30,
+        'assistants_limit': 5,
+        'operators_limit': 1,
         'model': 'GigaChat',
         'available_models': ['GigaChat', 'yandexgpt/latest'],
         'max_index_pages': 500,
@@ -220,14 +210,111 @@ TARIFF_RULES = {
     'neuro': {
         'name': 'Нейро',
         'price': 9900,
+        'year_price': 99000,
         'base_limit': 5000,
-        'base_cost': 5,
+        'reset_period_days': 30,
         'context_limit': 100,
+        'assistants_limit': 20,
+        'operators_limit': 1,
         'model': 'GigaChat',
         'available_models': ['GigaChat', 'yandexgpt/latest'],
         'max_index_pages': 5000,
         'storage_limit': 10 * 1024 * 1024 * 1024 # 10GB
     }
-
-
 }
+
+MESSAGE_PACK_RULES = [
+    {
+        'pack_id': 'pack-100',
+        'label': '100 сообщений ассистента',
+        'messages': 100,
+        'price': 900,
+        'is_recommended': False,
+    },
+    {
+        'pack_id': 'pack-500',
+        'label': '500 сообщений ассистента',
+        'messages': 500,
+        'price': 3900,
+        'is_recommended': True,
+    },
+    {
+        'pack_id': 'pack-1000',
+        'label': '1000 сообщений ассистента',
+        'messages': 1000,
+        'price': 6900,
+        'is_recommended': False,
+    },
+]
+
+ASSISTANT_SLOTS_SOFT_CAP = 50
+ASSISTANT_SLOTS_HARD_CAP = 100
+ASSISTANT_SLOTS_AVAILABLE_ON_START = True
+ASSISTANT_SLOT_PACK_RULES = [
+    {
+        'pack_id': 'assistants-plus-1',
+        'label': '+1 ассистент',
+        'slots': 1,
+        'price': 1900,
+        'is_recommended': False,
+    },
+    {
+        'pack_id': 'assistants-plus-3',
+        'label': '+3 ассистента',
+        'slots': 3,
+        'price': 4900,
+        'is_recommended': True,
+    },
+    {
+        'pack_id': 'assistants-plus-5',
+        'label': '+5 ассистентов',
+        'slots': 5,
+        'price': 6900,
+        'is_recommended': False,
+    },
+]
+
+STORAGE_PACK_RULES = [
+    {
+        'pack_id': 'storage-plan-2gb',
+        'label': 'Память +2 ГБ',
+        'bytes': 2 * 1024 * 1024 * 1024,
+        'monthly_price': 290,
+        'is_recommended': False,
+    },
+    {
+        'pack_id': 'storage-plan-10gb',
+        'label': 'Память +10 ГБ',
+        'bytes': 10 * 1024 * 1024 * 1024,
+        'monthly_price': 990,
+        'is_recommended': True,
+    },
+    {
+        'pack_id': 'storage-plan-50gb',
+        'label': 'Память +50 ГБ',
+        'bytes': 50 * 1024 * 1024 * 1024,
+        'monthly_price': 3490,
+        'is_recommended': False,
+    },
+]
+
+
+def get_message_pack(pack_id: str):
+    for pack in MESSAGE_PACK_RULES:
+        if str(pack.get('pack_id')) == str(pack_id):
+            return pack
+    return None
+
+
+def get_assistant_slot_pack(pack_id: str):
+    for pack in ASSISTANT_SLOT_PACK_RULES:
+        if str(pack.get('pack_id')) == str(pack_id):
+            return pack
+    return None
+
+
+def get_storage_pack(pack_id: str):
+    for pack in STORAGE_PACK_RULES:
+        if str(pack.get('pack_id')) == str(pack_id):
+            return pack
+    return None

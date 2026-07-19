@@ -1,16 +1,19 @@
-/**
- * Состояние модуля диалогов
- */
-
 export const state = {
     dialogs: [],
+    hasLoadedDialogsOnce: false,
     widgetConfig: null,
     activeFilters: new Set(),
     activePlatforms: new Set(),
     activeModes: new Set(),
     dateRange: { from: null, to: null },
+    periodPreset: null,
     calendarYear: null,
     calendarMonth: null,
+    calendarBounds: {
+        minDate: null,
+        maxDate: null,
+        maxSource: 'today'
+    },
     autoUpdateTimer: null,
     activeSessionId: null,
     activeClientId: null,
@@ -22,20 +25,14 @@ export const state = {
     selectMode: false,
     selectModeByToggle: false,
     selectedSessions: new Set(),
-    // Пагинация
     pageSize: 20,
     currentPage: 1,
-    // Позиция списка диалогов до входа в режим открытого диалога
     listScrollBeforeDialogOpen: null
 };
 
-/**
- * Фильтрация диалогов по текущим активным фильтрам
- */
 export function getFilteredDialogs() {
     let filtered = state.dialogs;
 
-    // Фильтр по статусу
     if (state.activeFilters.size > 0) {
         filtered = filtered.filter(d => {
             const isUnread = !d.is_read;
@@ -53,16 +50,8 @@ export function getFilteredDialogs() {
             if (state.activeFilters.has('archive') && isArchive) match = true;
             return match;
         });
-    } else {
-        // По умолчанию скрываем спам и архив, если не выбраны соответствующие фильтры
-        filtered = filtered.filter(d => {
-            const isSpam = d.status === 'spam';
-            const isArchive = d.is_archived === true || d.status === 'archive';
-            return !isSpam && !isArchive;
-        });
     }
 
-    // Фильтр по режиму
     if (state.activeModes.size === 1) {
         if (state.activeModes.has('operator')) {
             filtered = filtered.filter(d => d.is_operator_mode === true);
@@ -71,7 +60,6 @@ export function getFilteredDialogs() {
         }
     }
 
-    // Фильтр по платформе
     if (state.activePlatforms.size > 0) {
         filtered = filtered.filter(d => {
             let platform = d.metadata_json ? d.metadata_json.platform : null;
@@ -79,15 +67,16 @@ export function getFilteredDialogs() {
                 if (d.session_id.startsWith('tg-')) platform = 'telegram';
                 else if (d.session_id.startsWith('max-')) platform = 'max';
                 else if (d.session_id.startsWith('vk-')) platform = 'vk';
+                else if (d.session_id.startsWith('ok-')) platform = 'ok';
                 else if (d.session_id.startsWith('email_')) platform = 'email';
                 else if (d.session_id.startsWith('avito-')) platform = 'avito';
+                else if (d.session_id.startsWith('hh-')) platform = 'hh';
             }
             if (!platform) platform = 'web';
             return state.activePlatforms.has(platform);
         });
     }
 
-    // Фильтр по дате
     if (state.dateRange.from) {
         const fromDate = new Date(state.dateRange.from + 'T00:00:00');
         const toDate = state.dateRange.to
@@ -105,11 +94,9 @@ export function getFilteredDialogs() {
     return filtered;
 }
 
-/**
- * Сброс состояния к начальным значениям
- */
 export function resetState() {
     state.dialogs = [];
+    state.hasLoadedDialogsOnce = false;
     state.activeSessionId = null;
     state.activeClientId = null;
     state.lastHistoryContent = '';
@@ -118,8 +105,15 @@ export function resetState() {
     state.activePlatforms.clear();
     state.activeModes.clear();
     state.dateRange = { from: null, to: null };
+    state.periodPreset = null;
     state.listScrollBeforeDialogOpen = null;
     const now = new Date();
+    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     state.calendarYear = now.getFullYear();
     state.calendarMonth = now.getMonth();
+    state.calendarBounds = {
+        minDate: todayKey,
+        maxDate: todayKey,
+        maxSource: 'today'
+    };
 }

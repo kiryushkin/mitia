@@ -3,28 +3,43 @@ from fastapi.responses import JSONResponse
 import httpx
 import uuid
 import base64
-from ..core.config import log, YOOKASSA_CONFIG
+from decimal import Decimal, InvalidOperation
+from ..core.config import log, PUBLIC_APP_URL, YOOKASSA_CONFIG
 from ..routers.admin.deps import verify_token
-from ..services.db_service import add_balance_transaction, get_balance_transactions
+from ..services.db_service import credit_balance_once, get_balance_transactions, get_user_by_client_id
+from ..services.notification_service import notify_balance_topped_up
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
 @router.post("/create")
-async def create_payment(request: Request):
+async def create_payment(request: Request, token_data: dict = Depends(verify_token)):
     """Создание платежа в ЮKassa."""
     try:
         data = await request.json()
-        amount = data.get("amount")
-        client_id = data.get("client_id")
-        
-        log.info(f"[PAYMENT] Create request: amount={amount} (type={type(amount).__name__}), client_id={client_id}")
-        
-        if not amount or not client_id:
-            log.warning(f"[PAYMENT] 400 Bad Request: amount={amount}, client_id={client_id}")
+        raw_amount = data.get("amount")
+        requested_client_id = str(data.get("client_id") or "").strip()
+        token_client_id = str(token_data.get("sub") or "").strip()
+        is_superadmin = token_data.get("role") == "superadmin"
+
+        if not token_client_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        if requested_client_id and requested_client_id != token_client_id and not is_superadmin:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        client_id = requested_client_id if is_superadmin and requested_client_id else token_client_id
+        try:
+            amount = Decimal(str(raw_amount))
+        except (InvalidOperation, TypeError, ValueError):
+            amount = Decimal("0")
+
+        if amount < Decimal("0.01") or amount > Decimal("1000000") or amount.as_tuple().exponent < -2:
             return JSONResponse(
-                status_code=400, 
-                content={"success": False, "error": "Amount and client_id are required"}
+                status_code=400,
+                content={"success": False, "error": "Invalid amount"}
             )
+
+        amount_value = f"{amount:.2f}"
+        log.info(f"[PAYMENT] Create request: amount={amount_value}, client_id={client_id}")
 
         from ..services.integrations_service import get_integration_settings
         user_yk = await get_integration_settings(client_id, 'yookassa')
@@ -46,18 +61,36 @@ async def create_payment(request: Request):
         auth_b64 = base64.b64encode(auth_str.encode()).decode()
         
         idempotence_key = str(uuid.uuid4())
-        
+        user = await get_user_by_client_id(client_id)
+        customer_email = str(getattr(user, "email", "") or "").strip()
+        if not customer_email:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "error": "Для оплаты укажите email в профиле аккаунта"},
+            )
+
         payload = {
             "amount": {
-                "value": f"{amount}.00",
+                "value": amount_value,
                 "currency": "RUB"
             },
             "confirmation": {
                 "type": "redirect",
-                "return_url": f"{request.base_url}admin-v2?client_id={client_id}&tab=profile"
+                "return_url": f"{PUBLIC_APP_URL}/admin?client_id={client_id}&tab=profile"
             },
             "capture": True,
             "description": f"Пополнение баланса Mitia: {client_id}",
+            "receipt": {
+                "customer": {"email": customer_email},
+                "items": [{
+                    "description": "Пополнение баланса MITIA",
+                    "quantity": "1.00",
+                    "amount": {"value": amount_value, "currency": "RUB"},
+                    "vat_code": 1,
+                    "payment_subject": "service",
+                    "payment_mode": "full_prepayment",
+                }],
+            },
             "metadata": {
                 "client_id": client_id
             }
@@ -86,11 +119,13 @@ async def create_payment(request: Request):
                 "payment_id": res_data["id"]
             }
 
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         err_trace = traceback.format_exc()
         log.error(f"Create Payment Error: {e}\n{err_trace}")
-        return JSONResponse(status_code=500, content={"success": False, "error": str(e)})
+        return JSONResponse(status_code=500, content={"success": False, "error": "Payment creation failed"})
 
 async def create_payment_internal(client_id: str, amount: int, description: str, return_url: str = None):
     """Внутренняя функция для создания платежа (вызывается из AI)."""
@@ -216,17 +251,19 @@ async def yookassa_webhook(request: Request):
                 return {"status": "ok"}
 
             if verified_amount:
-                from ..services.db_service import update_user_balance
                 amount_value = float(verified_amount)
-                await update_user_balance(client_id, -amount_value)
-                await add_balance_transaction(
+                credited = await credit_balance_once(
                     client_id=client_id,
                     amount=amount_value,
                     source="topup",
                     description="Пополнение баланса через ЮKassa",
-                    external_id=payment_id
+                    external_id=payment_id,
                 )
-                log.info(f"Payment verified & credited: {payment_id} for {client_id}, amount: {verified_amount}, source: {source}")
+                if credited:
+                    await notify_balance_topped_up(client_id, amount_value, source="yookassa")
+                    log.info(f"Payment verified & credited: {payment_id} for {client_id}, amount: {verified_amount}, source: {source}")
+                else:
+                    log.info(f"Payment webhook already processed: {payment_id} for {client_id}")
 
         return {"status": "ok"}
     except Exception as e:
@@ -234,9 +271,53 @@ async def yookassa_webhook(request: Request):
         return JSONResponse(status_code=400, content={"status": "error"})
 
 @router.get("/status/{payment_id}")
-async def get_payment_status(payment_id: str):
-    """Проверка статуса платежа (заглушка)."""
-    return {"status": "pending", "payment_id": payment_id}
+async def get_payment_status(payment_id: str, token_data: dict = Depends(verify_token)):
+    """Возвращает подтверждённый ЮKassa статус только владельцу платежа."""
+    token_client_id = str(token_data.get("sub") or "").strip()
+    if not token_client_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    shop_id = YOOKASSA_CONFIG.get("shop_id")
+    secret_key = YOOKASSA_CONFIG.get("secret_key")
+    if not shop_id or not secret_key:
+        raise HTTPException(status_code=503, detail="Yookassa is not configured")
+
+    auth_b64 = base64.b64encode(f"{shop_id}:{secret_key}".encode()).decode()
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.get(
+            f"https://api.yookassa.ru/v3/payments/{payment_id}",
+            headers={"Authorization": f"Basic {auth_b64}"},
+        )
+    if response.status_code == 404:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    if response.status_code != 200:
+        log.warning("Payment status lookup failed: payment=%s status=%s", payment_id, response.status_code)
+        raise HTTPException(status_code=502, detail="Could not verify payment")
+
+    payment = response.json()
+    if payment.get("metadata", {}).get("client_id") != token_client_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    amount = payment.get("amount", {}).get("value")
+    credited = False
+    if payment.get("status") == "succeeded" and payment.get("paid") and amount:
+        credited = await credit_balance_once(
+            client_id=token_client_id,
+            amount=float(amount),
+            source="topup",
+            description="Пополнение баланса через ЮKassa",
+            external_id=payment_id,
+        )
+        if credited:
+            await notify_balance_topped_up(token_client_id, float(amount), source="yookassa")
+
+    return {
+        "payment_id": payment_id,
+        "status": payment.get("status"),
+        "paid": bool(payment.get("paid")),
+        "amount": amount,
+        "credited": credited,
+    }
 
 
 @router.get("/history")

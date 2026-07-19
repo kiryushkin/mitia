@@ -6,341 +6,276 @@
     <title>System Control</title>
     <meta name="robots" content="noindex, nofollow, noarchive">
     <meta name="googlebot" content="noindex, nofollow">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔒</text></svg>">
-    <script src="http://127.0.0.1:5007/api/chat/chat-widget.js?client_id=mitia_assistant" defer></script>
-    <style>
-        :root { --primary: #ff3300; --bg: #ffffff; --text: #1a1a1a; --gray: #f4f4f4; --border: #e0e0e0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; line-height: 1.5; }
-        .container { width: 100%; max-width: 100%; margin: 0; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
-        h1 { margin: 0; font-size: 24px; font-weight: 800; color: var(--primary); }
-        
-        .search-box { margin-bottom: 20px; display: flex; gap: 10px; }
-        input[type="text"] { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; }
-        
-        /* Desktop Table */
-        .desktop-table { width: 100%; border-collapse: collapse; display: none; }
-        .desktop-table th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border); color: #666; font-size: 13px; text-transform: uppercase; }
-        .desktop-table td { padding: 15px 12px; border-bottom: 1px solid var(--border); }
-        
-        /* Mobile List */
-        .mobile-list { display: block; }
-        .user-card { background: var(--gray); margin-bottom: 10px; border-radius: 10px; padding: 15px; cursor: pointer; transition: transform 0.1s; position: relative; }
-        .user-card:active { transform: scale(0.98); }
-        .user-card .email { font-weight: 600; font-size: 16px; padding-right: 20px; }
-        .user-card .mobile-status { position: absolute; top: 15px; right: 15px; width: 12px; height: 12px; border-radius: 50%; }
-        .user-card .details { display: block; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); }
-        .user-card:not(.active) .details { display: none; }
-        
-        .mobile-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-        .mobile-actions .btn { width: 100%; }
-        .mobile-balance-row { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; }
-        .mobile-balance-row .balance-input { flex: 1; height: 40px; }
-        
-        .btn { padding: 10px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; transition: opacity 0.2s; height: 40px; box-sizing: border-box; vertical-align: middle; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
-        .btn:hover { opacity: 0.8; }
-        .btn-del { background: #ff4d4d; color: white; }
-        .btn-toggle { background: #eee; color: #333; }
-        .btn-toggle.active { background: #28a745; color: white; }
-        
-        .balance-input { 
-            height: 40px; 
-            padding: 0 10px; 
-            border: 1px solid var(--border); 
-            border-radius: 6px; 
-            box-sizing: border-box; 
-            vertical-align: middle;
-            -webkit-appearance: none;
-            -moz-appearance: textfield;
-            appearance: none;
-        }
-        .balance-input::-webkit-outer-spin-button,
-        .balance-input::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-
-        .status-badge { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
-        .status-on { background: #28a745; }
-        .status-off { background: #ff4d4d; }
-
-        @media (min-width: 768px) {
-            .desktop-table { display: table; }
-            .mobile-list { display: none; }
-        }
-    </style>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22></text></svg>">
+    <script>document.documentElement.classList.add('sa-preload');</script>
+    <link rel="stylesheet" href="/api/chat/static/css/superadmin.css">
+    <script src="/api/chat/static/js/superadmin.js?v=3" defer></script>
 </head>
-<body>
-    <div class="container">
-        <header>
-            <h1>Mitia.Admin</h1>
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div id="stats" style="font-size: 14px; color: #666;"></div>
-                <button id="reauthBtn" class="btn btn-toggle" onclick="reAuth()" style="display: none; font-size: 12px; height: 32px;">Сменить токен</button>
+<body class="superadmin-auth">
+    <div class="superadmin-shell">
+        <div class="superadmin-frame">
+            <aside class="sa-rail">
+                <div class="sa-brand sa-brand--avatar">
+                    <img src="/api/chat/img/favicon.svg" alt="Митя" class="sa-brand-image">
+                </div>
+                <div class="sa-rail-nav">
+                    <button class="sa-rail-btn sa-rail-btn--active" id="railUsersBtn" type="button" aria-label="Пользователи" onclick="switchTab('users')">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5"></path><path d="M6.5 10v9h11v-9"></path><path d="M10 19v-5h4v5"></path></svg>
+                    </button>
+                    <button class="sa-rail-btn" id="railNewsBtn" type="button" aria-label="Новости" onclick="switchTab('news')">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M7 9h10"></path><path d="M7 13h6"></path><path d="M15 13h2"></path></svg>
+                    </button>
+                    <button class="sa-rail-btn" id="railConditionsBtn" type="button" aria-label="Условия" onclick="switchTab('conditions')">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"></path><path d="M7 7h10"></path><path d="M7 12h10"></path><path d="M7 17h10"></path></svg>
+                    </button>
+                    <button class="sa-rail-btn" id="railSecurityBtn" type="button" aria-label="Безопасность" onclick="switchTab('security')">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33h0A1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0A1.65 1.65 0 0 0 20.91 10H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"></path></svg>
+                    </button>
+                    <button class="sa-rail-btn" id="railAccessBtn" type="button" aria-label="Доступ" onclick="switchTab('access')">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z"></path><path d="M9.5 12.5 11 14l3.5-3.5"></path></svg>
+                    </button>
+                    <button class="sa-rail-btn" id="railNewsletterBtn" type="button" aria-label="Рассылка" onclick="switchTab('newsletter')">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4z"></path><path d="m4 8 8 6 8-6"></path></svg>
+                    </button>
+                </div>
+                <button class="sa-rail-btn sa-rail-btn--bottom sa-hidden" id="railReauthBtn" type="button" aria-label="Сменить токен" onclick="reAuth()">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+                </button>
+            </aside>
+
+            <div class="superadmin-container">
+                <header class="superadmin-header">
+                    <div class="sa-search-hero">
+                        <span class="sa-search-icon">⌕</span>
+                        <input type="text" id="searchInput" class="sa-top-search" placeholder="Search by email or client_id">
+                    </div>
+                    <div class="superadmin-header-actions">
+                        <div id="stats" class="superadmin-stats-inline"></div>
+                        <button id="reauthBtn" class="sa-btn sa-btn--ghost sa-hidden" onclick="reAuth()" style="display:none;">Сменить токен</button>
+                    </div>
+                </header>
+
+                <div id="errorBox" class="sa-error"></div>
+
+                <section id="authSection" class="sa-auth-screen">
+                    <div class="sa-card sa-panel sa-auth-card">
+                        <div class="sa-inline-form" id="authLoginForm">
+                            <input type="password" id="tokenInput" class="sa-input" placeholder="••••••••••••••••">
+                            <div class="sa-action-row sa-auth-actions">
+                                <button class="sa-btn sa-btn--primary" id="tokenSubmitBtn" onclick="submitToken()">Войти</button>
+                            </div>
+                        </div>
+                        <div class="sa-inline-form sa-hidden" id="authLockedForm">
+                            <input type="password" id="unlockCodeInput" class="sa-input" placeholder="Код разблокировки">
+                            <div class="sa-action-row sa-auth-actions">
+                                <button class="sa-btn sa-btn--primary" id="unlockSubmitBtn" onclick="submitUnlockCode()">Разблокировать</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="sa-dashboard sa-hidden" id="dashboardShell">
+                    <div class="sa-dashboard-main">
+                        <div class="sa-dashboard-content sa-dashboard-content--plain">
+                            <div class="sa-dashboard-topbar sa-dashboard-topbar--plain">
+                                <div>
+                                    <h2 class="sa-section-heading">Панель управления</h2>
+                                    <p class="sa-helper">Управление клиентами, новостями и индивидуальными условиями</p>
+                                </div>
+                            </div>
+
+                            <section id="usersSection" class="sa-section-view sa-hidden">
+                                <div class="sa-kpi-strip sa-kpi-strip--filters">
+                                    <button class="sa-stat-card sa-stat-filter sa-stat-card--featured" id="filterAllBtn" type="button" onclick="applyUsersFilter('all')"><div class="sa-stat-value" id="statTotal">0</div><div class="sa-stat-label">Всего</div></button>
+                                    <button class="sa-stat-card sa-stat-filter" id="filterActiveBtn" type="button" onclick="applyUsersFilter('active')"><div class="sa-stat-value" id="statActive">0</div><div class="sa-stat-label">Активных</div></button>
+                                    <button class="sa-stat-card sa-stat-filter" id="filterAutoRenewBtn" type="button" onclick="applyUsersFilter('auto_renew')"><div class="sa-stat-value" id="statAutoRenew">0</div><div class="sa-stat-label">Автопродление</div></button>
+                                    <button class="sa-stat-card sa-stat-filter" id="filterUnverifiedBtn" type="button" onclick="applyUsersFilter('unverified')"><div class="sa-stat-value" id="statUnverified">0</div><div class="sa-stat-label">Верификации</div></button>
+                                    <button class="sa-stat-card sa-stat-filter" id="filterNewsletterBtn" type="button" onclick="applyUsersFilter('newsletter')"><div class="sa-stat-value" id="statNewsletter">0</div><div class="sa-stat-label">Подписка</div></button>
+                                    <button class="sa-stat-card sa-stat-filter" id="filterCustomConditionsBtn" type="button" onclick="applyUsersFilter('custom_conditions')"><div class="sa-stat-value" id="statCustomConditions">0</div><div class="sa-stat-label">Условиями</div></button>
+                                </div>
+                                <div id="mobileList" class="sa-user-list"></div>
+                            </section>
+
+                            <section id="newsSection" class="sa-section-view sa-hidden">
+                                <div class="sa-layout-grid">
+                                    <div class="sa-card sa-panel sa-inner-card">
+                                        <h3 id="newsFormTitle" style="margin-top:0">Публикация новости</h3>
+                                        <input type="hidden" id="newsEditId">
+                                        <div class="sa-inline-form">
+                                            <input type="text" id="newsTitle" class="sa-input" placeholder="Заголовок новости">
+                                            <textarea id="newsBody" class="sa-textarea" placeholder="Текст новости"></textarea>
+                                            <input type="text" id="newsClientId" class="sa-input" placeholder="client_id пользователя, если новость персональная">
+                                            <div class="sa-control-grid--two">
+                                                <input type="text" id="newsActionUrl" class="sa-input" placeholder="Ссылка действия, например /admin/tariffs">
+                                                <input type="text" id="newsActionLabel" class="sa-input" placeholder="Текст кнопки, например Открыть тарифы">
+                                            </div>
+                                            <div class="sa-action-row">
+                                                <button class="sa-btn sa-btn--ghost sa-hidden" id="newsCancelBtn" onclick="resetNewsForm()">Отмена</button>
+                                                <button class="sa-btn sa-btn--primary" id="newsSubmitBtn" onclick="publishNews()">Опубликовать</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="sa-card sa-panel sa-inner-card">
+                                        <h3 style="margin-top:0">Опубликованные новости</h3>
+                                        <div id="newsList" class="sa-news-list"></div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section id="conditionsSection" class="sa-section-view sa-hidden">
+                                <div id="conditionsWorkbench"></div>
+                            </section>
+
+                            <section id="securitySection" class="sa-section-view sa-hidden">
+                                <div class="sa-card sa-panel sa-inner-card">
+                                    <h3 style="margin-top:0">Регистрация новых пользователей</h3>
+                                    <p class="sa-helper">Можно временно закрыть регистрацию и показать вместо формы баннер для новых пользователей платформы.</p>
+                                    <div id="registrationLockPanel" class="sa-info-grid"></div>
+                                    <div class="sa-inline-form" style="margin-top:16px">
+                                        <label class="sa-helper"><input type="checkbox" id="registrationLockEnabled"> Заблокировать регистрацию</label>
+                                        <input type="text" id="registrationLockTitle" class="sa-input" placeholder="Заголовок баннера">
+                                        <textarea id="registrationLockMessage" class="sa-textarea" placeholder="Текст баннера"></textarea>
+                                        <div class="sa-action-row">
+                                            <button class="sa-btn sa-btn--primary" type="button" onclick="saveRegistrationLock()">Сохранить настройки</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section id="accessSection" class="sa-section-view sa-hidden">
+                                <div class="sa-card sa-panel sa-inner-card">
+                                    <h3 style="margin-top:0">Контроль доступа superadmin</h3>
+                                    <p class="sa-helper">Статус блокировки, счётчик неудачных попыток и доступные сетевые метаданные текущей сессии.</p>
+                                    <div id="accessStatusPanel" class="sa-info-grid"></div>
+                                </div>
+                            </section>
+
+                            <section id="newsletterSection" class="sa-section-view sa-hidden">
+                                <div class="sa-users-shell sa-card sa-panel sa-inner-card" id="newsletterShell">
+                                    <div class="sa-users-shell-head">
+                                        <div>
+                                            <h3 class="sa-users-shell-title">Техническая рассылка</h3>
+                                            <p class="sa-helper">Письмо отправляется в классическом дизайне системных сообщений Mitia.</p>
+                                        </div>
+                                    </div>
+                                    <div class="sa-inline-form">
+                                        <input type="text" id="newsletterSubject" class="sa-input" placeholder="Тема письма">
+                                        <textarea id="newsletterBody" class="sa-textarea" placeholder="Текст технического сообщения"></textarea>
+                                        <div class="sa-action-row">
+                                            <button class="sa-btn sa-btn--primary" type="button" onclick="sendNewsletter(true)">Отправить подписанным</button>
+                                            <button class="sa-btn sa-btn--ghost" type="button" onclick="fillTechnicalNewsletterTemplate()">Подставить шаблон</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+
+                    <aside class="sa-sidepanel sa-card">
+                        <div class="sa-sidepanel-inner">
+                            <div class="sa-sidepanel-chart">
+                                <div class="sa-sidepanel-caption">Реальная активность аккаунта</div>
+                                <div class="sa-sidepanel-total" id="sa-sidepanel-total">0 ₽</div>
+                                <div class="sa-sidepanel-toolbar">
+                                    <div class="sa-sidepanel-tabs" id="sa-sidepanel-tabs">
+                                        <button type="button" class="sa-sidepanel-tab" data-chart-mode="purchases" onclick="setSidebarChartMode('purchases')">Покупки</button>
+                                        <button type="button" class="sa-sidepanel-tab" data-chart-mode="tariffs" onclick="setSidebarChartMode('tariffs')">Тарифы</button>
+                                        <button type="button" class="sa-sidepanel-tab is-active" data-chart-mode="limits" onclick="setSidebarChartMode('limits')">Лимиты</button>
+                                        <button type="button" class="sa-sidepanel-tab" data-chart-mode="slots" onclick="setSidebarChartMode('slots')">Слоты</button>
+                                    </div>
+                                    <div class="sa-sidepanel-periods">
+                                        <button type="button" class="sa-sidepanel-period" data-chart-period="7d" onclick="setSidebarChartPeriod('7d')">7 дней</button>
+                                        <button type="button" class="sa-sidepanel-period is-active" data-chart-period="30d" onclick="setSidebarChartPeriod('30d')">30 дней</button>
+                                        <button type="button" class="sa-sidepanel-period" data-chart-period="90d" onclick="setSidebarChartPeriod('90d')">90 дней</button>
+                                    </div>
+                                </div>
+                                <div class="sa-sidepanel-date-mode">
+                                    <button type="button" class="sa-sidepanel-period is-active" data-date-mode="day" onclick="setSidebarDateMode('day')">День</button>
+                                    <button type="button" class="sa-sidepanel-period" data-date-mode="range" onclick="setSidebarDateMode('range')">Период</button>
+                                </div>
+                                <div class="sa-sidepanel-date-row" id="sa-sidepanel-day-row">
+                                    <label class="sa-sidepanel-date-label" for="sa-sidepanel-date">Дата среза</label>
+                                    <input type="date" id="sa-sidepanel-date" class="sa-sidepanel-date" onchange="setSidebarChartDate(this.value)">
+                                </div>
+                                <div class="sa-sidepanel-date-range sa-hidden" id="sa-sidepanel-range-row">
+                                    <div class="sa-sidepanel-date-field">
+                                        <label class="sa-sidepanel-date-label" for="sa-sidepanel-date-from">С</label>
+                                        <input type="date" id="sa-sidepanel-date-from" class="sa-sidepanel-date" onchange="setSidebarChartRange('from', this.value)">
+                                    </div>
+                                    <div class="sa-sidepanel-date-field">
+                                        <label class="sa-sidepanel-date-label" for="sa-sidepanel-date-to">По</label>
+                                        <input type="date" id="sa-sidepanel-date-to" class="sa-sidepanel-date" onchange="setSidebarChartRange('to', this.value)">
+                                    </div>
+                                </div>
+                                <div class="sa-chart-card">
+                                    <div class="sa-chart-line">
+                                        <span id="sa-chart-line-visual"></span>
+                                    </div>
+                                    <div class="sa-chart-legend" id="sa-chart-legend"></div>
+                                    <div class="sa-chart-detail" id="sa-chart-detail">Выбери режим, период или дату, чтобы посмотреть детализацию.</div>
+                                </div>
+                            </div>
+                            <div class="sa-sidepanel-metrics">
+                                <div class="sa-sidepanel-metric-card">
+                                    <div class="sa-sidepanel-metric-label">Ручные начисления</div>
+                                    <div class="sa-sidepanel-metric-value" id="sa-sidepanel-manual-credits">0 ₽</div>
+                                </div>
+                                <div class="sa-sidepanel-metric-card">
+                                    <div class="sa-sidepanel-metric-label">Списано</div>
+                                    <div class="sa-sidepanel-metric-value" id="sa-sidepanel-spent-total">0 ₽</div>
+                                </div>
+                                <div class="sa-sidepanel-metric-card">
+                                    <div class="sa-sidepanel-metric-label">Платных тарифов</div>
+                                    <div class="sa-sidepanel-metric-value" id="sa-sidepanel-active-tariffs">0</div>
+                                </div>
+                                <div class="sa-sidepanel-metric-card">
+                                    <div class="sa-sidepanel-metric-label">Доп. слоты</div>
+                                    <div class="sa-sidepanel-metric-value" id="sa-sidepanel-extra-assistants">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
             </div>
-        </header>
-
-        <div id="errorBox" style="display: none; background: #fff3cd; border: 1px solid #ffc107; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #856404;"></div>
-
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="Поиск по email..." oninput="loadUsers()">
         </div>
-
-        <div id="mobileList" class="mobile-list"></div>
-        
-        <table id="desktopTable" class="desktop-table">
-            <thead>
-                <tr>
-                    <th>Email / сайт</th>
-                    <th>Баланс</th>
-                    <th>Тариф</th>
-                    <th>Активность</th>
-                    <th>Пополнение</th>
-                    <th>Действия</th>
-                </tr>
-            </thead>
-            <tbody id="desktopBody"></tbody>
-        </table>
     </div>
 
-    <script>
-        const STORAGE_KEY = 'superadmin_auth_token';
-        let TOKEN = localStorage.getItem(STORAGE_KEY);
+    <nav class="sa-mobile-nav" aria-label="Навигация superadmin">
+        <button class="sa-mobile-nav-btn is-active" id="mobileUsersBtn" type="button" onclick="switchTab('users')" aria-label="Пользователи" title="Пользователи">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5"></path><path d="M6.5 10v9h11v-9"></path><path d="M10 19v-5h4v5"></path></svg>
+        </button>
+        <button class="sa-mobile-nav-btn" id="mobileNewsBtn" type="button" onclick="switchTab('news')" aria-label="Новости" title="Новости">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M7 9h10"></path><path d="M7 13h6"></path><path d="M15 13h2"></path></svg>
+        </button>
+        <button class="sa-mobile-nav-btn" id="mobileConditionsBtn" type="button" onclick="switchTab('conditions')" aria-label="Условия" title="Условия">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18"></path><path d="M7 7h10"></path><path d="M7 12h10"></path><path d="M7 17h10"></path></svg>
+        </button>
+        <button class="sa-mobile-nav-btn" id="mobileSecurityBtn" type="button" onclick="switchTab('security')" aria-label="Безопасность" title="Безопасность">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33h0A1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0A1.65 1.65 0 0 0 20.91 10H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"></path></svg>
+        </button>
+        <button class="sa-mobile-nav-btn" id="mobileAccessBtn" type="button" onclick="switchTab('access')" aria-label="Доступ" title="Доступ">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z"></path><path d="M9.5 12.5 11 14l3.5-3.5"></path></svg>
+        </button>
+        <button class="sa-mobile-nav-btn" id="mobileNewsletterBtn" type="button" onclick="switchTab('newsletter')" aria-label="Рассылка" title="Рассылка">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4z"></path><path d="m4 8 8 6 8-6"></path></svg>
+        </button>
+        <button class="sa-mobile-nav-btn sa-hidden" id="mobileReauthBtn" type="button" onclick="reAuth()" aria-label="Сменить токен" title="Сменить токен">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+        </button>
+    </nav>
 
-        function getToken() {
-            if (!TOKEN) {
-                TOKEN = prompt('Введите SUPERADMIN_MASTER_TOKEN:');
-                if (TOKEN) localStorage.setItem(STORAGE_KEY, TOKEN);
-            }
-            return TOKEN;
-        }
+    <div id="sa-modal-overlay" class="sa-modal-overlay sa-hidden" aria-hidden="true">
+        <div class="sa-modal-card" role="dialog" aria-modal="true" aria-labelledby="sa-modal-title">
+            <div class="sa-modal-head">
+                <h3 id="sa-modal-title" class="sa-modal-title">Подтверждение</h3>
+                <button type="button" class="sa-modal-close" onclick="closeModal()" aria-label="Закрыть">×</button>
+            </div>
+            <div id="sa-modal-body" class="sa-modal-body"></div>
+            <div id="sa-modal-actions" class="sa-modal-actions"></div>
+        </div>
+    </div>
 
-        // Показываем кнопку перевхода, если токен уже есть
-        if (TOKEN) {
-            document.getElementById('reauthBtn').style.display = 'inline-block';
-        }
-
-        function reAuth() {
-            TOKEN = null;
-            localStorage.removeItem(STORAGE_KEY);
-            document.getElementById('reauthBtn').style.display = 'none';
-            document.getElementById('errorBox').style.display = 'none';
-            if (!getToken()) return;
-            document.getElementById('reauthBtn').style.display = 'inline-block';
-            loadUsers();
-        }
-
-        function showError(message) {
-            const box = document.getElementById('errorBox');
-            box.innerText = message;
-            box.style.display = 'block';
-            document.getElementById('reauthBtn').style.display = 'inline-block';
-        }
-
-        async function loadUsers() {
-            const token = getToken();
-            if (!token) return showError('Токен не указан');
-
-            const q = document.getElementById('searchInput').value;
-            let res;
-            try {
-                res = await fetch(`/api/chat/superadmin/users?q=${q}`, {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-            } catch (e) {
-                return showError('Ошибка сети: ' + e.message);
-            }
-
-            if (res.status === 403 || res.status === 401) {
-                TOKEN = null;
-                localStorage.removeItem(STORAGE_KEY);
-                document.getElementById('reauthBtn').style.display = 'none';
-                return showError('Неверный токен. Нажмите «Сменить токен» или обновите страницу.');
-            }
-
-            const data = await res.json();
-            if (data.status === 'success') {
-                document.getElementById('errorBox').style.display = 'none';
-                document.getElementById('reauthBtn').style.display = 'inline-block';
-                renderDesktop(data.users);
-                renderMobile(data.users);
-                document.getElementById('stats').innerText = `Всего: ${data.users.length}`;
-            } else {
-                showError('Ошибка API: ' + (data.message || data.detail || JSON.stringify(data)));
-            }
-        }
-
-        function renderDesktop(users) {
-            const body = document.getElementById('desktopBody');
-            body.innerHTML = users.map(u => `
-                <tr>
-                    <td>
-                        <strong>${u.email}</strong><br>
-                        <span style="font-size: 11px; color: ${u.is_verified ? '#28a745' : '#ff4d4d'}">
-                            ${u.is_verified ? '● Почта подтверждена' : '○ Почта не подтверждена'}
-                        </span><br>
-                        <span style="font-size: 11px; color: ${u.notifications?.platform_news ? '#28a745' : '#888'}">
-                            ${u.notifications?.platform_news ? '🔔 Подписан на новости' : '🔕 Нет подписки на новости'}
-                        </span><br>
-                        <span style="font-size: 11px; color: ${u.auto_renew ? '#28a745' : '#888'}">
-                            ${u.auto_renew ? '🔄 Автопродление: ВКЛ' : '⏹ Автопродление: ВЫКЛ'}
-                        </span><br>
-                        <a href="${u.site_url}" target="_blank" style="font-size: 12px; color: var(--primary); text-decoration: none;">${u.site_url || 'Домен не указан'}</a>
-                    </td>
-                    <td>
-                        <div style="font-weight: bold">${u.balance} ₽</div>
-                        <small style="color: #28a745">Внес: ${u.total_paid} ₽</small><br>
-                        <small style="color: #ff3300">Траты: ${u.total_spent} сообщ.</small>
-                    </td>
-                    <td>
-                        <select class="balance-input" onchange="setTariff('${u.client_id}', this.value)" style="width: 100px; font-size: 12px;">
-                            <option value="start" ${u.tariff === 'start' ? 'selected' : ''}>Старт</option>
-                            <option value="business" ${u.tariff === 'business' ? 'selected' : ''}>Бизнес</option>
-                            <option value="neuro" ${u.tariff === 'neuro' ? 'selected' : ''}>Нейро</option>
-                        </select><br>
-                        <small style="color: #666">Лимит: ${u.messages_consumed}</small><br>
-                        <small style="color: #28a745">Оплачено до: ${u.tariff_expires_at ? new Date(u.tariff_expires_at).toLocaleDateString() : 'Не задано'}</small><br>
-                        <div style="display: flex; gap: 5px; margin-top: 5px;">
-                            <button class="btn btn-toggle" onclick="extendTariff('${u.client_id}')" style="height: 20px; font-size: 10px; padding: 0 5px; flex: 1;">+30 дней</button>
-                            <button class="btn btn-del" onclick="resetTariff('${u.client_id}')" style="height: 20px; font-size: 10px; padding: 0 5px; flex: 1;">Сброс</button>
-                        </div>
-                    </td>
-                    <td>
-                        <div style="font-size: 13px;">Страниц: <strong>${u.indexed_pages}</strong></div>
-                        <div style="font-size: 11px; color: #888; margin-top: 5px;">
-                            Активность:<br>${u.last_activity ? new Date(u.last_activity).toLocaleString() : 'Нет данных'}
-                        </div>
-                    </td>
-                    <td>
-                        <div style="display: flex; align-items: center; gap: 5px;">
-                            <button class="btn btn-del" onclick="addBalance('${u.client_id}', false, -1)" style="width: 30px; padding: 0;">-</button>
-                            <input type="number" class="balance-input" placeholder="₽" id="add-${u.client_id}" style="width: 50px">
-                            <button class="btn btn-toggle active" onclick="addBalance('${u.client_id}', false, 1)" style="width: 30px; padding: 0;">+</button>
-                        </div>
-                    </td>
-                    <td>
-                        <div style="display: flex; flex-direction: column; gap: 5px;">
-                            <button class="btn btn-toggle" onclick="window.open('/admin-v2?client_id=${u.client_id}&su_token=' + encodeURIComponent(getToken()))">Админка</button>
-                            <button class="btn ${u.is_active ? 'btn-toggle active' : 'btn-del'}" onclick="toggleStatus('${u.client_id}', ${u.is_active})">
-                                ${u.is_active ? 'Вкл' : 'Выкл'}
-                            </button>
-                            <button class="btn btn-toggle" onclick="securityReset('${u.client_id}')">Экстренный сброс</button>
-                            <button class="btn btn-del" onclick="deleteUser('${u.client_id}')">Удалить</button>
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function renderMobile(users) {
-            const list = document.getElementById('mobileList');
-            list.innerHTML = users.map(u => `
-                <div class="user-card" onclick="this.classList.toggle('active')">
-                    <div class="mobile-status ${u.is_active ? 'status-on' : 'status-off'}"></div>
-                    <div class="email">${u.email}</div>
-                    <div style="font-size: 11px; color: ${u.is_verified ? '#28a745' : '#ff4d4d'}; margin-bottom: 5px;">
-                        ${u.is_verified ? 'Почта подтверждена' : 'Почта не подтверждена'}
-                    </div>
-                    <div style="font-size: 13px; color: #666;">Баланс: ${u.balance} ₽ | Страниц: ${u.indexed_pages}</div>
-                    <div style="font-size: 12px; color: var(--primary); margin-top: 5px;">${u.site_url || 'Домен не указан'}</div>
-                    <div class="details">
-                        <p><strong>Последняя активность:</strong><br>${u.last_activity ? new Date(u.last_activity).toLocaleString() : 'Нет данных'}</p>
-                        <p><strong>Траты:</strong> ${u.total_spent} токенов | <strong>Оплачено:</strong> ${u.total_paid} ₽</p>
-                        <div class="mobile-balance-row">
-                            <button class="btn btn-del" onclick="event.stopPropagation(); addBalance('${u.client_id}', true, -1)" style="width: 40px; padding: 0;">-</button>
-                            <input type="number" class="balance-input" placeholder="₽" id="add-m-${u.client_id}" onclick="event.stopPropagation()">
-                            <button class="btn btn-toggle active" onclick="event.stopPropagation(); addBalance('${u.client_id}', true, 1)" style="width: 40px; padding: 0;">+</button>
-                        </div>
-                        <div class="mobile-actions">
-                            <button class="btn btn-toggle" onclick="event.stopPropagation(); window.open('/admin?client_id=${u.client_id}&su_token=' + encodeURIComponent(getToken()))">Открыть админку клиента</button>
-                            <button class="btn btn-toggle ${u.is_active ? 'active' : ''}" onclick="event.stopPropagation(); toggleStatus('${u.client_id}', ${u.is_active})">
-                                ${u.is_active ? 'Выключить виджет' : 'Включить виджет'}
-                            </button>
-                            <button class="btn btn-toggle" onclick="event.stopPropagation(); securityReset('${u.client_id}')">Экстренный сброс</button>
-                            <button class="btn btn-del" onclick="event.stopPropagation(); deleteUser('${u.client_id}')">Удалить пользователя</button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function addBalance(clientId, isMobile = false, sign = 1) {
-            const inputId = isMobile ? 'add-m-' + clientId : 'add-' + clientId;
-            const amount = document.getElementById(inputId).value;
-            if (!amount) return;
-            await fetch('/api/chat/superadmin/update_balance', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-                body: JSON.stringify({ client_id: clientId, amount: amount * sign })
-            });
-            loadUsers();
-        }
-
-        async function toggleStatus(clientId, currentStatus) {
-            await fetch('/api/chat/superadmin/toggle_status', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-                body: JSON.stringify({ client_id: clientId, active: !currentStatus })
-            });
-            loadUsers();
-        }
-
-        async function deleteUser(clientId) {
-            if (!confirm('Удалить пользователя и все его данные?')) return;
-            const res = await fetch('/api/chat/superadmin/delete_user', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-                body: JSON.stringify({ client_id: clientId })
-            });
-            const data = await res.json();
-            if (data.error) alert(data.error);
-            loadUsers();
-        }
-
-        async function securityReset(clientId) {
-            if (!confirm('Экстренно сбросить пароль и временно отключить аккаунт/виджет до восстановления доступа?')) return;
-            const res = await fetch('/api/chat/superadmin/security-reset', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-                body: JSON.stringify({ client_id: clientId, disable_account: true })
-            });
-            const data = await res.json();
-            if (data.status !== 'success') {
-                alert(data.message || data.detail || 'Не удалось выполнить экстренный сброс');
-            } else {
-                alert(data.message || 'Экстренный сброс выполнен');
-            }
-            loadUsers();
-        }
-
-        async function setTariff(clientId, tariffId) {
-            await fetch('/api/chat/superadmin/set_tariff', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-                body: JSON.stringify({ client_id: clientId, tariff_id: tariffId })
-            });
-            loadUsers();
-        }
-
-        async function extendTariff(clientId) {
-            await fetch('/api/chat/superadmin/extend_tariff', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-                body: JSON.stringify({ client_id: clientId, days: 30 })
-            });
-            loadUsers();
-        }
-
-        async function resetTariff(clientId) {
-            if (!confirm('Аннулировать тариф и сбросить на Старт?')) return;
-            await fetch('/api/chat/superadmin/reset_tariff', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
-                body: JSON.stringify({ client_id: clientId })
-            });
-            loadUsers();
-        }
-
-        loadUsers();
-    </script>
+    <div id="sa-toast" class="sa-toast sa-hidden" aria-live="polite"></div>
 </body>
+</html>
+

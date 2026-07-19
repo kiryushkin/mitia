@@ -4,13 +4,15 @@ import uuid
 import os
 import json
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, update, insert, delete
 from ..core.config import (
     BASE_DIR, log, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES,
-    get_password_hash, verify_password
+    get_password_hash, verify_password, TARIFF_RULES
 )
 from ..services.notify_service import send_email
+from ..services.notification_service import notify_welcome_news
+from ..routers.superadmin_router import get_registration_lock_settings
 from ..services.db_service import AsyncSessionLocal, User, ClientConfig as DBClientConfig, StorageItem
 
 from ..routers.admin_router import verify_token
@@ -37,12 +39,18 @@ async def toggle_auto_renew(request: Request, token_data: dict = Depends(verify_
 @router.post("/register")
 async def register_user(request: Request):
     """Регистрация нового пользователя в PostgreSQL."""
+    registration_lock = get_registration_lock_settings()
+    if registration_lock.get("enabled"):
+        return {"status": "error", "message": registration_lock.get("message") or "Регистрация временно недоступна", "registration_locked": True}
     data = await request.json()
     email = data.get('email', '').strip().lower()
     password = data.get('password', '')
     
     if not email or not password:
         return {"status": "error", "message": "Email и пароль обязательны"}
+
+    mail_configured = bool(os.environ.get('MAIL_PASSWORD', '').strip())
+    now = datetime.utcnow()
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(User).where(User.email == email))
@@ -51,12 +59,16 @@ async def register_user(request: Request):
         if existing_user:
             if existing_user.is_verified:
                 return {"status": "error", "message": "Пользователь с таким Email уже существует"}
-            # Пользователь не подтвердил почту — пересоздаём токен и переотправляем письмо
             v_token = uuid.uuid4().hex
             existing_user.verification_token = v_token
-            existing_user.verification_token_created_at = datetime.utcnow()
+            existing_user.verification_token_created_at = now
             existing_user.password_hash = get_password_hash(password)
+            if not mail_configured:
+                existing_user.is_verified = True
+                existing_user.verification_token = None
+                existing_user.verification_token_created_at = None
             await db.commit()
+            client_id = existing_user.client_id
         else:
             client_id = f"usr_{uuid.uuid4().hex[:12]}"
             v_token = uuid.uuid4().hex
@@ -66,33 +78,52 @@ async def register_user(request: Request):
                 email=email,
                 password_hash=pwd_hash,
                 client_id=client_id,
-                verification_token=v_token,
-                verification_token_created_at=datetime.utcnow(),
-                is_verified=False,
+                verification_token=v_token if mail_configured else None,
+                verification_token_created_at=now if mail_configured else None,
+                is_verified=not mail_configured,
                 balance=0.0,
+                tariff_name="start",
+                messages_consumed=0,
+                start_trial_messages_used=0,
+                messages_reset_at=None,
                 is_active=True
             )
             db.add(new_user)
             await db.commit()
+            try:
+                await notify_welcome_news(client_id)
+            except Exception as e:
+                log.error(f"Failed to create welcome notification for {client_id}: {e}")
+
+    if not mail_configured:
+        log.warning("MAIL_PASSWORD is not set: user registered as verified without email confirmation")
+        return {
+            "status": "success",
+            "message": "Регистрация успешна! Можно войти в аккаунт.",
+            "auto_verified": True,
+        }
 
     base_url = str(request.base_url).replace("127.0.0.1", "localhost").replace("www.localhost", "localhost")
     verify_url = f"{base_url}verify-email?token={v_token}"
     
     body = (
-        f"Добро пожаловать на платформу mitia!\n\n"
+        f"Добро пожаловать на платформу MITIA!\n\n"
         f"Чтобы подтвердить регистрацию, нажмите на кнопку ниже:\n\n"
         f'<a href="{verify_url}" style="display: inline-block; padding: 14px 32px; '
         f'background-color: #ff3300; color: #ffffff; text-decoration: none; '
         f'border-radius: 8px; font-size: 16px; font-weight: 600; '
         f'font-family: -apple-system, BlinkMacSystemFont, sans-serif;">Подтвердить</a>'
-        f"\n\nЕсли вы не регистрировались на платформе mitia, просто проигнорируйте это письмо."
+        f"\n\nЕсли вы не регистрировались на платформе MITIA, просто проигнорируйте это письмо."
     )
     
-    await send_email(
-        email, 
-        "Подтверждение регистрации mitia", 
-        body
-    )
+    try:
+        await send_email(
+            email, 
+            "Подтверждение регистрации MITIA", 
+            body
+        )
+    except Exception as e:
+        log.error(f"Failed to send verification email to {email}: {e}")
     
     return {"status": "success", "message": "Регистрация успешна! Проверьте почту для подтверждения."}
 
@@ -133,7 +164,6 @@ async def verify_email(token: str):
         if not user:
             return RedirectResponse(url="/login?verify_error=true")
         
-        # Проверка срока действия токена (24 часа)
         if user.verification_token_created_at:
             if datetime.utcnow() - user.verification_token_created_at > timedelta(hours=24):
                 user.verification_token = None
@@ -144,8 +174,10 @@ async def verify_email(token: str):
         user.is_verified = True
         user.verification_token = None
         user.verification_token_created_at = None
-        
-        # Загружаем неизменяемый «золотой стандарт» из двух JSON-файлов
+        user.tariff_name = "start"
+        user.messages_consumed = 0
+        user.messages_reset_at = datetime.utcnow() + timedelta(days=TARIFF_RULES["start"]["reset_period_days"])
+
         theme_path = os.path.join(BASE_DIR, "core", "theme_defaults.json")
         intel_path = os.path.join(BASE_DIR, "core", "intelligence_defaults.json")
         default_json = {}
@@ -158,14 +190,18 @@ async def verify_email(token: str):
             log.error(f"Failed to load theme/intelligence defaults: {e}")
         
         if default_json:
-            new_cfg = DBClientConfig(client_id=user.client_id, config_json=default_json)
-            db.add(new_cfg)
-            
+            cfg_result = await db.execute(select(DBClientConfig).where(DBClientConfig.client_id == user.client_id))
+            existing_cfg = cfg_result.scalar_one_or_none()
+            if existing_cfg:
+                existing_cfg.config_json = default_json
+            else:
+                new_cfg = DBClientConfig(client_id=user.client_id, config_json=default_json)
+                db.add(new_cfg)
+
         await db.commit()
     
-    # Отправляем приветственное письмо
     welcome_body = (
-        f"Добро пожаловать на платформу mitia!\n\n"
+        f"Добро пожаловать на платформу MITIA!\n\n"
         f"Ваш аккаунт успешно подтверждён. Теперь вам доступны все возможности:\n\n"
         f"— Создание и настройка ИИ-ассистента\n"
         f"— Виджет для сайта и интеграции каналов связи\n"
@@ -174,7 +210,7 @@ async def verify_email(token: str):
         f"Чтобы начать, войдите в панель управления."
     )
     try:
-        await send_email(user.email, "Добро пожаловать в mitia", welcome_body)
+        await send_email(user.email, "Добро пожаловать в MITIA", welcome_body)
     except Exception as e:
         log.error(f"Failed to send welcome email to {user.email}: {e}")
     
@@ -203,41 +239,37 @@ async def change_email_route(request: Request, token_data: dict = Depends(verify
         if not user or not verify_password(password, user.password_hash):
             return {"status": "error", "message": "Пароль указан неверно"}
 
-        # Проверяем, не занят ли новый email
         existing = await db.execute(select(User).where(User.email == new_email))
         if existing.scalar_one_or_none():
             return {"status": "error", "message": "Этот Email уже используется"}
 
-        # Сохраняем старый email для уведомления
         old_email = user.email
 
         user.email = new_email
         await db.commit()
 
-        # Отправляем уведомление на старую почту
         notify_body = (
-            f"Email вашего аккаунта на платформе mitia был изменён на {new_email}.\n\n"
+            f"Email вашего аккаунта на платформе MITIA был изменён на {new_email}.\n\n"
             f"Если это были не вы, немедленно свяжитесь с поддержкой."
         )
         old_email_sent = False
         try:
-            old_email_sent = await send_email(old_email, "Email изменён — mitia", notify_body)
+            old_email_sent = await send_email(old_email, "Email изменён — MITIA", notify_body)
             if not old_email_sent:
-                old_email_sent = await send_email(old_email, "Email изменён — mitia", notify_body)
+                old_email_sent = await send_email(old_email, "Email изменён — MITIA", notify_body)
         except Exception as e:
             log.error(f"Failed to send email change notice to {old_email}: {e}")
 
-        # Отправляем подтверждение на новый email
         new_email_body = (
-            f"Вы успешно изменили email аккаунта на платформе mitia.\n\n"
+            f"Вы успешно изменили email аккаунта на платформе MITIA.\n\n"
             f"Новый адрес: {new_email}\n\n"
             f"Если это были не вы, немедленно свяжитесь с поддержкой."
         )
         new_email_sent = False
         try:
-            new_email_sent = await send_email(new_email, "Ваш email на mitia обновлён", new_email_body)
+            new_email_sent = await send_email(new_email, "Ваш email на MITIA обновлён", new_email_body)
             if not new_email_sent:
-                new_email_sent = await send_email(new_email, "Ваш email на mitia обновлён", new_email_body)
+                new_email_sent = await send_email(new_email, "Ваш email на MITIA обновлён", new_email_body)
         except Exception as e:
             log.error(f"Failed to send email change confirmation to {new_email}: {e}")
 
@@ -266,35 +298,28 @@ async def delete_account_route(request: Request, token_data: dict = Depends(veri
         if not user or not verify_password(password, user.password_hash):
             return {"status": "error", "message": "Пароль указан неверно"}
 
-        # Отправляем уведомление об удалении (обязательная проверка доставки до удаления)
-        notify_body = (
-            f"По вашему запросу аккаунт на платформе mitia был удалён без возможности восстановления."
-        )
-        email_sent = False
-        try:
-            email_sent = await send_email(user.email, "Аккаунт удалён — mitia", notify_body)
-            if not email_sent:
-                # один повтор на случай временного сбоя SMTP
-                email_sent = await send_email(user.email, "Аккаунт удалён — mitia", notify_body)
-        except Exception as e:
-            log.error(f"Failed to send account deletion email to {user.email}: {e}")
+        user_email = user.email
 
-        if not email_sent:
-            log.error(f"Account deletion aborted for {client_id}: deletion email was not sent")
-            return {
-                "status": "error",
-                "message": "Не удалось отправить письмо об удалении. Повторите попытку позже."
-            }
+    # A notification failure must not keep a user account alive against an
+    # explicit irreversible deletion request.
+    try:
+        await send_email(
+            user_email,
+            "Аккаунт удалён — MITIA",
+            "По вашему запросу аккаунт на платформе MITIA был удалён без возможности восстановления.",
+        )
+    except Exception as exc:
+        log.warning("Failed to send account deletion email to %s: %s", user_email, exc)
 
-        # Сначала удаляем зависимые записи, затем пользователя (из-за FK по client_id)
-        await db.execute(
-            delete(StorageItem).where(StorageItem.client_id == client_id)
+    try:
+        from ..services.account_deletion_service import delete_client_account
+        await delete_client_account(client_id)
+    except Exception:
+        log.exception("Account deletion failed for %s", client_id)
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": "Не удалось удалить аккаунт. Повторите попытку позже."},
         )
-        await db.execute(
-            delete(DBClientConfig).where(DBClientConfig.client_id == client_id)
-        )
-        await db.delete(user)
-        await db.commit()
 
     return {"status": "success", "message": "Аккаунт удалён"}
 
@@ -327,13 +352,12 @@ async def update_password_route(request: Request, token_data: dict = Depends(ver
             )
             await db.commit()
             
-            # Отправляем уведомление о смене пароля
             notify_body = (
-                f"Пароль от вашего аккаунта на платформе mitia был успешно изменён.\n\n"
+                f"Пароль от вашего аккаунта на платформе MITIA был успешно изменён.\n\n"
                 f"Если это были не вы, немедленно свяжитесь с поддержкой."
             )
             try:
-                await send_email(user.email, "Пароль изменён — mitia", notify_body)
+                await send_email(user.email, "Пароль изменён — MITIA", notify_body)
             except Exception as e:
                 log.error(f"Failed to send password change email to {user.email}: {e}")
             
@@ -366,7 +390,7 @@ async def reset_password(request: Request):
     reset_url = f"{base_url}login?reset_token={reset_token}"
     
     body = (
-        f"Вы запросили сброс пароля на платформе mitia.\n\n"
+        f"Вы запросили сброс пароля на платформе MITIA.\n\n"
         f"Чтобы установить новый пароль, нажмите на кнопку ниже:\n\n"
         f'<a href="{reset_url}" style="display: inline-block; padding: 14px 32px; '
         f'background-color: #ff3300; color: #ffffff; text-decoration: none; '
@@ -377,7 +401,7 @@ async def reset_password(request: Request):
     
     await send_email(
         email, 
-        "Восстановление пароля mitia", 
+        "Восстановление пароля MITIA", 
         body
     )
     
@@ -392,6 +416,8 @@ async def confirm_reset(request: Request):
 
     if not token or not new_password or len(new_password) < 6:
         return {"status": "error", "message": "Некорректные данные"}
+    if not token.startswith("ra_"):
+        return {"status": "error", "message": "Ссылка недействительна"}
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(User).where(User.verification_token == token))
@@ -400,7 +426,6 @@ async def confirm_reset(request: Request):
         if not user:
             return {"status": "error", "message": "Ссылка недействительна"}
         
-        # Проверка срока действия токена (24 часа)
         if user.verification_token_created_at:
             if datetime.utcnow() - user.verification_token_created_at > timedelta(hours=24):
                 user.verification_token = None
@@ -411,7 +436,6 @@ async def confirm_reset(request: Request):
         user.password_hash = get_password_hash(new_password)
         user.verification_token = None
         user.verification_token_created_at = None
-        # Автоматически снимаем экстренную блокировку после успешного восстановления доступа
         user.is_active = True
 
         cfg_result = await db.execute(select(DBClientConfig).where(DBClientConfig.client_id == user.client_id))
@@ -423,13 +447,12 @@ async def confirm_reset(request: Request):
 
         await db.commit()
 
-    # Отправляем уведомление о смене пароля
     notify_body = (
-        f"Пароль от вашего аккаунта на платформе mitia был успешно изменён.\n\n"
+        f"Пароль от вашего аккаунта на платформе MITIA был успешно изменён.\n\n"
         f"Если это были не вы, немедленно свяжитесь с поддержкой."
     )
     try:
-        await send_email(user.email, "Пароль изменён — mitia", notify_body)
+        await send_email(user.email, "Пароль изменён — MITIA", notify_body)
     except Exception as e:
         log.error(f"Failed to send password change email to {user.email}: {e}")
 
@@ -442,7 +465,7 @@ async def confirm_reset(request: Request):
 async def check_reset_token(token: str):
     """Проверка валидности токена сброса пароля.
     Строго один клик: link-токен (rl_) при первой проверке сразу ротируется в apply-токен (ra_)."""
-    if not token:
+    if not token or not token.startswith(("rl_", "ra_")):
         return {"status": "error"}
 
     async with AsyncSessionLocal() as db:
@@ -451,7 +474,6 @@ async def check_reset_token(token: str):
         if not user:
             return {"status": "error"}
 
-        # Проверка срока действия токена (24 часа)
         if user.verification_token_created_at:
             if datetime.utcnow() - user.verification_token_created_at > timedelta(hours=24):
                 user.verification_token = None
@@ -459,11 +481,9 @@ async def check_reset_token(token: str):
                 await db.commit()
                 return {"status": "error"}
 
-        # Уже apply-токен: просто подтверждаем валидность
         if token.startswith("ra_"):
             return {"status": "success", "apply_token": token}
 
-        # Link-токен или старый формат: одноразово ротируем
         apply_token = f"ra_{uuid.uuid4().hex}"
         user.verification_token = apply_token
         user.verification_token_created_at = datetime.utcnow()

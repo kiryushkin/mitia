@@ -21,6 +21,12 @@ from dataclasses import dataclass, field
 from typing import Optional
 from .cache_service import cache_service
 from ..core.config import BASE_DIR
+from .assistants_service import (
+    get_account_config,
+    get_assistant_config,
+    get_active_admin_assistant_id,
+    ensure_assistant_migration,
+)
 log = logging.getLogger('clients')
 CLIENTS_DIR = os.path.join(os.path.dirname(__file__), 'clients')
 
@@ -144,7 +150,7 @@ class ClientConfig:
             'profile_avatar': self.raw.get('theme', {}).get('profile_avatar'),
             'welcome_msg':  self.welcome_msg,
             'is_active':    user_is_active,
-            'widget_enabled': user_is_active and theme_widget_enabled,
+            'widget_enabled': theme_widget_enabled,
             'owner_name':   self.raw.get('owner_name', 'Пользователь'),
             'theme':        self.theme,
             'limits':       self.raw.get('limits', {'messages_per_session': 20}),
@@ -169,29 +175,33 @@ def _path(client_id: str) -> str:
     safe = ''.join(c for c in client_id if c.isalnum() or c in '_-')
     return os.path.join(CLIENTS_DIR, f'{safe}.json')
 
-async def get_client_config(client_id: str, use_cache: bool = True) -> ClientConfig:
+async def get_client_config(client_id: str, use_cache: bool = True, assistant_id: Optional[str] = None) -> ClientConfig:
     """
-    Получает конфиг клиента. Приоритет: БД -> JSON-файл -> Дефолты.
+    Получает runtime-конфиг клиента в контексте ассистента.
+    Совместим со старым single-assistant API: без assistant_id берёт активного/default ассистента.
     """
     client_id = (client_id or 'mitia_assistant').strip()
     if client_id == 'default':
         client_id = 'mitia_assistant'
-    
+
+    await ensure_assistant_migration(client_id)
+    resolved_assistant_id = assistant_id or await get_active_admin_assistant_id(client_id)
+
     if client_id == 'mitia_assistant':
         use_cache = False
 
+    cache_key = f"client_cfg:{client_id}:{resolved_assistant_id}"
     if use_cache:
-        cached_data = cache_service.get(f"client_cfg:{client_id}")
+        cached_data = cache_service.get(cache_key)
         if cached_data:
             return ClientConfig(
-                client_id=client_id, 
-                raw=cached_data.get('raw', {}), 
+                client_id=client_id,
+                raw=cached_data.get('raw', {}),
                 db_data=cached_data.get('db_data', {})
             )
-    
+
     base_raw = {}
     if client_id != 'mitia_assistant':
-        # Загружаем неизменяемый «золотой стандарт» из двух JSON-файлов
         try:
             theme_path = os.path.join(BASE_DIR, "core", "theme_defaults.json")
             intel_path = os.path.join(BASE_DIR, "core", "intelligence_defaults.json")
@@ -206,30 +216,27 @@ async def get_client_config(client_id: str, use_cache: bool = True) -> ClientCon
     raw = {}
     db_data = {}
     from ..core.config import deep_merge
-    from .db_service import AsyncSessionLocal, User, ClientConfig as DBClientConfig
+    from .db_service import AsyncSessionLocal, User
     from sqlalchemy import select
-    
+
     try:
+        account_raw = copy.deepcopy(await get_account_config(client_id))
+        # The widget is configured per assistant. Ignore a legacy account-wide
+        # switch so one bot cannot override another bot's widget state.
+        account_theme = account_raw.get('theme') if isinstance(account_raw, dict) else None
+        if isinstance(account_theme, dict):
+            account_theme.pop('widget_enabled', None)
+        assistant_raw = await get_assistant_config(client_id, resolved_assistant_id)
+        raw = deep_merge(copy.deepcopy(account_raw), copy.deepcopy(assistant_raw))
+        # Operator identity is shared by the whole account, not by a selected
+        # assistant in the admin panel. Preserve it over legacy assistant data.
+        account_operator_name = (account_raw.get('theme') or {}).get('msg_operator_name')
+        if account_operator_name is not None:
+            raw.setdefault('theme', {})['msg_operator_name'] = account_operator_name
+
         async with AsyncSessionLocal() as session:
-            res_cfg = await session.execute(select(DBClientConfig.config_json).where(DBClientConfig.client_id == client_id))
-            config_json = res_cfg.scalar_one_or_none()
-            
             res_user = await session.execute(select(User).where(User.client_id == client_id))
             user = res_user.scalar_one_or_none()
-            
-            if config_json:
-                raw = config_json if isinstance(config_json, dict) else json.loads(config_json)
-            
-            if not raw:
-                file_path = _path(client_id)
-                if os.path.exists(file_path):
-                    try:
-                        with open(file_path, 'r', encoding='utf-8') as f:
-                            raw = json.load(f)
-                            log.info(f"Loaded config from file for {client_id} (migrating to DB...)")
-                    except Exception as fe:
-                        log.error(f"File read error for {client_id}: {fe}")
-
             if user:
                 db_data = {
                     "balance": user.balance,
@@ -239,9 +246,10 @@ async def get_client_config(client_id: str, use_cache: bool = True) -> ClientCon
                 }
                 raw['balance'] = user.balance
                 raw['tariff_name'] = user.tariff_name
-                raw['widget_enabled'] = bool(user.is_active) and bool(raw.get('theme', {}).get('widget_enabled', raw.get('widget_enabled', True)))
+                raw['widget_enabled'] = bool(raw.get('theme', {}).get('widget_enabled', raw.get('widget_enabled', True)))
+                raw['assistant_id'] = resolved_assistant_id
     except Exception as e:
-        log.error(f"Config loading error for {client_id}: {e}")
+        log.error(f"Config loading error for {client_id}:{resolved_assistant_id}: {e}")
 
     final_raw = copy.deepcopy(base_raw) if base_raw else {}
     if not raw:
@@ -252,7 +260,7 @@ async def get_client_config(client_id: str, use_cache: bool = True) -> ClientCon
         final_raw = deep_merge(final_raw, raw)
 
     cfg = ClientConfig(client_id=client_id, raw=final_raw, db_data=db_data)
-    cache_service.set(f"client_cfg:{client_id}", {"raw": final_raw, "db_data": db_data})
+    cache_service.set(cache_key, {"raw": final_raw, "db_data": db_data})
     return cfg
 
 async def list_clients() -> list[str]:
@@ -267,10 +275,13 @@ async def list_clients() -> list[str]:
         log.error(f"list_clients error: {e}")
         return []
 
-async def reload_client_config(client_id: str) -> ClientConfig:
-    """Принудительно перезагружает конфиг клиента, очищая кэш Redis."""
-    cache_service.delete(f"client_cfg:{client_id}")
-    return await get_client_config(client_id, use_cache=False)
+async def reload_client_config(client_id: str, assistant_id: Optional[str] = None) -> ClientConfig:
+    """Принудительно перезагружает конфиг клиента/ассистента, очищая кэш Redis."""
+    if assistant_id:
+        cache_service.delete(f"client_cfg:{client_id}:{assistant_id}")
+    else:
+        cache_service.clear_pattern(f"client_cfg:{client_id}*")
+    return await get_client_config(client_id, use_cache=False, assistant_id=assistant_id)
 
 async def clear_all_client_caches():
     """Очищает весь кэш конфигураций."""
@@ -320,4 +331,4 @@ async def save_client_config(client_id: str, config_dict: dict):
     except Exception as e:
         log.error(f"Error syncing config to file for {client_id}: {e}")
 
-    cache_service.delete(f"client_cfg:{client_id}")
+    cache_service.clear_pattern(f"client_cfg:{client_id}*")

@@ -1,0 +1,229 @@
+<div class="tariffs-view appearance-view">
+    <h1 class="visually-hidden">Тарифы</h1>
+    <div class="appearance-grid tariffs-grid-layout tariffs-columns-layout">
+        <div class="appearance-column tariffs-combo-column tariff-column-start">
+            <div class="bento-card tariff-plan-card" id="card-tariff-start" data-tariff="start">
+                <div class="card-header-flex tariff-card-header">
+                    <h3 class="card-title">Старт</h3>
+                    <div class="tariff-billing-toggle tariff-billing-toggle-placeholder" aria-hidden="true">
+                        <span class="tariff-billing-btn">Месяц</span>
+                        <span class="tariff-billing-btn">Год</span>
+                    </div>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note">Базовый тариф для&nbsp;первого запуска и&nbsp;тестирования сценариев.</p>
+                    <ul class="tariff-features-list">
+                        <li><span class="tariff-feature-value">1</span><span class="tariff-feature-text">ассистент</span></li>
+                        <li><span class="tariff-feature-value">30</span><span class="tariff-feature-text">пробных сообщений ассистента</span></li>
+                        <li><span class="tariff-feature-value">10</span><span class="tariff-feature-text">сообщений в памяти диалога</span></li>
+                        <li><span class="tariff-feature-value">∞</span><span class="tariff-feature-text">сообщения оператора</span></li>
+                        <li><span class="tariff-feature-value">30</span><span class="tariff-feature-text">страниц индексации</span></li>
+                        <li><span class="tariff-feature-value">1</span><span class="tariff-feature-text">ГБ хранилища</span></li>
+                    </ul>
+                    <div class="tariff-price-row">
+                        <div class="tariff-price-note" data-price-note>Бесплатно</div>
+                        <button type="button" class="btn btn-outline tariff-select-btn" data-select-tariff="start">Подключить</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-card tariff-pack-card" data-pack-card="pack-100">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Пакет 100</h3>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note">Быстрое пополнение лимита для&nbsp;небольшого объёма обращений.</p>
+                    <ul class="tariff-pack-features-list">
+                        <li><span class="tariff-feature-value">100</span><span class="tariff-feature-text">сообщений ассистента</span></li>
+                    </ul>
+                    <div class="tariff-pack-footer">
+                        <div class="tariff-price-note" data-pack-price>900 ₽</div>
+                        <button type="button" class="btn btn-primary tariff-pack-buy-btn" data-pack-id="pack-100">Купить пакет</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-card tariff-pack-card tariff-slot-pack-card" data-assistant-pack-card="assistants-plus-1">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Слоты +1</h3>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note">Постоянный слот ассистента для&nbsp;точечного расширения аккаунта.</p>
+                    <ul class="tariff-pack-features-list">
+                        <li><span class="tariff-feature-value">+1</span><span class="tariff-feature-text">постоянный слот ассистента</span></li>
+                    </ul>
+                    <div class="tariff-pack-footer">
+                        <div class="tariff-price-note" data-assistant-pack-price>1 900 ₽</div>
+                        <button type="button" class="btn btn-primary tariff-pack-buy-btn tariff-assistant-pack-buy-btn" data-assistant-pack-id="assistants-plus-1">Купить слот</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-card tariff-pack-card tariff-storage-pack-card" data-storage-pack-card="storage-plan-2gb">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Память +2 ГБ</h3>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note">Небольшое ежемесячное расширение для&nbsp;быстрого увеличения доступного места под&nbsp;файлы и&nbsp;базу знаний.</p>
+                    <ul class="tariff-pack-features-list">
+                        <li><span class="tariff-feature-value">+2</span><span class="tariff-feature-text">ГБ к лимиту хранилища</span></li>
+                    </ul>
+                    <div class="tariff-pack-footer">
+                        <div class="tariff-price-note">290 ₽<span>/мес</span></div>
+                        <button type="button" class="btn btn-primary tariff-pack-buy-btn tariff-storage-pack-buy-btn" data-storage-pack-id="storage-plan-2gb">Подключить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="appearance-column tariffs-combo-column tariff-column-business">
+            <div class="bento-card tariff-plan-card" id="card-tariff-business" data-tariff="business">
+                <div class="card-header-flex tariff-card-header">
+                    <h3 class="card-title">Бизнес</h3>
+                    <div class="tariff-billing-toggle" role="group" aria-label="Период оплаты для тарифа Бизнес">
+                        <button type="button" class="tariff-billing-btn is-active" data-billing-period="month">Месяц</button>
+                        <button type="button" class="tariff-billing-btn" data-billing-period="year">Год</button>
+                    </div>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note">Тариф для&nbsp;стабильной операционной работы команды и&nbsp;роста нагрузки.</p>
+                    <ul class="tariff-features-list">
+                        <li><span class="tariff-feature-value">5</span><span class="tariff-feature-text">ассистентов</span></li>
+                        <li><span class="tariff-feature-value">1000</span><span class="tariff-feature-text" data-monthly-message-label>сообщений ассистента</span></li>
+                        <li><span class="tariff-feature-value">30</span><span class="tariff-feature-text">сообщений в&nbsp;памяти диалога</span></li>
+                        <li><span class="tariff-feature-value">∞</span><span class="tariff-feature-text">сообщения оператора</span></li>
+                        <li><span class="tariff-feature-value">500</span><span class="tariff-feature-text">страниц индексации</span></li>
+                        <li><span class="tariff-feature-value"> 5</span><span class="tariff-feature-text">ГБ хранилища</span></li>
+                    </ul>
+                    <div class="tariff-price-row">
+                        <div class="tariff-price-note" data-price-note>3 900 ₽</div>
+                        <button type="button" class="btn btn-outline tariff-select-btn" data-select-tariff="business">Подключить</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-card tariff-pack-card" data-pack-card="pack-500">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Пакет 500</h3>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note">Оптимальный вариант, если базовый месячный лимит заканчивается регулярно.</p>
+                    <ul class="tariff-pack-features-list">
+                        <li><span class="tariff-feature-value">500</span><span class="tariff-feature-text">сообщений ассистента</span></li>
+                    </ul>
+                    <div class="tariff-pack-footer">
+                        <div class="tariff-price-note" data-pack-price>3 900 ₽</div>
+                        <button type="button" class="btn btn-primary tariff-pack-buy-btn" data-pack-id="pack-500">Купить пакет</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-card tariff-pack-card tariff-slot-pack-card" data-assistant-pack-card="assistants-plus-3">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Слоты +3</h3>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note">Пакет слотов со скидкой, если одного дополнительного ассистента уже мало.</p>
+                    <ul class="tariff-pack-features-list">
+                        <li><span class="tariff-feature-value">+3</span><span class="tariff-feature-text">постоянных слота ассистента</span></li>
+                    </ul>
+                    <div class="tariff-pack-footer">
+                        <div class="tariff-price-note" data-assistant-pack-price>4 900 ₽</div>
+                        <button type="button" class="btn btn-primary tariff-pack-buy-btn tariff-assistant-pack-buy-btn" data-assistant-pack-id="assistants-plus-3">Купить слоты</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-card tariff-pack-card tariff-storage-pack-card" data-storage-pack-card="storage-plan-10gb">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Память +10 ГБ</h3>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note">Основной вариант для&nbsp;команд, которые активно работают с&nbsp;документами, медиа и&nbsp;базой знаний.</p>
+                    <ul class="tariff-pack-features-list">
+                        <li><span class="tariff-feature-value">+10</span><span class="tariff-feature-text">ГБ к лимиту хранилища</span></li>
+                    </ul>
+                    <div class="tariff-pack-footer">
+                        <div class="tariff-price-note">990 ₽<span>/мес</span></div>
+                        <button type="button" class="btn btn-primary tariff-pack-buy-btn tariff-storage-pack-buy-btn" data-storage-pack-id="storage-plan-10gb">Подключить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="appearance-column tariffs-combo-column tariff-column-neuro">
+            <div class="bento-card tariff-plan-card" id="card-tariff-neuro" data-tariff="neuro">
+                <div class="card-header-flex tariff-card-header">
+                    <h3 class="card-title">Нейро</h3>
+                    <div class="tariff-billing-toggle" role="group" aria-label="Период оплаты для тарифа Нейро">
+                        <button type="button" class="tariff-billing-btn is-active" data-billing-period="month">Месяц</button>
+                        <button type="button" class="tariff-billing-btn" data-billing-period="year">Год</button>
+                    </div>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note">Расширенный тариф для&nbsp;максимальных возможностей и&nbsp;крупных команд.</p>
+                    <ul class="tariff-features-list">
+                        <li><span class="tariff-feature-value">20</span><span class="tariff-feature-text">ассистентов</span></li>
+                        <li><span class="tariff-feature-value">5000</span><span class="tariff-feature-text" data-monthly-message-label>сообщений ассистента</span></li>
+                        <li><span class="tariff-feature-value">100</span><span class="tariff-feature-text">сообщений в&nbsp;памяти диалога</span></li>
+                        <li><span class="tariff-feature-value">∞</span><span class="tariff-feature-text">сообщения оператора</span></li>
+                        <li><span class="tariff-feature-value">5000</span><span class="tariff-feature-text">страниц индексации</span></li>
+                        <li><span class="tariff-feature-value">10</span><span class="tariff-feature-text">ГБ хранилища</span></li>
+                    </ul>
+                    <div class="tariff-price-row">
+                        <div class="tariff-price-note" data-price-note>9 900 ₽</div>
+                        <button type="button" class="btn btn-outline tariff-select-btn" data-select-tariff="neuro">Подключить</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-card tariff-pack-card" data-pack-card="pack-1000">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Пакет 1000</h3>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note">Подходит для&nbsp;высокой нагрузки, когда нужен запас сообщений без&nbsp;смены тарифа.</p>
+                    <ul class="tariff-pack-features-list">
+                        <li><span class="tariff-feature-value">1000</span><span class="tariff-feature-text">сообщений ассистента</span></li>
+                    </ul>
+                    <div class="tariff-pack-footer">
+                        <div class="tariff-price-note" data-pack-price>6 900 ₽</div>
+                        <button type="button" class="btn btn-primary tariff-pack-buy-btn" data-pack-id="pack-1000">Купить пакет</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-card tariff-pack-card tariff-slot-pack-card" data-assistant-pack-card="assistants-plus-5">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Слоты +5</h3>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note">Выгодный пакет для&nbsp;роста команды. Слоты постоянные и&nbsp;не&nbsp;сгорают при&nbsp;смене тарифа.</p>
+                    <ul class="tariff-pack-features-list">
+                        <li><span class="tariff-feature-value">+5</span><span class="tariff-feature-text">постоянных слотов ассистента</span></li>
+                    </ul>
+                    <div class="tariff-pack-footer">
+                        <div class="tariff-price-note" data-assistant-pack-price>6 900 ₽</div>
+                        <button type="button" class="btn btn-primary tariff-pack-buy-btn tariff-assistant-pack-buy-btn" data-assistant-pack-id="assistants-plus-5">Купить слоты</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-card tariff-pack-card tariff-storage-pack-card" data-storage-pack-card="storage-plan-50gb">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Память +50 ГБ</h3>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note">Расширенное ежемесячное увеличение хранилища для&nbsp;больших архивов, баз знаний и&nbsp;активного медиаконтента.</p>
+                    <ul class="tariff-pack-features-list">
+                        <li><span class="tariff-feature-value">+50</span><span class="tariff-feature-text">ГБ к лимиту хранилища</span></li>
+                    </ul>
+                    <div class="tariff-pack-footer">
+                        <div class="tariff-price-note">3 490 ₽<span>/мес</span></div>
+                        <button type="button" class="btn btn-primary tariff-pack-buy-btn tariff-storage-pack-buy-btn" data-storage-pack-id="storage-plan-50gb">Подключить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -159,3 +159,56 @@ class TestAuth:
         assert payload["sub"] == "usr_jwt_test_1"
         assert payload["email"] == "jwt@example.com"
         assert "exp" in payload
+
+    @pytest.mark.asyncio
+    async def test_create_payment_rejects_other_tenant(self):
+        """Нельзя создать платёж от имени другого аккаунта."""
+        from fastapi import HTTPException
+        from api.chat.routers.payment_router import create_payment
+
+        request = MagicMock()
+        request.json = AsyncMock(return_value={"amount": 100, "client_id": "usr_other"})
+
+        with pytest.raises(HTTPException) as error:
+            await create_payment(
+                request=request,
+                token_data={"sub": "usr_current"},
+            )
+
+        assert error.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_create_payment_rejects_negative_amount(self):
+        """Отрицательная сумма не отправляется в платёжный сервис."""
+        from api.chat.routers.payment_router import create_payment
+
+        request = MagicMock()
+        request.json = AsyncMock(return_value={"amount": -100, "client_id": "usr_current"})
+        response = await create_payment(
+            request=request,
+            token_data={"sub": "usr_current"},
+        )
+
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_confirm_reset_rejects_email_verification_token(self, client):
+        """Токен подтверждения почты нельзя использовать для смены пароля."""
+        response = await client.post("/api/chat/confirm-reset", json={
+            "token": "email-verification-token",
+            "password": "new-secure-password",
+        })
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "error"
+
+    @pytest.mark.asyncio
+    async def test_check_reset_token_rejects_email_verification_token(self, client):
+        """Проверка reset-ссылки принимает только reset-токены."""
+        response = await client.get(
+            "/api/chat/check-reset-token",
+            params={"token": "email-verification-token"},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "error"

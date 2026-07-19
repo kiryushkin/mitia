@@ -1,35 +1,5 @@
 import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
-import asyncio
-import sys
-import os
-
-# --- МОКИ ДЛЯ ЗАВИСИМОСТЕЙ ---
-# Это позволяет запустить тесты без установленных fastapi, sqlalchemy и т.д.
-mock_mod = MagicMock()
-sys.modules["fastapi"] = mock_mod
-sys.modules["sqlalchemy"] = mock_mod
-sys.modules["sqlalchemy.ext.asyncio"] = mock_mod
-sys.modules["sqlalchemy.orm"] = mock_mod
-sys.modules["sqlalchemy.future"] = mock_mod
-sys.modules["sqlalchemy.sql"] = mock_mod
-sys.modules["redis"] = mock_mod
-sys.modules["aioredis"] = mock_mod
-
-# Мокаем внутренние модули, которые могут тянуть зависимости
-sys.modules["api.chat.core.config"] = MagicMock()
-sys.modules["api.chat.services.db_service"] = MagicMock()
-sys.modules["api.chat.services.chat_service"] = MagicMock()
-sys.modules["api.chat.services.integrations_service"] = MagicMock()
-sys.modules["api.chat.services.base_polling_service"] = MagicMock()
-sys.modules["api.chat.services.cache_service"] = MagicMock()
-# ----------------------------
-
-# Добавляем путь к проекту
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
-
-# Теперь импортируем функции для теста
-# Мы импортируем их внутри класса или функций, чтобы моки успели отработать
 
 class TestAvitoService(unittest.IsolatedAsyncioTestCase):
 
@@ -109,7 +79,7 @@ class TestAvitoService(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(mock_get.call_count, 2)
         
         # Проверяем URL-адреса
-        self.assertIn("messenger/v3/chat/chat1", mock_get.call_args_list[0][0][0])
+        self.assertIn("messenger/v3/chats/chat1", mock_get.call_args_list[0][0][0])
         self.assertIn("messenger/v2/accounts/123/chats/chat1", mock_get.call_args_list[1][0][0])
 
     @patch("api.chat.services.avito_service.get_access_token")

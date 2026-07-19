@@ -4,14 +4,19 @@
         <div class="appearance-column" id="dialogs-filter-column">
             <div class="bento-card" id="card-dialogs-filters">
                 <div class="card-header-flex">
-                    <div class="card-title-group" id="mobile-filter-toggle">
-                        <div class="collapse-icon mobile-only-icon"></div>
-                        <div>
-                            <h3 class="card-title intelligence-title-accent">Диалоги</h3>
-                            <p class="card-subtitle">Управление выборкой и групповыми действиями по обращениям</p>
-                        </div>
+                    <div class="card-title-group">
+                        <h3 class="card-title intelligence-title-accent">Диалоги</h3>
+                    </div>
+                    <div class="card-actions-mini">
+                        <button class="icon-btn-sm" id="btn-reset-filters" type="button" title="Сбросить фильтры" aria-label="Сбросить фильтры">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                        </button>
+                        <button class="icon-btn-sm dialogs-filters-collapse-btn" type="button" onclick="this.closest('.bento-card').classList.toggle('is-collapsed')" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
                     </div>
                 </div>
+                <p class="card-description">Управление выборкой и&nbsp;групповыми действиями по&nbsp;обращениям</p>
 
                 <div class="settings-form">
                     <div class="setting-item" id="dialogs-operator-name-setting">
@@ -41,9 +46,6 @@
                     </div>
                     <div class="flex-between">
                         <h3 class="subtitle-card-bold white">Фильтры</h3>
-                        <button class="icon-btn-sm" id="btn-reset-filters" title="Сбросить фильтры">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
-                        </button>
                     </div>
                     <div class="setting-item">
                         <label class="subtitle-card">Поиск</label>
@@ -68,19 +70,27 @@
                     <div class="setting-item">
                         <label class="subtitle-card">Режим</label>
                         <div class="filters-buttons" id="mode-buttons">
-                            <button class="filter-btn" data-mode="operator">Оператор</button>
                             <button class="filter-btn" data-mode="assistant">Ассистент</button>
+                            <button class="filter-btn" data-mode="operator">Оператор</button>
                         </div>
                     </div>
                     <div class="setting-item">
-                        <label class="subtitle-card">Ресурс</label>
-                        <div class="filters-buttons" id="platform-buttons">
-                            <button class="filter-btn" data-platform="web">Веб-сайт</button>
-                            <button class="filter-btn" data-platform="telegram">Telegram</button>
-                            <button class="filter-btn" data-platform="max">Max</button>
-                            <button class="filter-btn" data-platform="vk">Вконтакте</button>
-                            <button class="filter-btn" data-platform="email">Email</button>
-                            <button class="filter-btn" data-platform="avito">Avito</button>
+                        <label class="subtitle-card">Ассистент</label>
+                        <div class="filters-buttons" id="assistant-buttons"></div>
+                    </div>
+                    <div class="setting-item" id="dialog-channels-filter">
+                        <label class="subtitle-card">Каналы</label>
+                        <div class="filters-buttons" id="platform-buttons"></div>
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Период</label>
+                        <div class="filters-buttons" id="dialogs-period-buttons">
+                            <button class="filter-btn dialogs-period-btn" data-period="yesterday">Вчера</button>
+                            <button class="filter-btn dialogs-period-btn" data-period="today">Сегодня</button>
+                            <button class="filter-btn dialogs-period-btn" data-period="week">Неделя</button>
+                            <button class="filter-btn dialogs-period-btn" data-period="month">Месяц</button>
+                            <button class="filter-btn dialogs-period-btn" data-period="quarter">Квартал</button>
+                            <button class="filter-btn dialogs-period-btn" data-period="year">Год</button>
                         </div>
                     </div>
                     <div class="setting-item">
@@ -88,18 +98,13 @@
                         <div class="calendar-single" id="calendar-single"></div>
                         <div class="date-range-info" id="date-range-info"></div>
                     </div>
-                </div>
-            </div>
-
-            <div class="bento-card" id="card-dialogs-stats">
-                <div class="card-header-flex">
-                    <div>
-                        <h3 class="card-title">Сводка</h3>
-                        <p class="card-subtitle">Показатели по текущим фильтрам и диапазону дат</p>
+                    <div class="setting-item">
+                        <div>
+                            <h3 class="subtitle-card-bold white">Сводка</h3>
+                            <p class="card-subtitle">Показатели по&nbsp;текущим фильтрам</p>
+                        </div>
+                        <div class="dialogs-stats" id="dialogs-stats"></div>
                     </div>
-                </div>
-                <div class="settings-form">
-                    <div class="dialogs-stats" id="dialogs-stats"></div>
                 </div>
             </div>
         </div>
@@ -123,19 +128,21 @@
                     <div class="dialog-messages-container" id="modal-messages-container">
                     </div>
                     <div class="dialog-footer">
+                        <div id="user-typing-status" class="user-typing-status" style="display: none;"></div>
                         <div id="operator-attached-files" class="attached-files-preview"></div>
                         <div class="operator-input-wrapper">
-                            <button class="attach-btn" id="operator-attach-btn">
+                            <button class="attach-btn" id="operator-attach-btn" type="button" aria-label="Прикрепить файл">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                             </button>
                             <input type="file" id="operator-file-input" style="display: none" multiple>
                             <input type="text" id="operator-input" placeholder="Напишите ответ...">
                             <div class="operator-actions-group">
-                                <button class="action-btn-circle" id="operator-mic-btn">
+                                <button class="action-btn-circle" id="operator-mic-btn" type="button" aria-label="Голосовой ввод">
                                     <svg class="mic-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                                    <span class="operator-recording-indicator" aria-hidden="true"></span>
                                 </button>
-                                <button class="action-btn-circle" id="send-operator-msg" style="display: none;">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                <button class="action-btn-circle" id="send-operator-msg" type="button" aria-label="Отправить сообщение" style="display: none;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg>
                                 </button>
                             </div>
                         </div>
@@ -185,9 +192,6 @@
         <div class="client-profile-card">
             <div class="profile-main-info">
                 <div class="sidebar-top-nav">
-                    <button class="btn-back-to-list" onclick="window.closeActiveDialog?.()" title="Назад к списку">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                    </button>
                     <div class="dropdown-menu-container">
                         <button class="btn-close-edit" id="btn-cancel-profile" style="display: none;" title="Отменить изменения">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>

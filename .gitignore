@@ -53,9 +53,11 @@ Thumbs.db
 #  ЛОГИ
 # =========================
 *.log
+*.log.*
 logs/
 api/chat/logs/
 api/chat/mitia.log
+api/chat/mitia.log.*
 
 # =========================
 #  ENV / SECRETS
@@ -76,6 +78,15 @@ api/chat/uploads/
 api/chat/vector_indices/
 api/chat/static/tts_cache/
 api/chat/widget_src/node_modules/
+
+# =========================
+#  BACKUP / TEMP
+# =========================
+*.backup
+*.bak
+*.orig
+*-backups/
+**/.DS_Store
 
 # =========================
 #  ВРЕМЕННЫЕ ФАЙЛЫ

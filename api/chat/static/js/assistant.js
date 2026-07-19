@@ -59,19 +59,7 @@ export const PromptsModule = {
 
         // Загружаем золотой стандарт интеллекта
         await loadIntelligenceStandard();
-        if (INTELLIGENCE_STANDARD.bot_settings) {
-            this.state.bot_settings = { ...this.state.bot_settings, ...INTELLIGENCE_STANDARD.bot_settings };
-        }
-        if (INTELLIGENCE_STANDARD.contacts) {
-            this.state.contacts = { ...this.state.contacts, ...INTELLIGENCE_STANDARD.contacts };
-        }
-        if (INTELLIGENCE_STANDARD.site_url) {
-            this.state.site_url = INTELLIGENCE_STANDARD.site_url;
-        }
-
-        if (typeof this.clearAllMyTempFiles === 'function') {
-            this.clearAllMyTempFiles();
-        }
+        this.resetStateFromIntelligenceStandard();
 
         this.bindEvents();
 
@@ -84,6 +72,7 @@ export const PromptsModule = {
         // Затем загружаем данные и заполняем форму
         await this.loadData();
 
+        this.initCardsCollapseDefaults();
         this.initIntelligenceOrb();
         this.loadIndexedPages();
 
@@ -94,6 +83,46 @@ export const PromptsModule = {
                 this.loadCacheStats();
             }
         }, 5000);
+    },
+
+    initCardsCollapseDefaults() {
+        const cardIds = [
+            'card-intelligence-guide',
+            'card-ai-unavailable',
+            'card-prompt-personality',
+            'card-prompt-instructions',
+            'card-legal',
+            'card-working-hours',
+            'card-prompt-knowledge'
+        ];
+
+        const storageKey = window.getCollapsedCardsStorageKey
+            ? window.getCollapsedCardsStorageKey()
+            : 'collapsed_cards';
+
+        let collapsedCards = {};
+        try {
+            const raw = localStorage.getItem(storageKey);
+            collapsedCards = JSON.parse(raw || '{}') || {};
+        } catch (e) {
+            collapsedCards = {};
+        }
+
+        cardIds.forEach((cardId) => {
+            if (!(cardId in collapsedCards)) {
+                collapsedCards[cardId] = false;
+            }
+        });
+
+        try {
+            localStorage.setItem(storageKey, JSON.stringify(collapsedCards));
+        } catch (e) {
+            console.warn('Failed to persist intelligence collapsed cards state:', e);
+        }
+
+        if (window.initCardsCollapse) {
+            window.initCardsCollapse();
+        }
     },
 
     initIntelligenceOrb() {
@@ -356,12 +385,6 @@ export const PromptsModule = {
                 const file = e.target.files[0];
                 if (!file) return;
 
-                if (file.size > 5 * 1024 * 1024) {
-                    knowledgeName.textContent = 'Файл слишком большой (макс 5МБ)';
-                    knowledgeInput.value = '';
-                    return;
-                }
-
                 knowledgeName.textContent = 'Загрузка...';
                 const formData = new FormData();
                 formData.append('file', file);
@@ -369,7 +392,9 @@ export const PromptsModule = {
                 try {
                     const clientId = localStorage.getItem('chat_client_id');
                     const token = localStorage.getItem('chatadmin_auth_token');
-                    const res = await fetch(`/api/chat/admin/upload-file?client_id=${clientId}&field_id=knowledge_file`, {
+                    const assistantId = window.AdminApp?.getActiveAssistantId?.();
+                    const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                    const res = await fetch(`/api/chat/admin/upload-file?client_id=${clientId}&field_id=knowledge_file${assistantQuery}`, {
                         method: 'POST',
                         headers: { 'Authorization': `Bearer ${token}` },
                         body: formData
@@ -418,7 +443,7 @@ export const PromptsModule = {
             const knowledgeNameEl = document.getElementById('knowledge-file-name');
             const removeBtnEl = document.getElementById('knowledge-file-remove-btn');
             if (knowledgePreviewEl) knowledgePreviewEl.classList.remove('file-uploaded');
-            if (knowledgeNameEl) knowledgeNameEl.textContent = 'PDF, DOCX, XLSX, TXT. Макс. вес: 5МБ';
+            if (knowledgeNameEl) knowledgeNameEl.textContent = 'PDF, DOCX, XLSX, TXT. Размер ограничен хранилищем аккаунта';
             if (removeBtnEl) removeBtnEl.classList.add('hidden');
 
             this.syncWithWidget();
@@ -451,9 +476,59 @@ export const PromptsModule = {
             this._onStorageFileDeleted = async (event) => {
                 const filePaths = (event && event.detail && Array.isArray(event.detail.filePaths)) ? event.detail.filePaths : [];
                 if (!filePaths.length) return;
+
+                const normalizeFileUrl = (url) => {
+                    if (!url) return '';
+                    const asString = String(url).trim();
+                    if (!asString) return '';
+
+                    const tryExtractFromQuery = (search) => {
+                        if (!search) return '';
+                        const params = new URLSearchParams(search);
+                        const keys = ['file_url', 'file', 'path', 'file_path', 'url'];
+                        for (const key of keys) {
+                            const value = params.get(key);
+                            if (!value) continue;
+                            try {
+                                return decodeURIComponent(value);
+                            } catch (_) {
+                                return value;
+                            }
+                        }
+                        return '';
+                    };
+
+                    try {
+                        const parsed = new URL(asString, window.location.origin);
+                        const fromQuery = tryExtractFromQuery(parsed.search);
+                        if (fromQuery) return normalizeFileUrl(fromQuery);
+                        return parsed.pathname;
+                    } catch (_) {
+                        const [clean] = asString.split('#');
+                        const [pathPart, queryPart] = clean.split('?');
+                        const fromQuery = tryExtractFromQuery(queryPart ? `?${queryPart}` : '');
+                        if (fromQuery) return normalizeFileUrl(fromQuery);
+                        return pathPart || '';
+                    }
+                };
+
+                const basename = (url) => {
+                    const normalized = normalizeFileUrl(url);
+                    if (!normalized) return '';
+                    const parts = normalized.split('/').filter(Boolean);
+                    return parts.length ? parts[parts.length - 1] : '';
+                };
+
                 const currentUrl = this.state?.bot_settings?.knowledge_file_url || '';
                 if (!currentUrl) return;
-                if (!filePaths.includes(currentUrl)) return;
+
+                const normalizedDeleted = new Set(filePaths.map((p) => normalizeFileUrl(p)).filter(Boolean));
+                const deletedNames = new Set(Array.from(normalizedDeleted).map((p) => basename(p)).filter(Boolean));
+                const normalizedCurrent = normalizeFileUrl(currentUrl);
+                const currentName = basename(currentUrl);
+                const matchesByPath = !!normalizedCurrent && normalizedDeleted.has(normalizedCurrent);
+                const matchesByName = !!currentName && deletedNames.has(currentName);
+                if (!matchesByPath && !matchesByName) return;
 
                 this.state.bot_settings.knowledge_file_url = '';
                 this.state.bot_settings.knowledge_file_name = '';
@@ -484,9 +559,11 @@ export const PromptsModule = {
             if (!fieldId) return;
             const clientId = localStorage.getItem('chat_client_id');
             const token = localStorage.getItem('chatadmin_auth_token');
+            const assistantId = window.AdminApp?.getActiveAssistantId?.();
             if (!clientId || !token) return;
 
-            await fetch(`/api/chat/admin/delete-temp-file?client_id=${encodeURIComponent(clientId)}&field_id=${encodeURIComponent(fieldId)}`, {
+            const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+            await fetch(`/api/chat/admin/delete-temp-file?client_id=${encodeURIComponent(clientId)}&field_id=${encodeURIComponent(fieldId)}${assistantQuery}`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -506,7 +583,9 @@ export const PromptsModule = {
                 }
             };
 
-            const res = await fetch(`/api/chat/admin/config?client_id=${clientId}`, {
+            const assistantId = window.AdminApp?.getActiveAssistantId?.();
+            const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+            const res = await fetch(`/api/chat/admin/config?client_id=${clientId}${assistantQuery}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -783,11 +862,56 @@ export const PromptsModule = {
         this.state.working_hours = workingHours;
     },
 
+    resetStateFromIntelligenceStandard() {
+        this.state.site_url = INTELLIGENCE_STANDARD.site_url || '';
+        this.state.welcome_msg = '';
+        this.state.bot_settings = {
+            personality_prompt: '',
+            negative_prompt: '',
+            knowledge_file_url: '',
+            knowledge_file_name: '',
+            bot_name: '',
+            bot_role: '',
+            dna_addressing: 'formal',
+            dna_tone: 'strict',
+            dna_language: 'simple',
+            dna_length: 'short',
+            dna_proactive: 'reactive',
+            dna_focus: 'facts',
+            ai_model: 'gigachat',
+            temperature: 0.3,
+            dna_emojis: false,
+            enable_tts: false,
+            tts_voice: 'Nec_24000',
+            ...(INTELLIGENCE_STANDARD.bot_settings || {}),
+            knowledge_file_url: '',
+            knowledge_file_name: '',
+            ai_unavailable_message: '',
+            fallback_message: '',
+            fallback_answer: '',
+            reserve_answer: '',
+            reserved_answer: '',
+            price_file_url: '',
+            price_file_name: ''
+        };
+        this.state.contacts = {
+            extra_phones: [],
+            extra_emails: [],
+            extra_tg: [],
+            extra_links: [],
+            extra_addresses: [],
+            ...(INTELLIGENCE_STANDARD.contacts || {})
+        };
+    },
+
     async loadData() {
         try {
+            this.resetStateFromIntelligenceStandard();
             const clientId = localStorage.getItem('chat_client_id') || 'mitia_assistant';
             const token = localStorage.getItem('chatadmin_auth_token');
-            const res = await fetch(`/api/chat/admin/config?client_id=${clientId}`, {
+            const assistantId = window.AdminApp?.getActiveAssistantId?.();
+            const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+            const res = await fetch(`/api/chat/admin/config?client_id=${clientId}${assistantQuery}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const result = await res.json();
@@ -1029,7 +1153,7 @@ export const PromptsModule = {
             removeBtn.classList.remove('hidden');
         } else {
             preview.classList.remove('file-uploaded');
-            nameEl.textContent = 'PDF, DOCX, XLSX, TXT. Макс. вес: 5МБ';
+            nameEl.textContent = 'PDF, DOCX, XLSX, TXT. Размер ограничен хранилищем аккаунта';
             removeBtn.classList.add('hidden');
         }
     },
@@ -1842,10 +1966,36 @@ export const PromptsModule = {
             this.state.contacts.email = '';
             this.state.contacts.telegram = '';
 
+            const trimmedBotName = String(this.state.bot_settings?.bot_name || '').trim();
+            const trimmedBotRole = String(this.state.bot_settings?.bot_role || '').trim();
+            if (!trimmedBotName || !trimmedBotRole) {
+                const alertText = !trimmedBotName && !trimmedBotRole
+                    ? 'Заполните имя и должность.'
+                    : (!trimmedBotName ? 'Заполните имя.' : 'Заполните должность.');
+                if (typeof window.showAlert === 'function') {
+                    window.showAlert('tmpl-error-alert', {
+                        title: 'Не сохранено',
+                        text: alertText
+                    });
+                } else if (window.AdminApp?.showAlert) {
+                    window.AdminApp.showAlert('tmpl-alert', {
+                        title: 'Не сохранено',
+                        text: alertText
+                    });
+                } else {
+                    alert(alertText);
+                }
+                return;
+            }
+
             const payload = {
                 site_url: this.state.site_url,
                 welcome_msg: this.state.welcome_msg,
-                bot_settings: { ...(this.state.bot_settings || {}) },
+                bot_settings: {
+                    ...(this.state.bot_settings || {}),
+                    bot_name: trimmedBotName,
+                    bot_role: trimmedBotRole
+                },
                 working_hours: this.state.working_hours,
                 working_hours_holidays: this.state.working_hours_holidays,
                 working_hours_holidays_enabled: this.state.working_hours_holidays_enabled,
@@ -1854,7 +2004,9 @@ export const PromptsModule = {
                 contacts: this.state.contacts
             };
 
-            const res = await fetch(`/api/chat/admin/config?client_id=${clientId}`, {
+            const assistantId = window.AdminApp?.getActiveAssistantId?.();
+            const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+            const res = await fetch(`/api/chat/admin/config?client_id=${clientId}${assistantQuery}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload)
@@ -1874,6 +2026,43 @@ export const PromptsModule = {
                 }
                 if (data.config.legal_data) this.legalDataStore = data.config.legal_data;
                 if (data.config.legal) this.currentLegalType = data.config.legal.type || 'ip';
+
+                const profileModule = window.AdminApp?.modules?.profile;
+                const assistantId = window.AdminApp?.getActiveAssistantId?.();
+                if (profileModule && assistantId) {
+                    const backendItems = Array.isArray(profileModule.state?.assistants_backend_items)
+                        ? profileModule.state.assistants_backend_items
+                        : [];
+                    profileModule.state.assistants_backend_items = backendItems.map((item) => {
+                        if (item.assistant_id !== assistantId) return item;
+                        const nextConfig = {
+                            ...(item.config || {}),
+                            ...data.config,
+                            theme: {
+                                ...((item.config || {}).theme || {}),
+                                ...(data.config.theme || {})
+                            },
+                            bot_settings: {
+                                ...((item.config || {}).bot_settings || {}),
+                                ...(data.config.bot_settings || {})
+                            },
+                            integrations: {
+                                ...((item.config || {}).integrations || {}),
+                                ...(data.config.integrations || {})
+                            }
+                        };
+                        return {
+                            ...item,
+                            name: nextConfig.bot_settings?.bot_name || item.name,
+                            role: nextConfig.bot_settings?.bot_role || item.role,
+                            config: nextConfig
+                        };
+                    });
+                    profileModule.updateAssistantCard({
+                        ...(data.config || {}),
+                        assistant_id: assistantId
+                    });
+                }
                 
                 // Перерисовываем форму, чтобы подхватить новые данные
                 this.fillForm();
@@ -1896,13 +2085,15 @@ export const PromptsModule = {
             const clientId = localStorage.getItem('chat_client_id');
             const token = localStorage.getItem('chatadmin_auth_token');
             
-            await fetch(`/api/chat/admin/config?client_id=${clientId}`, {
+            const assistantId = window.AdminApp?.getActiveAssistantId?.();
+            const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+            await fetch(`/api/chat/admin/config?client_id=${clientId}${assistantQuery}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ site_url: siteUrl, bot_settings: this.state.bot_settings })
             });
 
-            const res = await fetch(`/api/chat/admin/index/start?client_id=${clientId}`, {
+            const res = await fetch(`/api/chat/admin/index/start?client_id=${clientId}${assistantQuery}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ site_url: siteUrl })
@@ -1935,7 +2126,9 @@ export const PromptsModule = {
         const token = localStorage.getItem('chatadmin_auth_token');
         const interval = setInterval(async () => {
             try {
-                const res = await fetch(`/api/chat/admin/index/status?client_id=${clientId}`, {
+                const assistantId = window.AdminApp?.getActiveAssistantId?.();
+                const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                const res = await fetch(`/api/chat/admin/index/status?client_id=${clientId}${assistantQuery}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();
@@ -1946,7 +2139,7 @@ export const PromptsModule = {
                     btn.textContent = 'Индексировать';
                     
                     // Загружаем страницы и проверяем их количество для уведомления
-                    const pagesRes = await fetch(`/api/chat/admin/index/list?client_id=${clientId}`, {
+                    const pagesRes = await fetch(`/api/chat/admin/index/list?client_id=${clientId}${assistantQuery}`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const pagesData = await pagesRes.json();
@@ -1982,12 +2175,14 @@ export const PromptsModule = {
     async loadIndexedPages() {
         const clientId = localStorage.getItem('chat_client_id');
         const token = localStorage.getItem('chatadmin_auth_token');
+        const assistantId = window.AdminApp?.getActiveAssistantId?.();
+        const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
         const listContainer = document.getElementById('indexed-pages-list');
         const statPages = document.getElementById('stat-pages');
         const statUpdated = document.getElementById('stat-updated');
         if (!listContainer) return;
         try {
-            const res = await fetch(`/api/chat/admin/index/list?client_id=${clientId}`, {
+            const res = await fetch(`/api/chat/admin/index/list?client_id=${clientId}${assistantQuery}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
@@ -2044,7 +2239,9 @@ export const PromptsModule = {
             const clientId = localStorage.getItem('chat_client_id');
             const token = localStorage.getItem('chatadmin_auth_token');
             try {
-                const res = await fetch(`/api/chat/admin/index/page/${pageId}?client_id=${clientId}`, {
+                const assistantId = window.AdminApp?.getActiveAssistantId?.();
+                const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                const res = await fetch(`/api/chat/admin/index/page/${pageId}?client_id=${clientId}${assistantQuery}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -2079,7 +2276,9 @@ export const PromptsModule = {
             const clientId = localStorage.getItem('chat_client_id');
             const token = localStorage.getItem('chatadmin_auth_token');
             try {
-                const res = await fetch(`/api/chat/admin/index/clear?client_id=${clientId}`, {
+                const assistantId = window.AdminApp?.getActiveAssistantId?.();
+                const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                const res = await fetch(`/api/chat/admin/index/clear?client_id=${clientId}${assistantQuery}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });

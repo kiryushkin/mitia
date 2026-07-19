@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from ..services.max_service import (
-    handle_max_message, find_client_by_token, set_webhook, delete_webhook, validate_bot_token
+    handle_max_message, find_client_by_token, register_max_token, set_webhook, delete_webhook, validate_bot_token
 )
 from ..core.config import log
 from .admin_router import verify_token
@@ -51,13 +51,16 @@ async def max_webhook(bot_token: str, request: Request):
         if not max_chat_id or not user_text:
             return {"status": "no_content"}
             
-        client_id = await find_client_by_token(bot_token)
-        if not client_id:
+        resolved = await find_client_by_token(bot_token)
+        if not resolved:
             log.error(f"Client not found for MAX bot token ...{bot_token[-8:]}")
             return JSONResponse(status_code=404, content={"error": "Client not found"})
-            
+        client_id = resolved["client_id"]
+        assistant_id = resolved.get("assistant_id")
+
         success = await handle_max_message(
-            client_id, bot_token, max_chat_id, user_text, from_user
+            client_id, bot_token, max_chat_id, user_text, from_user,
+            assistant_id=assistant_id
         )
         
         return {"status": "ok" if success else "error"}
@@ -67,14 +70,17 @@ async def max_webhook(bot_token: str, request: Request):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @router.post("/setup")
-async def setup_max(request: Request, client_id: str = None, user_data: dict = Depends(verify_token)):
+async def setup_max(request: Request, client_id: str = None, assistant_id: str | None = None, user_data: dict = Depends(verify_token)):
     """Настройка вебхука для MAX бота."""
     target_client_id = client_id or user_data.get("sub")
     if not target_client_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
     data = await request.json()
-    bot_token = data.get("bot_token", "").strip()
+    settings = await get_integration_settings(target_client_id, "max", assistant_id=assistant_id)
+    submitted_token = data.get("bot_token", "").strip()
+    # Do not erase a stored secret when a browser submits an empty password field.
+    bot_token = submitted_token or settings.get("bot_token", "")
     enabled = data.get("enabled", False)
     
     if enabled and bot_token:
@@ -82,15 +88,15 @@ async def setup_max(request: Request, client_id: str = None, user_data: dict = D
         if not is_valid:
             return JSONResponse(status_code=400, content={"error": "Невалидный токен MAX. Интеграция не может быть включена."})
     
-    settings = await get_integration_settings(target_client_id, "max")
     settings.update({
         "bot_token": bot_token,
         "enabled": enabled,
-        "assistant_enabled": bool(data.get("assistant_enabled", True)),
-        "autoreply_enabled": bool(data.get("autoreply_enabled", False)),
-        "autoreply_message": data.get("autoreply_message", "")
+        "assistant_enabled": bool(data.get("assistant_enabled", False)),
+        "autoreply_enabled": False,
+        "autoreply_message": ""
     })
-    await save_integration_settings(target_client_id, "max", settings)
+    await save_integration_settings(target_client_id, "max", settings, assistant_id=assistant_id)
+    await register_max_token(target_client_id, bot_token, assistant_id=assistant_id)
     
     if enabled and bot_token:
         webhook_url = f"{request.base_url}api/chat/max/webhook/{bot_token}"

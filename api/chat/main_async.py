@@ -5,11 +5,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 import os
 import json
+from pathlib import Path
 from typing import Dict, List, Optional
 from jinja2 import Environment, FileSystemLoader
 
 from .core.config import BASE_DIR, ROOT_DIR, log
-from .routers import chat_router, admin_router, auth_router, superadmin_router, index_router, payment_router, ws_router, telegram_router, max_router, vk_router, avito_router, widget_router, webhook_router, email_router, proxy_router, hh_router
+from .routers import chat_router, admin_router, auth_router, superadmin_router, index_router, payment_router, ws_router, telegram_router, max_router, vk_router, ok_router, avito_router, widget_router, webhook_router, email_router, proxy_router, hh_router
 
 import sys
 sys.path.append(ROOT_DIR)
@@ -28,6 +29,7 @@ from .services.telegram_service import run_polling
 from .services.max_service import run_max_polling
 from .services.avito_service import run_avito_polling
 from .services.email_service import email_service
+from .routers.superadmin_router import get_registration_lock_settings
 import asyncio
 
 app = FastAPI(title="Mitya AI API", version="3.0.0")
@@ -55,17 +57,28 @@ async def startup_event():
     except Exception as e:
         log.error(f"Failed to init BillingService: {e}")
 
-    try:
-        asyncio.create_task(run_polling())
-        log.info("Telegram Polling task created")
-    except Exception as e:
-        log.error(f"Failed to start Telegram Polling: {e}")
+    # На production Telegram работает через webhook. Long polling удаляет
+    # webhook бота, поэтому его можно включать только явно для локальной отладки.
+    if os.environ.get("TELEGRAM_POLLING_ENABLED", "").strip().lower() in {"1", "true", "yes"}:
+        try:
+            asyncio.create_task(run_polling())
+            log.info("Telegram Polling task created")
+        except Exception as e:
+            log.error(f"Failed to start Telegram Polling: {e}")
+    else:
+        log.info("Telegram polling disabled; using webhooks")
 
-    try:
-        asyncio.create_task(run_max_polling())
-        log.info("MAX Polling task created")
-    except Exception as e:
-        log.error(f"Failed to start MAX Polling: {e}")
+    # MAX, как и Telegram, на production работает через webhook. Long polling
+    # вызывает delete_webhook и сносит боевой webhook, поэтому включаем его
+    # только явно для локальной отладки.
+    if os.environ.get("MAX_POLLING_ENABLED", "").strip().lower() in {"1", "true", "yes"}:
+        try:
+            asyncio.create_task(run_max_polling())
+            log.info("MAX Polling task created")
+        except Exception as e:
+            log.error(f"Failed to start MAX Polling: {e}")
+    else:
+        log.info("MAX polling disabled; using webhooks")
 
     try:
         await email_service.start()
@@ -99,16 +112,17 @@ async def startup_event():
 _allowed_origins_env = os.environ.get("ALLOWED_ORIGINS", "").strip()
 if _allowed_origins_env:
     _allowed_origins = [o.strip() for o in _allowed_origins_env.split(",") if o.strip()]
-    _allow_credentials = True
 else:
     _allowed_origins = []
-    _allow_credentials = True
     log.warning("ALLOWED_ORIGINS is not set. Cross-origin requests are blocked by default.")
 
+# Виджет встраивается на сайты клиентов (Tilda и др.).
+# Безопасность доменов дополнительно проверяется в /api/chat/config по allowed_origins клиента.
+# Поэтому CORS должен пропускать внешние origin'ы; credentials для виджета не обязательны.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_allowed_origins,
-    allow_credentials=_allow_credentials,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -133,6 +147,7 @@ app.include_router(payment_router.router)
 app.include_router(telegram_router.router)
 app.include_router(max_router.router)
 app.include_router(vk_router.router)
+app.include_router(ok_router.router)
 app.include_router(avito_router.router)
 app.include_router(widget_router.router)
 app.include_router(webhook_router.router)
@@ -142,7 +157,19 @@ app.include_router(hh_router.router)
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    return FileResponse(os.path.join(BASE_DIR, "img", "favicon.svg"))
+    file_path = os.path.join(BASE_DIR, "img", "favicon.png")
+    if os.path.exists(file_path):
+        return FileResponse(
+            file_path, 
+            media_type="image/png",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+        )
+    return HTTPException(status_code=404)
+
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+async def apple_touch_icon():
+    file_path = os.path.join(BASE_DIR, "img", "favicon.png")
+    return FileResponse(file_path, media_type="image/png")
 
 app.mount("/api/chat/static/css", StaticFiles(directory=os.path.join(BASE_DIR, "static", "css"), html=False), name="css")
 app.mount("/api/chat/static/js", StaticFiles(directory=os.path.join(BASE_DIR, "static", "js"), html=False), name="js")
@@ -151,11 +178,21 @@ app.mount("/api/chat/static/img", StaticFiles(directory=os.path.join(BASE_DIR, "
 app.mount("/api/chat/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 app.mount("/api/chat/img", StaticFiles(directory=os.path.join(BASE_DIR, "img")), name="img")
 
+def _safe_file_path(root: str, *parts: str) -> Optional[str]:
+    root_path = Path(root).resolve()
+    try:
+        candidate = root_path.joinpath(*parts).resolve()
+        candidate.relative_to(root_path)
+        return str(candidate)
+    except (OSError, ValueError):
+        return None
+
+
 @app.get("/api/chat/uploads/temp/{filename}")
 async def get_temp_file(filename: str):
     """Доступ к временным файлам превью."""
-    file_path = os.path.join(BASE_DIR, "uploads", "temp", filename)
-    if os.path.exists(file_path):
+    file_path = _safe_file_path(os.path.join(BASE_DIR, "uploads", "temp"), filename)
+    if file_path and os.path.isfile(file_path):
         return FileResponse(file_path)
     raise HTTPException(status_code=404, detail="Temp file not found")
 
@@ -201,15 +238,18 @@ async def get_protected_file(
         except Exception as e:
             log.warning(f"JWT auth failed for protected file access: {e}")
 
+    # Публично отдаём только визуальные ассеты виджета (грузятся без токена на сайте клиента).
+    # "configs" и "knowledge" НЕ публичны: конфиги хранятся в БД, а файлы базы знаний
+    # содержат приватные данные клиента и читаются сервером с диска напрямую.
     public_folders = [
-        "avatars", "configs", "temp", "img", 
-        "widget", "header", "welcome", "window", 
-        "bot", "user", "operator", "profile", "knowledge"
+        "avatars", "temp", "img",
+        "widget", "header", "welcome", "window",
+        "bot", "user", "operator", "profile"
     ]
     if folder in public_folders:
         is_authorized = True
 
-    if folder == "chat_files" and subfolder:
+    if folder in ("chat_files", "operator_files") and subfolder:
         session_id = subfolder
         if await _is_valid_chat_session(client_id, session_id):
             is_authorized = True
@@ -217,12 +257,11 @@ async def get_protected_file(
     if not is_authorized:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    if subfolder:
-        file_path = os.path.join(BASE_DIR, "uploads", client_id, folder, subfolder, filename)
-    else:
-        file_path = os.path.join(BASE_DIR, "uploads", client_id, folder, filename)
+    client_upload_root = os.path.join(BASE_DIR, "uploads", client_id)
+    path_parts = (folder, subfolder, filename) if subfolder else (folder, filename)
+    file_path = _safe_file_path(client_upload_root, *path_parts)
 
-    if os.path.exists(file_path):
+    if file_path and os.path.isfile(file_path):
         return FileResponse(file_path)
     raise HTTPException(status_code=404, detail="File not found")
 
@@ -233,6 +272,18 @@ if kiryushkin_router:
 @app.get("/")
 async def root_page(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_page(request: Request):
+    return templates.TemplateResponse(request=request, name="privacy.html")
+
+@app.get("/offer", response_class=HTMLResponse)
+async def offer_page(request: Request):
+    return templates.TemplateResponse(request=request, name="offer.html")
+
+@app.get("/terms")
+async def terms_redirect():
+    return RedirectResponse(url="/offer", status_code=301)
 
 @app.get("/login")
 async def login_page(request: Request):
@@ -246,10 +297,18 @@ async def login_page(request: Request):
 
 @app.get("/register")
 async def register_page(request: Request):
+    registration_lock = get_registration_lock_settings()
     return templates.TemplateResponse(
         request=request,
         name="login.html",
-        context={"verify_success": "false", "verify_error": "false", "auth_mode": "signup"}
+        context={
+            "verify_success": "false",
+            "verify_error": "false",
+            "auth_mode": "signup",
+            "registration_lock_enabled": registration_lock.get("enabled", False),
+            "registration_lock_title": registration_lock.get("title", ""),
+            "registration_lock_message": registration_lock.get("message", ""),
+        }
     )
 
 @app.get("/reset")
@@ -345,19 +404,18 @@ async def get_sitemap(request: Request):
     from fastapi.responses import Response
     
     base_url = str(request.base_url).rstrip('/')
+    # В sitemap попадают только публичные страницы. Личный кабинет и его
+    # редиректы требуют авторизации, поэтому поисковым роботам они не нужны.
     urls = [
-        "/", 
+        "/",
         "/help",
         "/login",
         "/register",
         "/reset",
-        "/admin",
-        "/assistant",
-        "/settings",
-        "/profile",
-        "/dialogs",
-        "/integrations",
-        "/dashboard"
+        "/privacy",
+        "/offer",
+        # Legacy public URL; it redirects permanently to /offer.
+        "/terms",
     ]
     
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'

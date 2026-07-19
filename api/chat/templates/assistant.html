@@ -4,21 +4,13 @@
         <div class="appearance-column">
 
             <div class="bento-card" id="card-intelligence-guide">
-                <div class="intelligence-orb-bg" aria-hidden="true">
-                    <canvas id="intelligence-orb-canvas" width="400" height="400"></canvas>
-                </div>
                 <div class="card-header-flex">
                     <h3 class="card-title intelligence-title-accent">Интеллект</h3>
-                </div>
+                    <button type="button" class="icon-btn-sm intelligence-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                </div>                
                 <div class="settings-form">
-                    <div class="flex-between">
-                        <div class="setting-item">
-                            <p class="intelligence-cover-subtitle">База знаний ассистента</p>
-                            <p class="intelligence-cover-note">Точные данные — уверенные ответы<br>и больше заявок.</p>
-                        </div>
-                    </div>
-
-                    <div class="setting-divider"></div>
 
                     <div class="flex-between">
                         <h3 class="subtitle-card-bold">Личность</h3>
@@ -110,7 +102,7 @@
                                 <button class="type-btn" data-dna-val="client">Клиент</button>
                             </div>
                         </div>
-
+                        <!-- Модель ИИ 
                         <div class="setting-item-compact">
                             <label class="subtitle-card">Модель ИИ</label>
                             <input type="hidden" id="prompt-ai-model" data-setting="bot_settings.ai_model" value="gigachat">
@@ -118,7 +110,7 @@
                                 <button class="type-btn" data-dna-val="yandexgpt" title="YandexGPT Pro — высокая точность и отличный русский язык">YandexGPT</button>
                                 <button class="type-btn active" data-dna-val="gigachat" title="GigaChat Max — максимальный интеллект от Сбера">GigaChat</button>
                             </div>
-                        </div>
+                        </div> -->
 
                         <div class="setting-item-compact">
                             <div class="flex-between">
@@ -130,6 +122,22 @@
                             </div>
                         </div>
 
+                        <div class="setting-item-compact">
+                            <div class="flex-between">
+                                <label class="subtitle-card">Кэшировать ответы</label>
+                                <label class="switch sm-switch">
+                                    <input type="checkbox" id="prompt-cache-enabled" data-setting="bot_settings.enable_cache">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div id="ai-cache-action-group" class="hidden" style="display: none;">
+                                <button class="action-btn sm btn-brand w-100" id="btn-clear-ai-cache">
+                                    Очистить кэш ответов (<span id="ai-cache-count">0</span>)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Голосовой ответ
                         <div class="setting-item">
                             <div class="flex-between">
                                 <h3 class="subtitle-card-bold">Голосовой ответ</h3>
@@ -158,30 +166,19 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-               
-
-            <div class="bento-card" id="card-ai-unavailable">
-                <div class="card-header-flex">
-                    <h3 class="card-title">Резервный ответ</h3>
-                </div>
-                <div class="settings-form">
-                    <div class="setting-item">
-                        <div class="flex-between-compact">
-                            <label class="subtitle-card">Сообщение при недоступности ассистента</label>
-                            <div class="char-counter" data-for="prompt-ai-unavailable"><span>0</span> / 1000</div>
-                        </div>
-                        <textarea id="prompt-ai-unavailable" class="hex-input-full ai-unavailable-textarea" data-setting="bot_settings.ai_unavailable_message" placeholder="Например: Я передал ваш вопрос оператору, он ответит вам в ближайшее время." maxlength="1000" spellcheck="false"></textarea>
-                        <p class="input-hint ai-unavailable-hint">Это сообщение отправится пользователю, если ассистент временно не сможет ответить или на балансе не хватит средств.</p>
+                        -->
                     </div>
                 </div>
             </div>
 
+        </div>
+        <div class="appearance-column">
             <div class="bento-card" id="card-prompt-personality">
                 <div class="card-header-flex">
                     <h3 class="card-title">Регламент</h3>
+                    <button type="button" class="icon-btn-sm intelligence-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
                 </div>
                 <div class="settings-form">
                     <div class="flex-between">
@@ -229,6 +226,16 @@
                             <textarea id="prompt-personality" class="hex-input-full" data-setting="bot_settings.personality_prompt" placeholder="Опишите чем занимается компания." maxlength="3000" spellcheck="false"></textarea>
                         </div>
                     </div>
+                </div>
+            </div>
+            <div class="bento-card" id="card-prompt-instructions">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Инструкции</h3>
+                    <button type="button" class="icon-btn-sm intelligence-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                </div>
+                <div class="settings-form">
                     <div class="settings-form-mini">
                         <div class="setting-item">
                             <div class="flex-between-compact">
@@ -238,27 +245,15 @@
                             <textarea id="prompt-negative" class="hex-input-full" data-setting="bot_settings.negative_prompt" placeholder="Например: Не упоминай конкурентов. В каждом сообщении напоминай про акцию 'Скидка 10%'." maxlength="1000" spellcheck="false"></textarea>
                         </div>
                     </div>
-                    <div class="setting-item">
-                        <div class="flex-between">
-                            <label class="subtitle-card">Кэширование ответов</label>
-                            <label class="switch sm-switch">
-                                <input type="checkbox" id="prompt-cache-enabled" data-setting="bot_settings.enable_cache">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <div id="ai-cache-action-group" class="hidden" style="display: none;">
-                            <button class="action-btn sm btn-brand w-100" id="btn-clear-ai-cache">
-                                Очистить кэш ответов (<span id="ai-cache-count">0</span>)
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
-        </div>
-        <div class="appearance-column">
+
             <div class="bento-card" id="card-legal">
                 <div class="card-header-flex">
                     <h3 class="card-title">Реквизиты</h3>
+                    <button type="button" class="icon-btn-sm intelligence-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
                 </div>
                 
                 <div class="settings-form">
@@ -357,6 +352,9 @@
             <div class="bento-card" id="card-working-hours">
                 <div class="card-header-flex">
                     <h3 class="card-title">Режим работы</h3>
+                    <button type="button" class="icon-btn-sm intelligence-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
                 </div>
                 <div class="settings-form">
                     <div class="working-days-list">
@@ -439,12 +437,33 @@
                     </div>
                 </div>
             </div>
+            <div class="bento-card" id="card-ai-unavailable">
+                <div class="card-header-flex">
+                    <h3 class="card-title">Резервный ответ</h3>
+                    <button type="button" class="icon-btn-sm intelligence-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                </div>
+                <div class="settings-form">
+                    <div class="setting-item">
+                        <div class="flex-between-compact">
+                            <label class="subtitle-card">Сообщение</label>
+                            <div class="char-counter" data-for="prompt-ai-unavailable"><span>0</span> / 1000</div>
+                        </div>
+                        <textarea id="prompt-ai-unavailable" class="hex-input-full ai-unavailable-textarea" data-setting="bot_settings.ai_unavailable_message" placeholder="Например: Я передал ваш вопрос оператору, он ответит вам в ближайшее время." maxlength="1000" spellcheck="false"></textarea>
+                        <p class="input-hint ai-unavailable-hint">Сообщение отправится пользователю, если закончится лимит сообщений ассистента.</p>
+                    </div>
+                </div>
+            </div>
             
         </div>
         <div class="appearance-column">
             <div class="bento-card" id="card-prompt-knowledge">
                 <div class="card-header-flex">
                     <h3 class="card-title">Контакты</h3>
+                    <button type="button" class="icon-btn-sm intelligence-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
                 </div>
                 <div class="settings-form">
                     <div class="flex-between">

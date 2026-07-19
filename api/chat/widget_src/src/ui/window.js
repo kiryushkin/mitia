@@ -1,4 +1,5 @@
 import { isMobile, formatDim } from '../utils/dom';
+import { getWidgetStorageScope } from '../core/config';
 
   // ─── Вспомогательные функции блокировки скролла ────────────
 
@@ -215,7 +216,7 @@ import { isMobile, formatDim } from '../utils/dom';
     if (pulse) pulse.style.opacity = '0';
     els.toggleBtn.style.display = 'none';
     if (els.welcome) { els.welcome.style.display = 'none'; els.welcome.classList.remove('is-visible', 'show'); }
-    localStorage.setItem('mitya_chat_open', 'true');
+    localStorage.setItem(`mitya_chat_open_${getWidgetStorageScope(config)}`, 'true');
     
     // Загружаем историю или просто прокручиваем, если она уже есть
     const realMessages = Array.from(els.messagesContainer.children).filter(msg => msg.id !== 'mitya-test-bot-preview');
@@ -228,7 +229,7 @@ import { isMobile, formatDim } from '../utils/dom';
     setTimeout(() => { if (els.input) els.input.focus(); }, 350);
   }
 
-  export function closeChat(els) {
+  export function closeChat(els, config = {}) {
     const e = els || window.els;
     if (window.MityaMedia) window.MityaMedia.stopSpeaking();
     e.window.classList.remove('is-active', 'expanded');
@@ -239,13 +240,13 @@ import { isMobile, formatDim } from '../utils/dom';
     e.toggleBtn.style.opacity = '1';
     const pulse = document.querySelector('#chat-widget .chat-button-pulse');
     if (pulse) pulse.style.opacity = '1';
-    if (e.welcome && sessionStorage.getItem('mitya_welcome_closed') !== 'true') e.welcome.style.display = 'block';
-    localStorage.setItem('mitya_chat_open', 'false');
+    if (e.welcome && sessionStorage.getItem(`mitya_welcome_closed_${getWidgetStorageScope(config)}`) !== 'true') e.welcome.style.display = 'block';
+    localStorage.setItem(`mitya_chat_open_${getWidgetStorageScope(config)}`, 'false');
     unlockBodyScroll();
   }
 
   export function toggleChat(els, config, loadHistoryFn, chatToken) {
-    els.window.classList.contains('is-active') ? closeChat(els) : openChat(els, config, loadHistoryFn, chatToken);
+    els.window.classList.contains('is-active') ? closeChat(els, config) : openChat(els, config, loadHistoryFn, chatToken);
   }
 
   export function toggleVoiceAvatar(show) {

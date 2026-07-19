@@ -1,27 +1,29 @@
-/**
- * API-слой модуля диалогов — только HTTP-запросы, без DOM и без state
- */
-
 function authHeaders() {
     return { 'Authorization': `Bearer ${localStorage.getItem('chatadmin_auth_token')}` };
 }
 
 function clientId() {
-    // Получаем client_id из URL параметра в первую очередь
     const urlParams = new URLSearchParams(window.location.search);
     const urlClientId = urlParams.get('client_id');
     if (urlClientId && urlClientId !== 'undefined') {
         return urlClientId;
     }
-    // Fallback на localStorage
     return localStorage.getItem('chat_client_id');
 }
 
-/**
- * Загрузка списка сессий
- */
+function assistantQueryParam() {
+    const previewIds = window.AdminApp?.modules?.dialogs?.getPreviewAssistantFilter?.();
+    const assistantIds = Array.isArray(previewIds)
+        ? previewIds
+        : (window.AdminApp?.getDialogsAssistantFilter?.() || []);
+    if (!Array.isArray(assistantIds) || !assistantIds.length) {
+        return `&assistant_id=all`;
+    }
+    return `&assistant_id=${encodeURIComponent(assistantIds.join(','))}`;
+}
+
 export async function fetchSessions(searchQuery = '') {
-    let url = `/api/chat/admin/sessions?client_id=${clientId()}`;
+    let url = `/api/chat/admin/sessions?client_id=${clientId()}${assistantQueryParam()}`;
     if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
 
     const res = await fetch(url, { headers: authHeaders() });
@@ -29,9 +31,6 @@ export async function fetchSessions(searchQuery = '') {
     return res.json();
 }
 
-/**
- * Загрузка истории сообщений диалога
- */
 export async function fetchHistory(sessionId, activeClientId) {
     const cid = activeClientId || clientId();
     let url = `/api/chat/history?token=${sessionId}&limit=100&t=${Date.now()}`;
@@ -44,9 +43,6 @@ export async function fetchHistory(sessionId, activeClientId) {
     return res.json();
 }
 
-/**
- * Загрузка конфига виджета (для аватаров)
- */
 export async function fetchWidgetConfig(activeClientId) {
     const cid = activeClientId || clientId();
     try {
@@ -54,7 +50,6 @@ export async function fetchWidgetConfig(activeClientId) {
         const res = await fetch(`/api/chat/config?client_id=${cid}&t=${ts}`);
         if (res.ok) return res.json();
 
-        // Для новых клиентов без allowed_origins показываем общий виджет платформы
         if (res.status === 403 && cid !== 'mitia_assistant') {
             const fallback = await fetch(`/api/chat/config?client_id=mitia_assistant&t=${ts}`);
             if (fallback.ok) return fallback.json();
@@ -66,9 +61,6 @@ export async function fetchWidgetConfig(activeClientId) {
     }
 }
 
-/**
- * Отметить диалог прочитанным
- */
 export async function markSessionRead(sessionId) {
     const res = await fetch(`/api/chat/admin/sessions/${sessionId}/read`, {
         method: 'POST',
@@ -77,9 +69,6 @@ export async function markSessionRead(sessionId) {
     return res.ok;
 }
 
-/**
- * Переключение режима оператора/ассистента
- */
 export async function toggleOperatorMode(sessionId, enable) {
     const action = enable ? 'takeover' : 'release';
     const res = await fetch(`/api/chat/admin/sessions/${sessionId}/${action}`, {
@@ -89,9 +78,6 @@ export async function toggleOperatorMode(sessionId, enable) {
     return res.ok;
 }
 
-/**
- * Удаление сессии
- */
 export async function deleteSession(sessionId) {
     const res = await fetch(`/api/chat/admin/sessions/${sessionId}`, {
         method: 'DELETE',
@@ -100,9 +86,14 @@ export async function deleteSession(sessionId) {
     return res.ok;
 }
 
-/**
- * Обновление метаданных сессии
- */
+export async function deleteSessionMessage(sessionId, messageId) {
+    const res = await fetch(`/api/chat/admin/sessions/${sessionId}/messages/${messageId}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+    });
+    return res.ok;
+}
+
 export async function updateSessionMetadata(sessionId, metadata) {
     const res = await fetch(`/api/chat/admin/sessions/${sessionId}/metadata`, {
         method: 'POST',
@@ -115,9 +106,6 @@ export async function updateSessionMetadata(sessionId, metadata) {
     return res.ok;
 }
 
-/**
- * Обновление статуса сессии (lead, archive, new и т.д.)
- */
 export async function updateSessionStatus(sessionId, status) {
     const res = await fetch(`/api/chat/admin/history/${sessionId}/status`, {
         method: 'POST',
@@ -130,9 +118,6 @@ export async function updateSessionStatus(sessionId, status) {
     return res.ok;
 }
 
-/**
- * Архивация / разархивация сессии
- */
 export async function archiveSession(sessionId, archived = true, userCloseReasonId = null) {
     const payload = { is_archived: archived };
     if (archived && userCloseReasonId !== null && userCloseReasonId !== undefined) {
@@ -150,10 +135,6 @@ export async function archiveSession(sessionId, archived = true, userCloseReason
     return res.ok;
 }
 
-
-/**
- * Отправка сообщения оператора
- */
 export async function sendOperatorMessage(sessionId, text, files = []) {
     const formData = new FormData();
     formData.append('session_id', sessionId);
@@ -190,7 +171,7 @@ export async function saveGlobalOperatorStatus(enabled) {
 
 export async function fetchIntegrations(activeClientId) {
     const cid = activeClientId || clientId();
-    const res = await fetch(`/api/chat/admin/integrations?client_id=${cid}`, {
+    const res = await fetch(`/api/chat/admin/integrations?client_id=${cid}${assistantQueryParam()}`, {
         headers: authHeaders()
     });
     if (!res.ok) return {};
@@ -200,12 +181,21 @@ export async function fetchIntegrations(activeClientId) {
 
 export async function fetchAdminConfig(activeClientId) {
     const cid = activeClientId || clientId();
-    const res = await fetch(`/api/chat/admin/config?client_id=${cid}`, {
+    const res = await fetch(`/api/chat/admin/config?client_id=${cid}${assistantQueryParam()}`, {
         headers: authHeaders()
     });
     if (!res.ok) return {};
     const data = await res.json();
     return data.config || {};
+}
+
+export async function fetchAnalyticsSettings(activeClientId) {
+    const cid = activeClientId || clientId();
+    const res = await fetch(`/api/chat/admin/analytics-settings?client_id=${cid}${assistantQueryParam()}`, {
+        headers: authHeaders()
+    });
+    if (!res.ok) return null;
+    return res.json();
 }
 
 export async function fetchCloseReasons(activeClientId, includeInactive = false) {
@@ -249,7 +239,7 @@ export async function updateCloseReason(reasonId, patch, activeClientId) {
 
 export async function saveAdminConfig(partialConfig, activeClientId) {
     const cid = activeClientId || clientId();
-    const res = await fetch(`/api/chat/admin/config?client_id=${cid}`, {
+    const res = await fetch(`/api/chat/admin/config?client_id=${cid}${assistantQueryParam()}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

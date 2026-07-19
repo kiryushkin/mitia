@@ -176,7 +176,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     {
                         "type": "typing", 
                         "is_typing": message.get("is_typing", False),
-                        "author_role": message.get("author_role", "operator")
+                        "author_role": message.get("author_role", "user")
                     },
                     exclude=websocket
                 )

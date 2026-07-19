@@ -11,7 +11,7 @@ import httpx
 
 from ..core.config import log
 from ..services.clients import list_clients, get_client_config
-from ..services.integrations_service import get_integration_settings
+from ..services.integrations_service import get_integration_settings, list_integration_settings
 from ..services.db_service import (
     AsyncSessionLocal, get_or_create_session, save_chat_message, is_operator_mode,
     download_and_save_file
@@ -27,7 +27,7 @@ def _token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()[:16]
 
 
-async def find_client_by_group_id(group_id: int) -> Optional[str]:
+async def find_client_by_group_id(group_id: int) -> Optional[dict]:
     """Ищет client_id по ID группы ВК."""
     cache_key = f"vk_group_client:{group_id}"
     
@@ -47,26 +47,14 @@ async def find_client_by_group_id(group_id: int) -> Optional[str]:
                 continue
                 
             log.info(f"[VK SEARCH] Checking client: {cid}")
-            settings = await get_integration_settings(cid, "vk")
-            
-            # Декодируем настройки, если они пришли строкой
-            if isinstance(settings, str):
-                try:
-                    import json
-                    settings = json.loads(settings)
-                except:
-                    continue
-            
-            if not isinstance(settings, dict):
-                continue
-
-            conf_group_id = settings.get("group_id")
-            log.info(f"[VK SEARCH] Client {cid} has group_id: {conf_group_id}")
-            
-            if str(conf_group_id) == str(group_id) and settings.get("enabled"):
-                log.info(f"[VK SEARCH] FOUND MATCH: {cid}")
-                cache_service.set(cache_key, cid)
-                return cid
+            for assistant_id, settings in await list_integration_settings(cid, "vk"):
+                conf_group_id = settings.get("group_id")
+                log.info(f"[VK SEARCH] Client {cid}:{assistant_id} has group_id: {conf_group_id}")
+                if str(conf_group_id) == str(group_id) and settings.get("enabled"):
+                    log.info(f"[VK SEARCH] FOUND MATCH: {cid}:{assistant_id}")
+                    payload = {"client_id": cid, "assistant_id": assistant_id}
+                    cache_service.set(cache_key, payload)
+                    return payload
     except Exception as e:
         log.error(f"[VK SEARCH] Critical error: {e}")
     
@@ -100,13 +88,13 @@ async def get_vk_user_info(access_token: str, user_id: int) -> dict:
     return {}
 
 
-async def get_or_create_vk_session(client_id: str, vk_user_id: int, metadata: Optional[dict] = None) -> str:
+async def get_or_create_vk_session(client_id: str, vk_user_id: int, metadata: Optional[dict] = None, assistant_id: str | None = None) -> str:
     """Создает или получает существующую сессию для пользователя ВК."""
-    session_id = f"vk-{client_id}-{vk_user_id}"
+    session_id = f"vk-{client_id}-{assistant_id or 'main'}-{vk_user_id}"
     
     # Проверяем кэш только если нет метаданных для обновления
     if not metadata:
-        cache_key = f"vk_session:{client_id}:{vk_user_id}"
+        cache_key = f"vk_session:{client_id}:{assistant_id or 'main'}:{vk_user_id}"
         cached_id = cache_service.get(cache_key)
         if cached_id:
             return cached_id
@@ -120,9 +108,9 @@ async def get_or_create_vk_session(client_id: str, vk_user_id: int, metadata: Op
         user_info.update(metadata)
 
     async with AsyncSessionLocal() as db:
-        await get_or_create_session(session_id, client_id, metadata=user_info)
+        await get_or_create_session(session_id, client_id, metadata=user_info, assistant_id=assistant_id)
     
-    cache_key = f"vk_session:{client_id}:{vk_user_id}"
+    cache_key = f"vk_session:{client_id}:{assistant_id or 'main'}:{vk_user_id}"
     cache_service.set(cache_key, session_id)
     return session_id
 
@@ -172,15 +160,16 @@ async def send_vk_typing(access_token: str, peer_id: int) -> bool:
 
 async def handle_vk_message(
     client_id: str, access_token: str, vk_user_id: int, user_text: str,
-    attachments: list = None
+    attachments: list = None, assistant_id: str | None = None
 ) -> bool:
     """Основная логика обработки сообщения от ВК."""
     # Получаем инфо о пользователе
     vk_user_info = await get_vk_user_info(access_token, vk_user_id)
-    session_id = await get_or_create_vk_session(client_id, vk_user_id, metadata=vk_user_info)
+    session_id = await get_or_create_vk_session(client_id, vk_user_id, metadata=vk_user_info, assistant_id=assistant_id)
 
-    # Обработка вложений — скачиваем файлы
+    # Downloaded files are stored as structured attachments for Inbox and AI.
     attachment_links = []
+    stored_attachments = []
     if attachments:
         for att in attachments:
             att_type = att.get("type")
@@ -193,9 +182,11 @@ async def handle_vk_message(
                     if photo_url:
                         local_url = await download_and_save_file(
                             photo_url, client_id, session_id=session_id,
-                            file_name="photo.jpg", category="chat_file"
+                            file_name="photo.jpg", category="chat_file", assistant_id=assistant_id
                         )
                         attachment_links.append(f"🖼 Фото: {local_url or photo_url}")
+                        if local_url:
+                            stored_attachments.append({"name": "photo.jpg", "content_type": "image/jpeg", "local_url": local_url})
             elif att_type == "doc":
                 doc = att.get("doc", {})
                 doc_url = doc.get("url")
@@ -203,9 +194,11 @@ async def handle_vk_message(
                 if doc_url:
                     local_url = await download_and_save_file(
                         doc_url, client_id, session_id=session_id,
-                        file_name=doc_name, category="chat_file"
+                        file_name=doc_name, category="chat_file", assistant_id=assistant_id
                     )
                     attachment_links.append(f"📄 Файл {doc_name}: {local_url or doc_url}")
+                    if local_url:
+                        stored_attachments.append({"name": doc_name, "content_type": doc.get("ext") or "application/octet-stream", "local_url": local_url})
             elif att_type == "video":
                 video = att.get("video", {})
                 # VK может не давать прямую ссылку на скачивание видео
@@ -222,9 +215,15 @@ async def handle_vk_message(
                 if audio_url:
                     local_url = await download_and_save_file(
                         audio_url, client_id, session_id=session_id,
-                        file_name=audio_name or "audio.mp3", category="chat_file"
+                        file_name=audio_name or "audio.mp3", category="chat_file", assistant_id=assistant_id
                     )
                     attachment_links.append(f"🎵 Аудио: {audio_name} ({local_url or audio_url})")
+                    if local_url:
+                        stored_attachments.append({"name": audio_name or "audio.mp3", "content_type": "audio/mpeg", "local_url": local_url})
+                        from .stt_service import transcribe_voice
+                        transcript = await transcribe_voice(local_url)
+                        if transcript:
+                            attachment_links.append(f"📝 Расшифровка аудио: {transcript}")
 
     if attachment_links:
         extra_text = "\n".join(attachment_links)
@@ -232,34 +231,55 @@ async def handle_vk_message(
 
     is_operator = await is_operator_mode(session_id)
 
-    settings = await get_integration_settings(client_id, "vk")
+    settings = await get_integration_settings(client_id, "vk", assistant_id=assistant_id)
     if not settings.get("enabled"):
         return False
 
-    assistant_enabled = settings.get("assistant_enabled", True)
+    assistant_enabled = settings.get("assistant_enabled", False)
 
     if is_operator or not assistant_enabled:
-        await save_chat_message(session_id, "user", user_text)
+        await save_chat_message(session_id, "user", user_text, attachments=stored_attachments or None)
+        from .operator_notification_service import (
+            build_incoming_message_notification,
+            notify_operators,
+        )
+        sender = " ".join(filter(None, [vk_user_info.get("first_name"), vk_user_info.get("last_name")]))
+        await notify_operators(
+            client_id,
+            build_incoming_message_notification(
+                source="vk", sender=sender, message=user_text, is_operator=bool(is_operator)
+            ),
+            assistant_id=assistant_id,
+        )
 
-        autoreply_enabled = settings.get("autoreply_enabled", False)
-        autoreply_message = (settings.get("autoreply_message") or "").strip()
-
-        if is_operator and autoreply_enabled and autoreply_message:
-            await send_vk_message(access_token, vk_user_id, autoreply_message)
-            await save_chat_message(session_id, "assistant", autoreply_message)
 
         return True
+
+    from .operator_notification_service import (
+        build_incoming_message_notification,
+        notify_operators,
+    )
+    sender = " ".join(filter(None, [vk_user_info.get("first_name"), vk_user_info.get("last_name")]))
+    await notify_operators(
+        client_id,
+        build_incoming_message_notification(
+            source="vk", sender=sender, message=user_text, is_operator=bool(is_operator)
+        ),
+        assistant_id=assistant_id,
+    )
 
     await send_vk_typing(access_token, vk_user_id)
 
     data = AskData(
         client_id=client_id,
+        assistant_id=assistant_id,
         session_id=session_id,
         message=user_text,
         token=session_id,
         context=None,
         voice_output=False,
         stream=False,
+        attachments=stored_attachments or None,
     )
 
     try:
@@ -297,12 +317,16 @@ async def send_operator_message_to_vk(
     except (ValueError, IndexError):
         return False
         
-    settings = await get_integration_settings(client_id, "vk")
+    assistant_id = None
+    parts = session_id.split("-")
+    if len(parts) >= 4:
+        assistant_id = parts[2]
+    settings = await get_integration_settings(client_id, "vk", assistant_id=assistant_id)
     access_token = settings.get("access_token")
     if not access_token or not settings.get("enabled"):
         return False
     
-    display_message = f"👤 {operator_name}: {message}" if message else ""
+    display_message = f"{operator_name}: {message}" if message else ""
     if display_message:
         return await send_vk_message(access_token, vk_user_id, display_message)
     return False

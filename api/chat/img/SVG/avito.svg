@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="icon_avito" data-name="icon avito" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #965eeb;
+      }
+
+      .cls-2 {
+        fill: #0af;
+      }
+
+      .cls-3 {
+        fill: #ff4053;
+      }
+
+      .cls-4 {
+        fill: #04e061;
+      }
+    </style>
+  </defs>
+  <circle id="green" class="cls-4" cx="173.19" cy="311.57" r="111.22"/>
+  <circle id="blue" class="cls-2" cx="341.25" cy="168.92" r="90.49"/>
+  <circle id="violet" class="cls-1" cx="195.05" cy="144.13" r="41.81"/>
+  <circle id="red" class="cls-3" cx="367.32" cy="341.02" r="66.61"/>
+</svg>

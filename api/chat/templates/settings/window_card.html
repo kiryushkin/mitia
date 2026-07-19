@@ -1,27 +1,25 @@
-<!-- ОКНО -->
 <div class="bento-card" id="card-window-design">
     <div class="card-header-flex">
-        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
-            <div class="collapse-icon"></div>
+        <div class="card-title-group">
             <h3 class="card-title">Окно</h3>
         </div>
-        <!-- Иконки -->
         <div class="card-actions-mini">
-            <button class="icon-btn-sm" onclick="window.resetWindowToDefault()" title="Восстановить дизайн">
+            <button class="menu-dots-btn" onclick="window.resetWindowToDefault()" title="Восстановить дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
             </button>
-            <button class="icon-btn-sm" onclick="window.randomizeWindowDesign()" title="Магический дизайн">
+            <button class="menu-dots-btn" onclick="window.randomizeWindowDesign()" title="Магический дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+            <button class="icon-btn-sm window-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
         </div>
     </div>
-    <!-- Параметры окна -->
+    <p class="card-description">Диалоговое окно чата</p>
     <div class="settings-form">
-        <!-- СТАТУС ОКНА -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Статус</h3>
         </div>
-        <!-- Автоматически открывать окно при загрузке страницы -->
         <div class="setting-item-compact">
             <div class="flex-between">
                 <label class="subtitle-card">Автоматически открывать при загрузке</label>
@@ -31,7 +29,6 @@
                 </label>
             </div>
         </div>
-        <!-- Разрешить перемещение окно по экрану -->
         <div class="setting-item-compact">
             <div class="flex-between">
                 <label class="subtitle-card">Перемещение по экрану</label>
@@ -41,11 +38,9 @@
                 </label>
             </div>
         </div>
-        <!-- ГЕОМЕТРИЯ ОКНА -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Геометрия</h3>
         </div>
-        <!-- Открывать окно на весь экран при открытии -->
         <div class="setting-item-compact">
             <div class="flex-between">
                 <label class="subtitle-card">Открывать на весь экран при открытии</label>
@@ -55,7 +50,6 @@
                 </label>
             </div>
         </div>
-        <!-- >Разрешить изменение размера окна -->
         <div class="setting-item-compact">
             <div class="flex-between">
                 <label class="subtitle-card">Разрешить изменение размера</label>
@@ -65,7 +59,6 @@
                 </label>
             </div>
         </div>
-        <!-- Ширина окна -->
         <div class="setting-item">
             <label class="subtitle-card">Ширина</label>
             <div class="range-with-val">
@@ -73,7 +66,6 @@
                 <span class="range-value" id="chat-width-val"></span>
             </div>
         </div>
-        <!-- Высота окна -->
         <div class="setting-item"> 
             <label class="subtitle-card">Высота</label>
             <div class="range-with-val">
@@ -81,7 +73,6 @@
                 <span class="range-value" id="chat-height-val"></span>
             </div>
         </div>
-        <!-- Позиция окна по горизонтали -->
         <div class="setting-item">
             <label class="subtitle-card">Позиция по горизонтали</label>
             <div class="range-with-val">
@@ -89,7 +80,6 @@
                 <span class="range-value" id="chat-left-val"></span>
             </div>
         </div>
-        <!-- Позиция окна по вертикали -->
         <div class="setting-item">
             <label class="subtitle-card">Позиция по вертикали</label>
             <div class="range-with-val">
@@ -97,7 +87,6 @@
                 <span class="range-value" id="chat-top-val"></span>
             </div>
         </div>
-        <!-- Скругление окна -->
         <div class="setting-item">
             <label class="subtitle-card">Скругление</label>
             <div class="range-with-val">
@@ -105,7 +94,6 @@
                 <span class="range-value" id="chat-radius-val"></span>
             </div>
         </div>
-        <!-- ИЗОБРАЖЕНИЕ ОКНА -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Изображение</h3>
             <label class="switch sm-switch">
@@ -113,9 +101,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры изображения окна -->
         <div id="chat-window-img-group" class="settings-form-mini">
-            <!-- Загрузить изображение окна -->
             <div class="setting-item">
                 <label class="subtitle-card">Загрузить изображение</label>
                 <div class="color-input-group">
@@ -134,7 +120,6 @@
                     <input type="file" id="chat-window-img-upload" hidden accept=".jpg,.jpeg,.png,.svg,.gif,.webp">
                 </div>
             </div>
-            <!-- Прозрачность изображения окна -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -143,7 +128,6 @@
                 </div>
             </div>
         </div>
-        <!-- ФОН ОКНА -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Фон</h3>
             <label class="switch sm-switch">
@@ -151,9 +135,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры фона окна -->
         <div id="chat-bg-group" class="settings-form-mini">
-            <!-- Цвет фона окна -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -164,7 +146,6 @@
                     <input type="text" id="chat-bg-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.window_bg" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность фона окна -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -172,7 +153,6 @@
                     <span class="range-value" id="chat-opacity-val"></span>
                 </div>
             </div>
-            <!-- Размытие фона окна -->
             <div class="setting-item">
                 <label class="subtitle-card">Размытие</label>
                 <div class="range-with-val">
@@ -181,7 +161,6 @@
                 </div>
             </div>
         </div>
-        <!-- ОБВОДКА ОКНА -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Обводка</h3>
             <label class="switch sm-switch">
@@ -189,9 +168,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры обводки окна -->
         <div id="chat-border-group" class="settings-form-mini">
-            <!-- Цвет обводки окна -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -202,7 +179,6 @@
                     <input type="text" id="chat-border-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.window_border_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность обводки окна -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -210,7 +186,6 @@
                     <span class="range-value" id="chat-border-opacity-val"></span>
                 </div>
             </div>
-            <!-- Толщина обводки окна -->
             <div class="setting-item">
                 <label class="subtitle-card">Толщина</label>
                 <div class="range-with-val">
@@ -219,7 +194,6 @@
                 </div>
             </div>
         </div>
-        <!-- ТЕНЬ ОКНА -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Тень</h3>
             <label class="switch sm-switch">
@@ -227,9 +201,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры тени окна -->
         <div id="chat-shadow-settings" class="settings-form-mini">
-            <!-- Цвет тени окна -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -240,7 +212,6 @@
                     <input type="text" id="chat-shadow-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.window_shadow_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность тени окна -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -248,7 +219,6 @@
                     <span class="range-value" id="chat-shadow-opacity-val"></span>
                 </div>
             </div>
-            <!-- Размытие тени окна -->
             <div class="setting-item">
                 <label class="subtitle-card">Размытие</label>
                 <div class="range-with-val">

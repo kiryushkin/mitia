@@ -70,10 +70,11 @@ export class ChatAPI {
       method: 'POST',
       mode: 'cors',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        token, 
+      body: JSON.stringify({
+        token,
         session_id: sessionId,
-        last_text: lastText 
+        client_id: this.config.clientId,
+        last_text: lastText
       })
     });
   }

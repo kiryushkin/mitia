@@ -6,23 +6,23 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="format-detection" content="telephone=no">
 
-    <title>Центр помощи и документация — MITIA </title>
-    <meta name="description" content="Полное руководство по настройке и использованию MITIA. Инструкции по интеграции Telegram, VK, Авито, настройка базы знаний и ИИ-ассистентов.">
-    <meta name="keywords" content="MITIA, документация, настройка ИИ, интеграция телеграм бот, база знаний ИИ, руководство пользователя">
+    <title>Центр помощи и документация — MITIA</title>
+    <meta name="description" content="Полное руководство по MITIA: регистрация, интеллект, виджет, интеграции Telegram/VK/Max/Email/Avito, диалоги, аналитика, тарифы и оплата.">
+    <meta name="keywords" content="MITIA, документация, ИИ-ассистент, Telegram, VK, Avito, виджет, тарифы, база знаний">
     <meta name="author" content="MITIA">
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://mitia.pro/help">
     <meta property="og:title" content="MITIA — Центр помощи">
-    <meta property="og:description" content="Узнайте, как эффективно использовать ИИ-ассистентов для вашего бизнеса.">
+    <meta property="og:description" content="Подробная документация по настройке и запуску ИИ-ассистентов MITIA.">
     <meta property="og:image" content="https://mitia.pro/api/chat/static/img/og-image.jpg">
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://mitia.pro/help">
     <meta property="twitter:title" content="MITIA — Центр помощи">
-    <meta property="twitter:description" content="Инструкции по настройке и интеграции ИИ-ассистентов.">
+    <meta property="twitter:description" content="Подробная документация по настройке и запуску ИИ-ассистентов MITIA.">
     <meta property="twitter:image" content="https://mitia.pro/api/chat/static/img/og-image.jpg">
 
     <meta name="theme-color" content="#ffffff">
@@ -30,8 +30,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <link rel="canonical" href="https://mitia.pro/help">
-    <link rel="icon" href="/api/chat/img/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/api/chat/img/favicon.svg">
+    <link rel="icon" href="/api/chat/img/favicon.png?v=7" type="image/png">
+    <link rel="apple-touch-icon" href="/api/chat/img/favicon.png?v=7" type="image/png">
 
     <!-- JSON-LD -->
     <script type="application/ld+json">
@@ -39,45 +39,44 @@
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "Центр помощи MITIA",
-      "description": "Руководство по настройке ИИ-ассистентов и интеграций с мессенджерами.",
-      "author": {
-        "@type": "Organization",
-        "name": "MITIA"
-      },
+      "description": "Полное руководство по платформе MITIA: от регистрации до интеграций и оплаты.",
+      "author": { "@type": "Organization", "name": "MITIA" },
       "publisher": {
         "@type": "Organization",
         "name": "MITIA",
-        "logo": {
-          "@type": "ImageObject",
-          "url": "https://mitia.pro/api/chat/static/img/logo.png"
-        }
+        "logo": { "@type": "ImageObject", "url": "https://mitia.pro/api/chat/static/img/logo.png" }
       },
-      "mainEntityOfPage": {
-        "@type": "WebPage",
-        "@id": "https://mitia.pro/help"
-      }
+      "mainEntityOfPage": { "@type": "WebPage", "@id": "https://mitia.pro/help" }
     }
     </script>
 
-    <link rel="stylesheet" href="/api/chat/static/css/help.css?v=2">
-    <script src="/api/chat/static/js/help.js?v=1" defer></script>
-    <script src="http://127.0.0.1:5007/api/chat/chat-widget.js?client_id=mitia_assistant" defer></script>
+    <link rel="stylesheet" href="/api/chat/static/css/help.css?v=3">
+    <script>
+        window.MITYA_CONFIG = {
+        clientId: 'usr_138d227f7f19',
+        assistantId: 'main',
+        serverUrl: 'https://mitia.pro'
+    };
+    </script>
+    <script src="https://mitia.pro/api/chat/chat-widget.js?client_id=usr_138d227f7f19&assistant_id=main" data-client="usr_138d227f7f19" data-assistant-id="main" defer></script>
+    
+    <script src="/api/chat/static/js/help.js?v=2" defer></script>
 </head>
 <body>
     <header class="mobile-header">
-        <button class="menu-toggle" id="menu-toggle">
+        <button class="menu-toggle" id="menu-toggle" aria-label="Меню">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
         </button>
-        
+
         <a href="/" class="docs-logo mobile-logo">
             <img src="/api/chat/img/mitia_logo.svg" alt="MITIA" height="20">
         </a>
 
-        <button class="search-toggle" id="search-toggle">
+        <button class="search-toggle" id="search-toggle" aria-label="Поиск">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -90,42 +89,121 @@
             <img src="/api/chat/img/mitia_logo.svg" alt="MITIA" height="20">
         </a>
 
-
         <div class="search-container">
             <div class="search-input-wrapper">
                 <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
-                <input type="text" placeholder="Поиск..." class="search-input">
+                <input type="text" placeholder="Поиск по документации..." class="search-input">
             </div>
         </div>
-        
+
         <nav>
-            <div class="docs-nav-section">Начало работы</div>
+            <div class="docs-nav-section">Начало</div>
             <ul class="docs-nav">
+                <li class="docs-nav-item">
+                    <a href="#overview" class="docs-nav-link">Обзор</a>
+                </li>
                 <li class="docs-nav-item">
                     <a href="#registration" class="docs-nav-link">Учётная запись</a>
                     <ul class="docs-nav-sub">
-                        <li><a href="#reg-new">Регистрация аккаунта</a></li>
+                        <li><a href="#reg-new">Регистрация</a></li>
                         <li><a href="#reg-confirm">Подтверждение email</a></li>
-                        <li><a href="#reg-login">Вход в систему</a></li>
+                        <li><a href="#reg-login">Вход</a></li>
                         <li><a href="#reg-password">Смена пароля</a></li>
-                        <li><a href="#reg-reset">Восстановление пароля</a></li>
+                        <li><a href="#reg-reset">Восстановление</a></li>
                     </ul>
                 </li>
                 <li class="docs-nav-item">
                     <a href="#dashboard" class="docs-nav-link">Панель управления</a>
                     <ul class="docs-nav-sub">
-                        <li><a href="#dash-overview">Главный экран</a></li>
-                        <li><a href="#dash-chats">Диалоги</a></li>
-                        <li><a href="#dash-stats">Статистика</a></li>
-                        <li><a href="#profile">Профиль</a></li>
-                        <li><a href="#profile-account">Аккаунт</a></li>
+                        <li><a href="#dash-overview">Структура</a></li>
+                        <li><a href="#dash-nav">Навигация</a></li>
+                        <li><a href="#dash-save">Сохранение</a></li>
+                        <li><a href="#dash-first-steps">Первый запуск</a></li>
                     </ul>
                 </li>
             </ul>
 
+            <div class="docs-nav-section">Настройка</div>
+            <ul class="docs-nav">
+                <li class="docs-nav-item">
+                    <a href="#assistant" class="docs-nav-link">Интеллект</a>
+                    <ul class="docs-nav-sub">
+                        <li><a href="#assistant-personality">Личность</a></li>
+                        <li><a href="#assistant-knowledge">База знаний</a></li>
+                        <li><a href="#assistant-legal">Реквизиты и график</a></li>
+                        <li><a href="#assistant-multi">Несколько ассистентов</a></li>
+                    </ul>
+                </li>
+                <li class="docs-nav-item">
+                    <a href="#settings" class="docs-nav-link">Внешний вид</a>
+                    <ul class="docs-nav-sub">
+                        <li><a href="#settings-cards">Карточки дизайна</a></li>
+                        <li><a href="#settings-how">Как настраивать</a></li>
+                    </ul>
+                </li>
+                <li class="docs-nav-item">
+                    <a href="#integrations" class="docs-nav-link">Интеграции</a>
+                    <ul class="docs-nav-sub">
+                        <li><a href="#int-widget">Сайт / виджет</a></li>
+                        <li><a href="#int-telegram">Telegram</a></li>
+                        <li><a href="#int-max">Max</a></li>
+                        <li><a href="#int-vk">ВКонтакте</a></li>
+                        <li><a href="#int-email">Email</a></li>
+                        <li><a href="#int-avito">Авито</a></li>
+                        <li><a href="#int-hh">HeadHunter</a></li>
+                        <li><a href="#int-notifications">Уведомления</a></li>
+                    </ul>
+                </li>
+            </ul>
+
+            <div class="docs-nav-section">Работа</div>
+            <ul class="docs-nav">
+                <li class="docs-nav-item">
+                    <a href="#dialogs" class="docs-nav-link">Диалоги</a>
+                    <ul class="docs-nav-sub">
+                        <li><a href="#dialogs-filters">Фильтры</a></li>
+                        <li><a href="#dialogs-work">Ответы оператора</a></li>
+                    </ul>
+                </li>
+                <li class="docs-nav-item">
+                    <a href="#analytics" class="docs-nav-link">Аналитика</a>
+                </li>
+                <li class="docs-nav-item">
+                    <a href="#profile" class="docs-nav-link">Профиль</a>
+                    <ul class="docs-nav-sub">
+                        <li><a href="#profile-account">Аккаунт</a></li>
+                        <li><a href="#profile-security">Безопасность</a></li>
+                        <li><a href="#profile-assistants">Ассистенты</a></li>
+                        <li><a href="#profile-storage">Хранилище</a></li>
+                        <li><a href="#profile-news">Новости</a></li>
+                    </ul>
+                </li>
+                <li class="docs-nav-item">
+                    <a href="#billing" class="docs-nav-link">Тарифы и оплата</a>
+                    <ul class="docs-nav-sub">
+                        <li><a href="#billing-balance">Баланс</a></li>
+                        <li><a href="#billing-tariffs">Тарифы</a></li>
+                        <li><a href="#billing-packs">Пакеты</a></li>
+                        <li><a href="#billing-autorenew">Автопродление</a></li>
+                    </ul>
+                </li>
+            </ul>
+
+            <div class="docs-nav-section">Справка</div>
+            <ul class="docs-nav">
+                <li class="docs-nav-item">
+                    <a href="#faq" class="docs-nav-link">FAQ</a>
+                </li>
+                <li class="docs-nav-item">
+                    <a href="/offer" class="docs-nav-link" target="_blank" rel="noopener">Оферта</a>
+                </li>
+                <li class="docs-nav-item">
+                    <a href="/privacy" class="docs-nav-link" target="_blank" rel="noopener">Политика</a>
+                </li>
+            </ul>
         </nav>
     </aside>
 
@@ -133,21 +211,28 @@
         <section id="overview" class="docs-section">
             <div class="hero-text">
                 <h1>Справочный центр</h1>
-                <p>Полное пошаговое руководство по платформе: от регистрации и настройки панели до запуска ИИ-ассистента, с ответами на вопросы, туром по интерфейсу и полезными ссылками.</p>
+                <p>Полное руководство по платформе: от регистрации и настройки ассистента до виджета, мессенджеров, диалогов, аналитики и оплаты.</p>
+            </div>
+
+            <div class="docs-toc-mini">
+                <a href="#registration"><strong>1. Аккаунт</strong><span>Регистрация, вход, пароль</span></a>
+                <a href="#assistant"><strong>2. Интеллект</strong><span>Личность, знания, сайт</span></a>
+                <a href="#settings"><strong>3. Внешний вид</strong><span>Виджет и дизайн чата</span></a>
+                <a href="#integrations"><strong>4. Интеграции</strong><span>Сайт, Telegram, VK, Email…</span></a>
+                <a href="#dialogs"><strong>5. Диалоги</strong><span>Inbox и ответы оператора</span></a>
+                <a href="#billing"><strong>6. Оплата</strong><span>Тарифы, баланс, пакеты</span></a>
             </div>
         </section>
-        <!-- Сюда будут добавляться админы -->
-
 
         <section class="promo-banner">
             <div class="promo-content">
                 <h2>Митя</h2>
                 <span class="promo-badge">ИИ-администратор платформы</span>
-                <p>Ответит на любые вопросы и поможет создать вашего собственного ИИ-ассистента.</p>
-                <button class="promo-btn" onclick="window.ChatWidget.open()">
+                <p>Ответит на вопросы по настройке и&nbspпоможет запустить вашего ассистента.</p>
+                <span class="promo-btn promo-btn--static">
                     Спросить Митю
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                </button>
+                </span>
             </div>
             <div class="promo-phone-wrapper">
                 <img src="/api/chat/img/phone.png" alt="Phone" class="promo-phone-img">
@@ -157,52 +242,20 @@
             </div>
         </section>
 
-
         {% include 'help/account.html' %}
         {% include 'help/dashboard.html' %}
+        {% include 'help/assistant.html' %}
+        {% include 'help/settings.html' %}
+        {% include 'help/integrations.html' %}
+        {% include 'help/dialogs.html' %}
+        {% include 'help/analytics.html' %}
         {% include 'help/profile.html' %}
+        {% include 'help/faq.html' %}
 
-        <section id="tg-setup" class="docs-section">
-            <h2>Подключение Telegram</h2>
-            <p>Интеграция с Telegram позволит получать сообщения от ваших клиентов, которые пишут в Telegram-бота, в приложение Mitia. Чтобы подключить Telegram, сначала нужно создать бота и сгенерировать ключ API.</p>
-
-            <h3 id="tg-create">Шаг 1: Создание бота</h3>
-            <ol>
-                <li>Найдите в Telegram пользователя <a href="https://t.me/BotFather" target="_blank" class="helper-link-blue">@BotFather</a> и начните с ним чат.</li>
-                <li>Отправьте пользователю сообщение <code>/newbot</code> для вызова команды создания нового бота.</li>
-                <li>Придумайте и введите имя бота, которое будет отображаться для посетителей во время чата с ним.</li>
-                <li>Введите username бота (обязательно должен заканчиваться на «bot», например: <i>@assistant_mitia_bot</i>).</li>
-                <li>Скопируйте предоставленный ключ API (токен).</li>
-            </ol>
-
-            <h3 id="tg-config">Шаг 2: Настройка интеграции</h3>
-            <ol>
-                <li>Перейдите в раздел <a href="/admin/integrations" target="_blank" class="helper-link-blue">Интеграции</a> в панели Mitia.</li>
-                <li>Вставьте ключ API в поле <b>«Токен бота»</b> в карточке Telegram.</li>
-                <li>Включите переключатель в заголовке карточки.</li>
-                <li>Нажмите кнопку <b>«Сохранить»</b> (иконка дискеты <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: middle; margin: 0 2px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> в левом меню).</li>
-            </ol>
-
-            <h3 id="tg-params">Параметры карточки Telegram</h3>
-            <ul>
-                <li><b>Автоматический ответ:</b> отправляет мгновенное сообщение клиенту сразу после его обращения. Текст настраивается в поле под переключателем.</li>
-                <li><b>Включить ассистента:</b> активирует ответы ИИ на основе вашей базы знаний. Если выключено — бот работает в режиме ручных ответов оператора.</li>
-                <li><b>Оператор:</b> позволяет добавить ID пользователей для получения уведомлений о новых лидах в личные сообщения Telegram. Узнать свой ID можно у бота <a href="https://t.me/userinfobot" target="_blank" class="helper-link-blue">@userinfobot</a>.</li>
-            </ul>
-        </section>
-
-        <section id="vk-setup" class="docs-section">
-            <h2>Интеграция с ВКонтакте</h2>
-            <p>Для подключения сообщества ВК необходимо:</p>
-            <ul>
-                <li>Быть администратором сообщества.</li>
-                <li>Разрешить сообщения в настройках группы.</li>
-                <li>Получить ключ доступа (Access Token) с правами на сообщения.</li>
-            </ul>
-        </section>
-
+        <div class="docs-footer-note">
+            <p>Документация соответствует текущей версии панели MITIA. Юридические условия: <a href="/offer" class="helper-link-blue">публичная оферта</a> и <a href="/privacy" class="helper-link-blue">политика конфиденциальности</a>.</p>
+            <p>Поддержка: <a href="mailto:assistant@mitia.pro" class="helper-link-blue">assistant@mitia.pro</a> · <a href="/login" class="helper-link-blue">Войти в панель</a></p>
+        </div>
     </main>
-
 </body>
-
 </html>

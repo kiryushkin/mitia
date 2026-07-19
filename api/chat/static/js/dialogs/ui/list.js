@@ -1,15 +1,9 @@
-/**
- * Рендер списка диалогов, статистики, выбора
- */
-
 import { state, getFilteredDialogs } from '../state.js';
 import { formatDate, translateIntent, createInitialsPlaceholder, escapeHtml, loadEmailAvatar } from '../helpers.js?v=1';
 import { openDialog } from './modal.js';
 
-// Кэш DOM-узлов диалогов для дифференциального рендеринга
 const dialogNodes = new Map();
 
-// Observer для ленивой загрузки аватарок
 const avatarObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -24,6 +18,11 @@ const avatarObserver = new IntersectionObserver((entries) => {
                     container.appendChild(img);
                 };
                 img.onerror = () => {
+                    const fallbackSrc = data.fallbackSrc || '';
+                    if (fallbackSrc && img.src !== fallbackSrc) {
+                        img.src = fallbackSrc;
+                        return;
+                    }
                     container.innerHTML = data.placeholder || '';
                 };
                 delete container.dataset.src;
@@ -36,11 +35,9 @@ const avatarObserver = new IntersectionObserver((entries) => {
     });
 }, { rootMargin: '100px' });
 
-/**
- * Отрисовка всех диалогов
- */
 export function renderDialogs() {
     const container = document.getElementById('dialogs-container');
+    const listColumn = document.getElementById('dialogs-list-column');
     const template = document.getElementById('tmpl-dialog-card');
 
     if (!container || !template) return;
@@ -48,17 +45,44 @@ export function renderDialogs() {
     const filtered = getFilteredDialogs();
     renderStats(filtered);
 
+    const filteredSignature = filtered.map((dialog) => dialog.session_id).join('|');
+    if (state._lastRenderedDialogsSignature !== filteredSignature) {
+        state._lastRenderedDialogsSignature = filteredSignature;
+        if (listColumn) listColumn.scrollTop = 0;
+    }
+
     if (filtered.length === 0) {
-        container.innerHTML = '<div class="empty-state">Диалогов не найдено</div>';
+        const hasDialogs = state.dialogs.length > 0;
+        const emptyMessage = hasDialogs
+            ? 'Диалогов не найдено'
+            : 'Здесь будут появляться карточки диалогов, когда пользователи начнут вам писать.';
+        container.innerHTML = `<div class="empty-state">${emptyMessage}</div>`;
         dialogNodes.clear();
+        if (listColumn) listColumn.scrollTop = 0;
+        updateSelectUI();
         return;
     }
 
-    // Пагинация: берем только часть для отрисовки
+    updateSelectUI();
+
+    if (!state.selectMode && state.selectedSessions.size > 0) {
+        state.selectedSessions = new Set();
+    }
+    if (state.selectMode && state.selectedSessions.size > 0) {
+        const filteredIds = new Set(filtered.map(d => d.session_id));
+        state.selectedSessions.forEach((sid) => {
+            if (!filteredIds.has(sid)) state.selectedSessions.delete(sid);
+        });
+    }
+    updateSelectUI();
+
+    if (container.querySelector('.empty-state')) {
+        container.innerHTML = '';
+    }
+
     const limit = state.currentPage * state.pageSize;
     const visible = filtered.slice(0, limit);
 
-    // Удаляем из DOM те, которых больше нет в видимом списке
     const visibleIds = new Set(visible.map(d => d.session_id));
     for (const [id, node] of dialogNodes.entries()) {
         if (!visibleIds.has(id)) {
@@ -97,16 +121,13 @@ export function renderDialogs() {
     }
 }
 
-/**
- * Инициализация бесконечного скролла
- */
 export function initInfiniteScroll() {
-    const container = document.getElementById('dialogs-container');
-    if (!container) return;
+    const listColumn = document.getElementById('dialogs-list-column');
+    if (!listColumn || listColumn.dataset.infiniteScrollBound === 'true') return;
 
-    container.addEventListener('scroll', () => {
-        // Если до конца скролла осталось меньше 200px
-        if (container.scrollHeight - container.scrollTop - container.clientHeight < 200) {
+    listColumn.dataset.infiniteScrollBound = 'true';
+    listColumn.addEventListener('scroll', () => {
+        if (listColumn.scrollHeight - listColumn.scrollTop - listColumn.clientHeight < 200) {
             const filtered = getFilteredDialogs();
             if (state.currentPage * state.pageSize < filtered.length) {
                 state.currentPage++;
@@ -116,14 +137,10 @@ export function initInfiniteScroll() {
     }, { passive: true });
 }
 
-/**
- * Обновление данных конкретной карточки (без пересоздания узла)
- */
 function updateCardData(card, dialog) {
     card.dataset.sessionId = dialog.session_id;
     card.dataset.updatedAt = dialog.updated_at || '';
 
-    // Select mode
     const roundCheck = card.querySelector('.dialog-select-round');
     const checkbox = card.querySelector('.dialog-checkbox');
     if (state.selectMode) {
@@ -186,9 +203,6 @@ function updateCardData(card, dialog) {
     else card.classList.remove('active-card');
 }
 
-/**
- * Нормализация контактного саб-поля для карточки
- */
 function isLikelyPhone(value) {
     if (value === null || value === undefined) return false;
     const raw = String(value).trim();
@@ -205,8 +219,7 @@ function isGenericContactLabel(value) {
     const low = str.toLowerCase();
     const generic = new Set([
         'email', 'e-mail', 'mail', 'почта', 'почта:',
-        'телефон', 'phone', 'контакт', 'contact',
-        'геопозиция', 'location', 'geo'
+        'телефон', 'phone'
     ]);
 
     return generic.has(low);
@@ -232,7 +245,7 @@ function normalizeSubValue(value) {
         const lat = value.lat ?? value.latitude ?? value?.geo?.lat ?? value?.location?.lat;
         const lng = value.lng ?? value.lon ?? value.longitude ?? value?.geo?.lng ?? value?.location?.lng ?? value?.location?.lon;
         if (lat !== undefined && lat !== null && lng !== undefined && lng !== null) {
-            return `Геопозиция: ${lat}, ${lng}`;
+            return `${lat}, ${lng}`;
         }
 
         const rawValue = value.value ?? value.contact ?? value.email ?? value.phone ?? value.text;
@@ -294,9 +307,6 @@ function getPrimaryProfileContact(meta) {
     return '';
 }
 
-/**
- * Конфигурация платформ для отрисовки карточек
- */
 const PLATFORM_CONFIG = {
     telegram: {
         icon: 'icon_telegram.svg',
@@ -327,6 +337,19 @@ const PLATFORM_CONFIG = {
             };
         }
     },
+    ok: {
+        icon: 'icon_ok.svg',
+        label: 'Одноклассники',
+        parse: (meta, sessionId) => {
+            const okId = meta.ok_user_id || sessionId.split('-').pop();
+            return {
+                name: `${meta.first_name || ''} ${meta.last_name || ''}`.trim() || 'Пользователь Одноклассников',
+                sub: okId ? `OK ID: ${okId}` : '',
+                phone: meta.phone || '',
+                avatar: meta.photo || meta.photo_url || null
+            };
+        }
+    },
     max: {
         icon: 'icon_max.svg',
         label: 'MAX',
@@ -343,6 +366,16 @@ const PLATFORM_CONFIG = {
                 avatar: meta.photo || null
             };
         }
+    },
+    hh: {
+        icon: 'icon_hh.svg',
+        label: 'HeadHunter',
+        parse: (meta, sessionId) => ({
+            name: meta.first_name || meta.name || 'Кандидат HeadHunter',
+            sub: meta.email || meta.phone || `Диалог ${sessionId.split('-').pop()}`,
+            phone: meta.phone || '',
+            avatar: meta.photo || meta.avatar_url || null,
+        }),
     },
     avito: {
         icon: 'icon_avito.svg',
@@ -395,7 +428,7 @@ const PLATFORM_CONFIG = {
             const phoneCandidate = meta.phones?.[0] || meta.phone || '';
             const phone = isLikelyPhone(phoneCandidate) ? String(phoneCandidate).trim() : '';
 
-            const subCandidates = [meta.emails?.[0], meta.email, meta.messengers?.[0], meta.contact, meta.location, meta.geo];
+            const subCandidates = [meta.city, meta.country, meta.location, meta.geo, meta.contact, meta.emails?.[0], meta.email];
             let sub = '';
             for (const candidate of subCandidates) {
                 const normalized = normalizeSubValue(candidate);
@@ -415,9 +448,6 @@ const PLATFORM_CONFIG = {
     }
 };
 
-/**
- * Рендер информации о платформе и отправителе в карточке
- */
 function renderPlatformInfo(platformEl, card, dialog) {
     let meta = dialog.metadata_json;
     if (typeof meta === 'string') {
@@ -425,22 +455,21 @@ function renderPlatformInfo(platformEl, card, dialog) {
     }
     meta = meta || {};
 
-    // Определяем платформу
     let platformKey = meta.platform;
     if (!platformKey && dialog.session_id) {
         if (dialog.session_id.startsWith('tg-')) platformKey = 'telegram';
         else if (dialog.session_id.startsWith('max-')) platformKey = 'max';
         else if (dialog.session_id.startsWith('vk-')) platformKey = 'vk';
+        else if (dialog.session_id.startsWith('ok-')) platformKey = 'ok';
         else if (dialog.session_id.startsWith('email_')) platformKey = 'email';
         else if (dialog.session_id.startsWith('avito-')) platformKey = 'avito';
+        else if (dialog.session_id.startsWith('hh-')) platformKey = 'hh';
     }
     if (!PLATFORM_CONFIG[platformKey]) platformKey = 'web';
 
     const config = PLATFORM_CONFIG[platformKey];
     const data = config.parse(meta, dialog.session_id);
 
-    // Приоритет: первый контакт из карточки профиля управляет тем,
-    // что показываем в карточке диалога
     const primaryProfileContact = getPrimaryProfileContact(meta);
     if (primaryProfileContact) {
         if (isLikelyPhone(primaryProfileContact)) {
@@ -455,7 +484,6 @@ function renderPlatformInfo(platformEl, card, dialog) {
             data.phone = '';
         }
     } else {
-        // Фолбэк: если в профиле нет контактов, берем из dialog.client_contact
         if (!data.email && dialog.client_contact && dialog.client_contact.includes('@')) data.email = dialog.client_contact;
         if (!data.phone && dialog.client_contact && isLikelyPhone(dialog.client_contact)) data.phone = String(dialog.client_contact).trim();
         if (!data.sub && dialog.client_contact && !dialog.client_contact.includes('@') && !isLikelyPhone(dialog.client_contact)) {
@@ -463,7 +491,6 @@ function renderPlatformInfo(platformEl, card, dialog) {
         }
     }
     
-    // ПРИОРИТЕТ ИМЕНИ: Если в базе есть реальное имя, используем его вместо того, что пришло в Email
     if (dialog.client_name && dialog.client_name !== 'Без имени' && !dialog.client_name.includes('@')) {
         data.name = dialog.client_name;
     }
@@ -471,13 +498,11 @@ function renderPlatformInfo(platformEl, card, dialog) {
     if (!data.sub && data.email) data.sub = data.email;
 
 
-    // 1. Иконка платформы
     platformEl.innerHTML = `<img src="/api/chat/img/${config.icon}" class="platform-icon-mini" title="${config.label}">`;
 
-    // 2. Основная информация
     const container = card.querySelector('.email-sender-container');
     const nameEl = card.querySelector('.sender-name');
-    const subEl = card.querySelector('.sender-email'); // Используется для username/email/id
+    const subEl = card.querySelector('.sender-email');
     const phoneEl = card.querySelector('.sender-phone');
     const reasonEl = card.querySelector('.sender-archive-reason');
     const avatarWrapper = card.querySelector('.sender-avatar-wrapper');
@@ -486,7 +511,6 @@ function renderPlatformInfo(platformEl, card, dialog) {
         nameEl.textContent = data.name;
         nameEl.title = data.name;
 
-        // Саб-инфо (email, id, username)
         if (data.sub) {
             if (data.isVkLink) {
                 subEl.innerHTML = `<a href="https://vk.com/id${data.vkId}" target="_blank" style="color: var(--accent); text-decoration: underline;">${data.sub}</a>`;
@@ -500,7 +524,6 @@ function renderPlatformInfo(platformEl, card, dialog) {
         }
 
 
-        // Телефон (если есть)
         if (data.phone) {
             phoneEl.textContent = data.phone;
             phoneEl.style.display = 'block';
@@ -509,7 +532,6 @@ function renderPlatformInfo(platformEl, card, dialog) {
             phoneEl.style.display = 'none';
         }
 
-        // Причина закрытия для архивных диалогов
         const currentStatus = String(dialog.status || '').toLowerCase();
         const isArchived = dialog.is_archived || currentStatus === 'archive';
         const closeReason = String(dialog.close_reason || '').trim();
@@ -521,16 +543,14 @@ function renderPlatformInfo(platformEl, card, dialog) {
             reasonEl.style.display = 'none';
         }
 
-        // Аватар
         if (avatarWrapper) {
             const placeholder = createInitialsPlaceholder(data.name);
             
-            // Если аватар уже отрисован и это тот же URL, ничего не делаем
             if (avatarWrapper.dataset.currentSrc === (data.avatar || data.email || 'none')) {
                 return;
             }
 
-            avatarWrapper.innerHTML = placeholder; // Сначала ставим плейсхолдер
+            avatarWrapper.innerHTML = placeholder;
             avatarWrapper.style.display = 'block';
             
             if (config.isEmail) {
@@ -542,6 +562,7 @@ function renderPlatformInfo(platformEl, card, dialog) {
             } else if (data.isWeb) {
                 const avatarUrl = state.widgetConfig?.theme?.msg_user_avatar || '/api/chat/img/icon_mitia_white.jpg';
                 avatarWrapper.dataset.src = avatarUrl;
+                avatarWrapper.dataset.fallbackSrc = '/api/chat/img/icon_mitia_white.jpg';
                 avatarWrapper.dataset.placeholder = placeholder;
                 avatarWrapper.dataset.currentSrc = avatarUrl;
                 avatarObserver.observe(avatarWrapper);
@@ -559,15 +580,12 @@ function renderPlatformInfo(platformEl, card, dialog) {
     }
 }
 
-/**
- * Статистика
- */
 export function renderStats(dialogs) {
     const statsEl = document.getElementById('dialogs-stats');
     if (!statsEl) return;
 
     if (dialogs.length === 0) {
-        statsEl.innerHTML = '';
+        statsEl.innerHTML = '<p class="dialogs-stats-empty">Нет данных по текущим фильтрам</p>';
         return;
     }
 
@@ -587,6 +605,7 @@ export function renderStats(dialogs) {
             else if (d.session_id.startsWith('max-')) platform = 'max';
             else if (d.session_id.startsWith('vk-')) platform = 'vk';
             else if (d.session_id.startsWith('email_')) platform = 'email';
+            else if (d.session_id.startsWith('hh-')) platform = 'hh';
         }
         if (!platform) platform = 'web';
 
@@ -596,42 +615,57 @@ export function renderStats(dialogs) {
         else if (platform === 'vk') vkCount++;
         else if (platform === 'email') emailCount++;
 
-        if (d.is_archived || d.status === 'archive') archiveCount++;
-        if (!d.is_read) unreadCount++;
-        if (d.is_read && (d.status === 'new' || !d.status) && !d.is_archived && !d.is_operator_mode) readCount++;
         const isArchive = d.is_archived || d.status === 'archive';
-        if ((d.status === 'lead' || d.ai_intent === 'lead') && !isArchive) leadCount++;
-        if (d.is_operator_mode && !isArchive && d.status !== 'lead') applicationCount++;
+        const isLead = (d.status === 'lead' || d.ai_intent === 'lead') && !isArchive;
+        const isApp = d.is_operator_mode && !isArchive && !isLead;
+
+        if (isArchive) {
+            archiveCount++;
+        } else if (isLead) {
+            leadCount++;
+        } else if (isApp) {
+            applicationCount++;
+        } else if (!d.is_read) {
+            unreadCount++;
+        } else {
+            readCount++;
+        }
     });
 
     statsEl.innerHTML = `
-        <div class="stats-row">
-            <div class="stat-item stat-item-bold">Сообщений: ${totalMsg}</div>
-            <div class="stat-item"><span class="stat-dot user"></span>Клиент: ${userMsg}</div>
-            <div class="stat-item"><span class="stat-dot ai"></span>Бот: ${aiMsg}</div>
-            <div class="stat-item"><span class="stat-dot operator"></span>Оператор: ${opMsg}</div>
-        </div>
-        <div class="stats-row">
-            <div class="stat-item stat-item-bold">Диалогов: ${dialogs.length}</div>
-            <div class="stat-item"><span class="stat-dot web"></span>Веб-сайт: ${webCount}</div>
-            <div class="stat-item"><span class="stat-dot tg"></span>Telegram: ${tgCount}</div>
-            <div class="stat-item"><span class="stat-dot max"></span>Max: ${maxCount}</div>
-            <div class="stat-item"><span class="stat-dot vk"></span>VK: ${vkCount}</div>
-            <div class="stat-item"><span class="stat-dot email"></span>Email: ${emailCount}</div>
-        </div>
-        <div class="stats-row">
-            <div class="stat-item"><span class="stat-dot unread"></span>Не прочитано: ${unreadCount}</div>
-            <div class="stat-item"><span class="stat-dot read"></span>Прочитано: ${readCount}</div>
-            <div class="stat-item"><span class="stat-dot lead"></span>Лиды: ${leadCount}</div>
-            <div class="stat-item"><span class="stat-dot application"></span>Заявки: ${applicationCount}</div>
-            <div class="stat-item"><span class="stat-dot archive"></span>Архив: ${archiveCount}</div>
+        <div class="stats-vertical-stack">
+            <div class="stats-group">
+                <div class="stat-group-header">Сообщений: ${totalMsg}</div>
+                <div class="stats-row-inline">
+                    <div class="stat-item"><span class="stat-dot user"></span>Пользователь: ${userMsg}</div>
+                    <div class="stat-item"><span class="stat-dot ai"></span>Ассистент: ${aiMsg}</div>
+                    <div class="stat-item"><span class="stat-dot operator"></span>Оператор: ${opMsg}</div>
+                </div>
+            </div>
+            <div class="stats-group">
+                <div class="stat-group-header">Диалогов: ${dialogs.length}</div>
+                <div class="stats-row-inline">
+                    <div class="stat-item"><span class="stat-dot web"></span>Веб-сайт: ${webCount}</div>
+                    <div class="stat-item"><span class="stat-dot tg"></span>Telegram: ${tgCount}</div>
+                    <div class="stat-item"><span class="stat-dot max"></span>Max: ${maxCount}</div>
+                    <div class="stat-item"><span class="stat-dot vk"></span>VK: ${vkCount}</div>
+                    <div class="stat-item"><span class="stat-dot email"></span>Email: ${emailCount}</div>
+                </div>
+            </div>
+            <div class="stats-group">
+                <div class="stat-group-header">Обработка: ${unreadCount + readCount + leadCount + applicationCount + archiveCount}</div>
+                <div class="stats-row-inline">
+                    <div class="stat-item"><span class="stat-dot unread"></span>Не прочитано: ${unreadCount}</div>
+                    <div class="stat-item"><span class="stat-dot read"></span>Прочитано: ${readCount}</div>
+                    <div class="stat-item"><span class="stat-dot lead"></span>Лиды: ${leadCount}</div>
+                    <div class="stat-item"><span class="stat-dot application"></span>Заявки: ${applicationCount}</div>
+                    <div class="stat-item"><span class="stat-dot archive"></span>Архив: ${archiveCount}</div>
+                </div>
+            </div>
         </div>
     `;
 }
 
-/**
- * Обновление индикатора непрочитанных в сайдбаре
- */
 export function updateSidebarNotify(hasUnread) {
     const dialogsTab = document.querySelector('.nav-item[data-tab="dialogs"]');
     if (dialogsTab) {
@@ -640,27 +674,29 @@ export function updateSidebarNotify(hasUnread) {
     }
 }
 
-/**
- * Обновление UI режима выбора
- */
 export function updateSelectUI() {
     const btn = document.getElementById('btn-toggle-select');
     const lbl = document.getElementById('batch-selected-label');
     const btnStatus = document.getElementById('btn-batch-status');
     const btnDelete = document.getElementById('btn-batch-delete');
     const btnSelectAll = document.getElementById('btn-batch-select-all');
+
+    const allVisibleIds = getFilteredDialogs().map(d => d.session_id);
+    const hasDialogs = allVisibleIds.length > 0;
+
+    if (!hasDialogs) {
+        state.selectMode = false;
+        state.selectModeByToggle = false;
+        if (state.selectedSessions.size > 0) {
+            state.selectedSessions = new Set();
+        }
+    }
+
     const count = state.selectedSessions.size;
 
     if (state.selectMode) {
         if (btn) btn.classList.toggle('is-active', !!state.selectModeByToggle);
         if (lbl) lbl.style.display = 'block';
-
-        if (btnSelectAll) {
-            const allVisibleIds = getFilteredDialogs().map(d => d.session_id);
-            const isAllSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => state.selectedSessions.has(id));
-            btnSelectAll.textContent = 'Выделить все';
-            btnSelectAll.classList.toggle('active', isAllSelected);
-        }
     } else {
         if (btn) btn.classList.remove('is-active');
         if (lbl) lbl.style.display = 'none';
@@ -675,25 +711,19 @@ export function updateSelectUI() {
         el.style.opacity = disabled ? '0.4' : '1';
         el.style.pointerEvents = disabled ? 'none' : '';
     };
+
+    setDisabled(btn, !hasDialogs);
+    setDisabled(btnSelectAll, !hasDialogs);
     setDisabled(btnStatus, !hasSelection);
     setDisabled(btnDelete, !hasSelection);
 
-    // Выделить все активен всегда
     if (btnSelectAll) {
-        btnSelectAll.disabled = false;
-        btnSelectAll.style.opacity = '1';
-        btnSelectAll.style.pointerEvents = '';
-
-        const allVisibleIds = getFilteredDialogs().map(d => d.session_id);
-        const isAllSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => state.selectedSessions.has(id));
+        const isAllSelected = hasDialogs && allVisibleIds.every(id => state.selectedSessions.has(id));
         btnSelectAll.textContent = 'Выделить все';
         btnSelectAll.classList.toggle('active', isAllSelected);
     }
 }
 
-/**
- * Переключение выбора диалога
- */
 export function toggleSelectDialog(sessionId) {
     if (!state.selectMode) return;
     state.selectModeByToggle = true;
@@ -706,9 +736,6 @@ export function toggleSelectDialog(sessionId) {
     renderDialogs();
 }
 
-/**
- * Рендер прикреплённых файлов оператора
- */
 export function renderOperatorFiles(files, container) {
     if (!container) return;
     container.innerHTML = '';

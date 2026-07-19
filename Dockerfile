@@ -33,4 +33,4 @@ RUN mkdir -p api/chat/uploads api/chat/img api/chat/logs && \
     chmod -R 777 api/chat/uploads api/chat/img api/chat/logs
 
 # Команда запуска через Gunicorn
-CMD ["gunicorn", "api.chat.main_async:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:5007"]
+CMD ["gunicorn", "api.chat.main_async:app", "-w", "1", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:5007", "--timeout", "120"]

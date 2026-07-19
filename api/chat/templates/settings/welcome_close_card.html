@@ -1,27 +1,25 @@
-<!-- КНОПКА ЗАКРЫТЬ ОБЛАКО -->
 <div class="bento-card collapsed" id="card-welcome-close-design">
     <div class="card-header-flex">
-        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
-            <div class="collapse-icon"></div>
-            <h3 class="card-title">Кнопка закрыть облако</h3>
+        <div class="card-title-group">
+            <h3 class="card-title">Кнопка облака</h3>
         </div>
-        <!-- Иконки -->
         <div class="card-actions-mini">
-            <button class="icon-btn-sm" onclick="window.resetWelcomeCloseToDefault()" title="Восстановить дизайн">
+            <button class="menu-dots-btn" onclick="window.resetWelcomeCloseToDefault()" title="Восстановить дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
             </button>
-            <button class="icon-btn-sm" onclick="window.randomizeWelcomeCloseDesign()" title="Магический дизайн">
+            <button class="menu-dots-btn" onclick="window.randomizeWelcomeCloseDesign()" title="Магический дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+            <button class="icon-btn-sm welcome-close-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
         </div>
     </div>
-    <!-- Параметры кнопки закрыть облако -->
+    <p class="card-description">Закрытие облака</p>
     <div class="settings-form">
-        <!-- СТАТУС КНОПКИ ЗАКРЫТЬ ОБЛАКО -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Статус</h3>
         </div>
-        <!-- Предпросмотр кнопки закрыть облако -->
         <div class="setting-item-compact">
             <div class="flex-between">
                 <label class="subtitle-card">Предпросмотр</label>
@@ -31,11 +29,9 @@
                 </label>
             </div>
         </div>
-        <!-- ГЕОМЕТРИЯ КНОПКИ ЗАКРЫТЬ ОБЛАКО -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Геометрия</h3>
         </div>
-        <!-- Размер кнопки закрыть облако -->
         <div class="setting-item">
             <label class="subtitle-card">Размер</label>
             <div class="range-with-val">
@@ -43,7 +39,6 @@
                 <span class="range-value" id="welcome-close-size-val"></span>
             </div>
         </div>
-        <!-- Скругление кнопки закрыть облако -->
         <div class="setting-item">
             <label class="subtitle-card">Скругление</label>
             <div class="range-with-val">
@@ -51,7 +46,6 @@
                 <span class="range-value" id="welcome-close-radius-val"></span>
             </div>
         </div>
-        <!-- Расположение кнопки закрыть облако -->
         <div class="setting-item">
             <label class="subtitle-card">Расположение</label>
             <div class="side-selector" id="welcome-close-side-switcher">
@@ -60,11 +54,9 @@
                 <input type="hidden" id="welcome-close-side-input" data-setting="theme.welcome_close_side" value="right">
             </div>
         </div>
-        <!-- ИКОНКА КНОПКИ ЗАКРЫТЬ ОБЛАКО -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Иконка</h3>
         </div>
-        <!-- Цвет кнопки закрыть облако -->
         <div class="setting-item">
             <label class="subtitle-card">Цвет</label>
             <div class="color-input-group">
@@ -75,7 +67,6 @@
                 <input type="text" id="welcome-close-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.welcome_close_color" placeholder="Прозрачный">
             </div>
         </div>
-        <!-- Прозрачность кнопки закрыть облако -->
         <div class="setting-item">
             <label class="subtitle-card">Прозрачность</label>
             <div class="range-with-val">
@@ -83,7 +74,6 @@
                 <span class="range-value" id="welcome-close-opacity-val"></span>
             </div>
         </div>
-        <!-- ИКОНКА КНОПКИ ЗАКРЫТЬ ОБЛАКО ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Иконка при наведении</h3>
             <label class="switch sm-switch">
@@ -91,9 +81,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры иконки кнопки закрыть облако при наведении -->
         <div id="welcome-close-color-h-group" class="settings-form-mini">
-            <!-- Цвет иконки кнопки закрыть облако при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -104,7 +92,6 @@
                     <input type="text" id="welcome-close-hover-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.welcome_close_hover_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность иконки кнопки закрыть облако при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -113,7 +100,6 @@
                 </div>
             </div>
         </div>
-        <!-- ФОН КНОПКИ ЗАКРЫТЬ ОБЛАКО -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Фон</h3>
             <label class="switch sm-switch">
@@ -121,9 +107,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры фона кнопки закрыть облако -->
         <div id="welcome-close-bg-group" class="settings-form-mini">
-            <!-- Цвет фона кнопки закрыть облако -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -134,7 +118,6 @@
                     <input type="text" id="welcome-close-bg-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.welcome_close_bg" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность фона кнопки закрыть облако -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -143,7 +126,6 @@
                 </div>
             </div>
         </div>
-        <!-- ФОН КНОПКИ ЗАКРЫТЬ ОБЛАКО ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Фон при наведении</h3>
             <label class="switch sm-switch">
@@ -151,9 +133,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры фона кнопки закрыть облако при наведении -->
         <div id="welcome-close-hover-bg-group" class="settings-form-mini">
-            <!-- Цвет фона кнопки закрыть облако при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -164,7 +144,6 @@
                     <input type="text" id="welcome-close-hover-bg-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.welcome_close_hover_bg" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность фона кнопки закрыть облако при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -173,7 +152,6 @@
                 </div>
             </div>
         </div>
-        <!-- ОБВОДКА КНОПКИ ЗАКРЫТЬ ОБЛАКО -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Обводка</h3>
             <label class="switch sm-switch">
@@ -181,9 +159,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры обводки кнопки закрыть облако при наведении -->
         <div id="welcome-close-border-group" class="settings-form-mini">
-            <!-- Цвет обводки кнопки закрыть облако при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -194,7 +170,6 @@
                     <input type="text" id="welcome-close-border-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.welcome_close_border_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность обводки кнопки закрыть облако -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -202,7 +177,6 @@
                     <span class="range-value" id="welcome-close-border-opacity-val"></span>
                 </div>
             </div>
-            <!-- Толщина обводки кнопки закрыть облако при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Толщина</label>
                 <div class="range-with-val">
@@ -211,7 +185,6 @@
                 </div>
             </div>
         </div>
-        <!-- ОБВОДКА КНОПКИ ЗАКРЫТЬ ОБЛАКО ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Обводка при наведении</h3>
             <label class="switch sm-switch">
@@ -219,9 +192,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры обводки кнопки закрыть облако при наведении -->
         <div id="welcome-close-border-h-group" class="settings-form-mini">
-            <!-- Цвет обводки кнопки закрыть облако при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -232,7 +203,6 @@
                     <input type="text" id="welcome-close-border-h-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.welcome_close_border_color_h" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность обводки кнопки закрыть облако при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -240,7 +210,6 @@
                     <span class="range-value" id="welcome-close-border-opacity-h-val"></span>
                 </div>
             </div>
-            <!-- Толщина обводки кнопки закрыть облако при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Толщина</label>
                 <div class="range-with-val">
@@ -249,7 +218,6 @@
                 </div>
             </div>
         </div>
-        <!-- ТЕНЬ КНОПКИ ЗАКРЫТЬ ОБЛАКО -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Тень</h3>
             <label class="switch sm-switch">
@@ -257,9 +225,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры тени кнопки закрыть облако -->
         <div id="welcome-close-btn-shadow-group" class="settings-form-mini">
-            <!-- Цвет тени кнопки закрыть облако -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -270,7 +236,6 @@
                     <input type="text" id="welcome-close-btn-shadow-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.welcome_close_btn_shadow_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность тени кнопки закрыть облако -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -278,7 +243,6 @@
                     <span class="range-value" id="welcome-close-btn-shadow-opacity-val"></span>
                 </div>
             </div>
-            <!-- Размытие тени кнопки закрыть облако -->
             <div class="setting-item">
                 <label class="subtitle-card">Размытие</label>
                 <div class="range-with-val">
@@ -287,7 +251,6 @@
                 </div>
             </div>
         </div>
-        <!-- ТЕНЬ КНОПКИ ЗАКРЫТЬ ОБЛАКО ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Тень при наведении</h3>
             <label class="switch sm-switch">
@@ -295,9 +258,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры тени кнопки закрыть облако при наведении -->
         <div id="welcome-close-btn-shadow-h-group" class="settings-form-mini">
-            <!-- Цвет тени кнопки закрыть облако при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -308,7 +269,6 @@
                     <input type="text" id="welcome-close-btn-shadow-h-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.welcome_close_btn_shadow_color_h" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность тени кнопки закрыть облако при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -316,7 +276,6 @@
                     <span class="range-value" id="welcome-close-btn-shadow-opacity-h-val"></span>
                 </div>
             </div>
-            <!-- Размытие тени кнопки закрыть облако при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Размытие</label>
                 <div class="range-with-val">

@@ -1,27 +1,25 @@
-<!-- КНОПКА ПАУЗЫ -->
 <div class="bento-card" id="card-btn-stop-design">
     <div class="card-header-flex">
-        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
-            <div class="collapse-icon"></div>
-            <h3 class="card-title">Кнопка паузы</h3>
+        <div class="card-title-group">
+            <h3 class="card-title">Стоп</h3>
         </div>
-        <!-- Иконки -->
         <div class="card-actions-mini">
-            <button class="icon-btn-sm" onclick="window.resetStopBtnToDefault()" title="Восстановить дизайн">
+            <button class="menu-dots-btn" onclick="window.resetStopBtnToDefault()" title="Восстановить дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
             </button>
-            <button class="icon-btn-sm" onclick="window.randomizeStopBtnDesign()" title="Магический дизайн">
+            <button class="menu-dots-btn" onclick="window.randomizeStopBtnDesign()" title="Магический дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+            <button class="icon-btn-sm btn-stop-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
         </div>
     </div>
-    <!-- Параметры кнопки паузы -->
+    <p class="card-description">Остановка генерации</p>
     <div class="settings-form">
-        <!-- СТАТУС КНОПКИ ПАУЗЫ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Статус</h3>
         </div>
-        <!-- Предпросмотр кнопки паузы -->
         <div class="setting-item-compact">
             <div class="flex-between">
                 <label class="subtitle-card">Предпросмотр</label>
@@ -31,11 +29,9 @@
                 </label>
             </div>
         </div>
-        <!-- ГЕОМЕТРИЯ КНОПКИ ПАУЗЫ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Геометрия</h3>
         </div>
-        <!-- Скругление кнопки паузы -->
         <div class="setting-item">
             <label class="subtitle-card">Скругление</label>
             <div class="range-with-val">
@@ -43,13 +39,10 @@
                 <span class="range-value" id="btn-stop-radius-val"></span>
             </div>
         </div>
-        <!-- ИКОНКА КНОПКИ ПАУЗЫ-->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Иконка</h3>
         </div>
-        <!-- Параметры иконки кнопки паузы -->
         <div class="settings-form-mini">
-            <!-- Цвет иконки кнопки паузы -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -60,7 +53,6 @@
                     <input type="text" id="btn-stop-icon-hex" class="color_hex hex-input-full" data-setting="theme.btn_stop_icon_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность иконки кнопки паузы -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -69,7 +61,6 @@
                 </div>
             </div>
         </div>
-        <!-- ИКОНКА КНОПКИ ПАУЗЫ ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Иконка при наведении</h3>
             <label class="switch sm-switch">
@@ -77,9 +68,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры иконки кнопки паузы при наведении -->
         <div id="btn-stop-icon-h-settings" class="settings-form-mini">
-            <!-- Цвет иконки кнопки паузы при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -90,7 +79,6 @@
                     <input type="text" id="btn-stop-icon-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_stop_icon_color_h" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность иконки кнопки паузы при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -99,7 +87,6 @@
                 </div>
             </div>
         </div>
-        <!-- ФОН КНОПКИ ПАУЗЫ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Фон</h3>
             <label class="switch sm-switch">
@@ -107,9 +94,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры фона кнопки паузы -->
         <div id="btn-stop-bg-settings" class="settings-form-mini">
-            <!-- Цвет фона кнопки паузы -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -120,7 +105,6 @@
                     <input type="text" id="btn-stop-bg-hex" class="color_hex hex-input-full" data-setting="theme.btn_stop_bg_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность фона кнопки паузы -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -129,7 +113,6 @@
                 </div>
             </div>
         </div>
-        <!-- ФОН КНОПКИ ПАУЗЫ ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Фон при наведении</h3>
             <label class="switch sm-switch">
@@ -137,9 +120,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры фона кнопки паузы при наведении -->
         <div id="btn-stop-bg-h-settings" class="settings-form-mini">
-            <!-- Цвет фона кнопки паузы при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -150,7 +131,6 @@
                     <input type="text" id="btn-stop-bg-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_stop_bg_color_h" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность фона кнопки паузы при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -159,7 +139,6 @@
                 </div>
             </div>
         </div>
-        <!-- ОБВОДКА КНОПКИ ПАУЗЫ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Обводка</h3>
             <label class="switch sm-switch">
@@ -167,9 +146,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры обводки кнопки паузы -->
         <div id="btn-stop-border-settings" class="settings-form-mini">
-            <!-- Цвет обводки кнопки паузы -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -180,7 +157,6 @@
                     <input type="text" id="btn-stop-border-hex" class="color_hex hex-input-full" data-setting="theme.btn_stop_border_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность обводки кнопки паузы -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -188,7 +164,6 @@
                     <span class="range-value" id="btn-stop-border-opacity-val"></span>
                 </div>
             </div>
-            <!-- Тощина обводки кнопки паузы -->
             <div class="setting-item">
                 <label class="subtitle-card">Толщина</label>
                 <div class="range-with-val">
@@ -197,7 +172,6 @@
                 </div>
             </div>
         </div>
-        <!-- ОБВОДКА КНОПКИ ПАУЗЫ ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Обводка при наведении</h3>
             <label class="switch sm-switch">
@@ -205,9 +179,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры обводки кнопки паузы при наведении -->
         <div id="btn-stop-border-h-settings" class="settings-form-mini">
-            <!-- Цвет обводки кнопки паузы при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -218,7 +190,6 @@
                     <input type="text" id="btn-stop-border-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_stop_border_color_h" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность обводки кнопки паузы при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -226,7 +197,6 @@
                     <span class="range-value" id="btn-stop-border-h-opacity-val"></span>
                 </div>
             </div>
-            <!-- Толщина обводки кнопки паузы при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Толщина</label>
                 <div class="range-with-val">
@@ -235,7 +205,6 @@
                 </div>
             </div>
         </div>
-        <!-- ТЕНЬ КНОПКИ ПАУЗЫ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Тень</h3>
             <label class="switch sm-switch">
@@ -243,9 +212,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры тени кнопки паузы -->
         <div id="btn-stop-shadow-settings" class="settings-form-mini">
-            <!-- Цвет тени кнопки паузы -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -256,7 +223,6 @@
                     <input type="text" id="btn-stop-shadow-hex" class="color_hex hex-input-full" data-setting="theme.btn_stop_shadow_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность тени кнопки паузы -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -264,7 +230,6 @@
                     <span class="range-value" id="btn-stop-shadow-opacity-val"></span>
                 </div>
             </div>
-            <!-- Размытие тени кнопки паузы -->
             <div class="setting-item">
                 <label class="subtitle-card">Размытие</label>
                 <div class="range-with-val">
@@ -273,7 +238,6 @@
                 </div>
             </div>
         </div>
-        <!-- ТЕНЬ КНОПКИ ПАУЗЫ ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Тень при наведении</h3>
             <label class="switch sm-switch">
@@ -281,9 +245,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры тени кнопки паузы при наведении -->
         <div id="btn-stop-shadow-h-settings" class="settings-form-mini">
-            <!-- Цвет тени кнопки паузы при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -294,7 +256,6 @@
                     <input type="text" id="btn-stop-shadow-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_stop_shadow_color_h" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность тени кнопки паузы при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -302,7 +263,6 @@
                     <span class="range-value" id="btn-stop-shadow-h-opacity-val"></span>
                 </div>
             </div>
-            <!-- Размытие тени кнопки паузы при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Размытие</label>
                 <div class="range-with-val">

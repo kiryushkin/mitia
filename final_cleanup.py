@@ -9,7 +9,6 @@ async def cleanup():
     print("Starting final cleanup of storage...")
     async with AsyncSessionLocal() as session:
         try:
-            # Удаляем по нескольким критериям
             stmt = delete(StorageItem).where(
                 or_(
                     StorageItem.file_name.ilike("%json%"),

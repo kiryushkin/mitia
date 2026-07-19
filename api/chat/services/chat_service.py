@@ -26,6 +26,7 @@ from ..services.notify_service import send_telegram_notification, send_email
 from ..services.clients import get_client_config
 from ..services.conversion_scenarios import scenario_engine
 from .tts_engine import tts_engine
+from .upload_limits import read_upload_limited
 import httpx
 
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
@@ -194,6 +195,7 @@ class AskData:
     metadata: Optional[Dict[str, Any]] = None
     attachments: Optional[List[Dict[str, Any]]] = None
     client_ip: Optional[str] = None
+    assistant_id: Optional[str] = None
 
 
 
@@ -211,17 +213,17 @@ def extract_response_text(result: Any) -> str:
 
 
 class ChatService:
-    async def _save_to_cache(self, client_id, question, answer, bot_settings):
-        """Единый метод для сохранения в кэш Redis."""
+    async def _save_to_cache(self, client_id, assistant_id, question, answer, bot_settings):
+        """Единый метод для сохранения кэша в контексте ассистента."""
         if bot_settings.get('enable_cache') and isinstance(answer, str) and answer.strip():
             if "ошибка" in answer.lower() and len(answer) < 50:
                 return
-            
+
             q_hash = hashlib.md5(question.strip().lower().encode()).hexdigest()
-            cache_key = f"ai_cache:{client_id}:{q_hash}"
-            
+            cache_key = f"ai_cache:{client_id}:{assistant_id or 'main'}:{q_hash}"
+
             cache_service.set(cache_key, answer)
-            log.info(f"AI Cache Saved to Redis for {client_id}: {question[:30]}...")
+            log.info(f"AI Cache Saved for {client_id}:{assistant_id or 'main'}: {question[:30]}...")
 
     async def process_ask(self, data, files=None, stream=False, is_admin=False, skip_ai=False):
         from sqlalchemy.orm.attributes import flag_modified
@@ -229,6 +231,7 @@ class ChatService:
         session_id = data.session_id
         user_msg = data.message
         ai_user_msg = user_msg
+        assistant_id = getattr(data, 'assistant_id', None)
         
         session_id = data.token or data.session_id
         if not client_id or client_id == 'default':
@@ -324,6 +327,7 @@ class ChatService:
 
                 asyncio.create_task(save_storage_item(
                     client_id=client_id,
+                    assistant_id=assistant_id,
                     category="email_attachment",
                     file_size=len(payload),
                     file_path=local_url,
@@ -331,6 +335,38 @@ class ChatService:
                     session_id=session_id,
                     file_type=detect_file_type(original_name)
                 ))
+
+            audio_transcripts = []
+            for att in physically_saved:
+                content_type = str(att.get('content_type') or '').lower()
+                if content_type.startswith('audio/'):
+                    try:
+                        from .stt_service import transcribe_voice
+                        transcript = await transcribe_voice(att['local_url'])
+                        if transcript:
+                            audio_transcripts.append(
+                                f"Расшифровка аудиофайла «{att.get('name') or 'аудио'}»: {transcript}"
+                            )
+                    except Exception as exc:
+                        log.warning("[EMAIL] Audio transcription failed: %s", exc)
+
+            if audio_transcripts:
+                ai_user_msg += "\n\n" + "\n".join(audio_transcripts)
+
+            # The original user message is created before email files are written.
+            # Persist enriched attachment metadata so Inbox can render audio/files.
+            if physically_saved:
+                async with AsyncSessionLocal() as db:
+                    result = await db.execute(
+                        select(ChatMessage)
+                        .where(ChatMessage.session_id == session_id, ChatMessage.role == 'user')
+                        .order_by(ChatMessage.id.desc())
+                        .limit(1)
+                    )
+                    message_row = result.scalar_one_or_none()
+                    if message_row:
+                        message_row.attachments = email_attachments
+                        await db.commit()
 
             # Inline-объекты и несохранённые вложения считаем текстовыми объектами для UI,
             # но не включаем в used_storage файлов.
@@ -344,10 +380,16 @@ class ChatService:
                 async with AsyncSessionLocal() as db:
                     user = (await db.execute(select(User).where(User.client_id == client_id))).scalar_one_or_none()
                     if user:
-                        tariff = TARIFF_RULES.get(user.tariff_name.lower(), TARIFF_RULES['start'])
-                        storage_limit = tariff.get('storage_limit', 1 * 1024 * 1024 * 1024)
+                        from .assistants_service import get_effective_account_limits
+                        limits = get_effective_account_limits(user)
+                        storage_limit = limits.get('storage_limit', 1 * 1024 * 1024 * 1024)
                         if user.used_storage + total_attach_size > storage_limit:
                             log.warning(f"[EMAIL] Storage limit exceeded for {client_id}")
+                            try:
+                                from .notification_service import notify_storage_limit_exceeded
+                                await notify_storage_limit_exceeded(client_id, dedupe_key=f"storage-limit-email:{client_id}:{storage_limit}")
+                            except Exception:
+                                pass
 
         # Гео-определение для веб-виджета — определяем ДО создания сессии
         client_ip = getattr(data, 'client_ip', None)
@@ -383,7 +425,24 @@ class ChatService:
             except Exception as e:
                 log.error(f"[GEO] Error detecting geo: {e}")
 
-        await get_or_create_session(session_id, client_id, metadata=base_metadata if base_metadata else None)
+        await get_or_create_session(
+            session_id,
+            client_id,
+            metadata=base_metadata if base_metadata else None,
+            assistant_id=assistant_id,
+        )
+
+        # Сессия — источник истины для уже начатого диалога. Это исключает
+        # подмену ассистента при смене выбранного ассистента в админке.
+        if not assistant_id:
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(
+                    select(ChatSession.assistant_id).where(
+                        ChatSession.session_id == session_id,
+                        ChatSession.client_id == client_id,
+                    )
+                )
+                assistant_id = result.scalar_one_or_none()
 
         # Шлём обновление метаданных через WS, чтобы карточка обновилась
         if base_metadata.get('contact'):
@@ -446,8 +505,13 @@ class ChatService:
                                 f"Сообщение: {user_msg}"
                             )
                             try:
-                                from .telegram_service import notify_admins
-                                await notify_admins(client_id, lead_alert_msg, event_type="lead")
+                                from .operator_notification_service import notify_operators
+                                await notify_operators(
+                                    client_id,
+                                    lead_alert_msg,
+                                    event_type="lead",
+                                    assistant_id=assistant_id,
+                                )
                             except Exception:
                                 pass
 
@@ -492,7 +556,7 @@ class ChatService:
                     if vk_link not in meta['messengers']:
                         meta['messengers'].append(vk_link)
                         found_contacts = True
-                elif platform == 'tg' and meta.get('username'):
+                elif platform in {'tg', 'telegram'} and meta.get('username'):
                     tg_link = f"t.me/{meta['username']}"
                     if tg_link not in meta['messengers']:
                         meta['messengers'].append(tg_link)
@@ -506,7 +570,7 @@ class ChatService:
                     if not any(x.get('value') == vk_link for x in meta['vk_links']):
                         meta['vk_links'].append({'label': 'Профиль', 'value': vk_link})
                         found_contacts = True
-                elif platform == 'tg' and meta.get('username'):
+                elif platform in {'tg', 'telegram'} and meta.get('username'):
                     tg_link = f"t.me/{meta['username']}"
                     if 'tg_links' not in meta: meta['tg_links'] = []
                     if not any(x.get('value') == tg_link for x in meta['tg_links']):
@@ -563,8 +627,13 @@ class ChatService:
         if found_contacts:
             alert_msg = f"🔔 *Новые контакты!*\n\nКлиент: `{client_id}`\nСообщение: {user_msg}"
             try:
-                from .telegram_service import notify_admins
-                await notify_admins(client_id, alert_msg, event_type="contact")
+                from .operator_notification_service import notify_operators
+                await notify_operators(
+                    client_id,
+                    alert_msg,
+                    event_type="contact",
+                    assistant_id=assistant_id,
+                )
             except: pass
             
             async with AsyncSessionLocal() as db:
@@ -574,7 +643,7 @@ class ChatService:
         voice_output = getattr(data, 'voice_output', False)
 
         if not voice_output:
-            client_config = await get_client_config(client_id)
+            client_config = await get_client_config(client_id, assistant_id=assistant_id)
             voice_output = client_config.raw.get('bot_settings', {}).get('enable_tts', False)
             log.info(f"TTS status from config for {client_id}: {voice_output}")
 
@@ -609,7 +678,7 @@ class ChatService:
             total_upload_size = 0
 
             for file in files:
-                content = await file.read()
+                content = await read_upload_limited(file)
                 content_type = file.content_type
                 filename = file.filename
 
@@ -639,9 +708,15 @@ class ChatService:
                 async with AsyncSessionLocal() as db:
                     user = (await db.execute(select(User).where(User.client_id == client_id))).scalar_one_or_none()
                     if user:
-                        tariff = TARIFF_RULES.get(user.tariff_name.lower(), TARIFF_RULES['start'])
-                        storage_limit = tariff.get('storage_limit', 1 * 1024 * 1024 * 1024)
+                        from .assistants_service import get_effective_account_limits
+                        limits = get_effective_account_limits(user)
+                        storage_limit = limits.get('storage_limit', 1 * 1024 * 1024 * 1024)
                         if user.used_storage + total_upload_size > storage_limit:
+                            try:
+                                from .notification_service import notify_storage_limit_exceeded
+                                await notify_storage_limit_exceeded(client_id, dedupe_key=f"storage-limit-chat:{client_id}:{storage_limit}")
+                            except Exception:
+                                pass
                             raise HTTPException(status_code=403, detail="Storage limit exceeded")
 
             # Phase 3: Save files to disk and build attachments
@@ -672,6 +747,7 @@ class ChatService:
                 # Запись в StorageItem для учёта
                 asyncio.create_task(save_storage_item(
                     client_id=client_id,
+                    assistant_id=assistant_id,
                     category="chat_file",
                     file_size=len(content),
                     file_path=local_url,
@@ -720,7 +796,7 @@ class ChatService:
             op_msg_default = "Я передал ваш вопрос оператору. Пожалуйста, оставьте контакты, мы ответим вам в ближайшее время."
             op_msg = op_msg_default
             try:
-                client_config = await get_client_config(client_id)
+                client_config = await get_client_config(client_id, assistant_id=assistant_id)
                 bot_settings = client_config.raw.get('bot_settings', {})
                 ai_unavailable_message = (bot_settings.get('ai_unavailable_message') or '').strip()
                 if ai_unavailable_message:
@@ -728,13 +804,6 @@ class ChatService:
             except Exception:
                 pass
 
-            if getattr(data, 'source', None) == 'widget':
-                client_config = await get_client_config(client_id)
-                widget_settings = client_config.raw.get('integrations', {}).get('widget', {})
-                autoreply_enabled = bool(widget_settings.get('autoreply_enabled', False))
-                autoreply_message = (widget_settings.get('autoreply_message') or '').strip()
-                if autoreply_enabled and autoreply_message:
-                    op_msg = autoreply_message
             await save_chat_message(session_id, 'assistant', op_msg)
 
             if stream:
@@ -745,131 +814,61 @@ class ChatService:
 
         t_name = user_row.tariff_name or 'start'
         rules = TARIFF_RULES.get(t_name, TARIFF_RULES['start'])
-        
-        reset_days = rules.get('reset_period_days', 0)
-        if reset_days > 0:
-            now = datetime.now()
-            if user_row.messages_reset_at is None:
-                user_row.messages_reset_at = now + timedelta(days=reset_days)
-                async with AsyncSessionLocal() as db:
-                    await db.execute(
-                        update(User).where(User.client_id == client_id).values(
-                            messages_reset_at=user_row.messages_reset_at
-                        )
-                    )
-                    await db.commit()
-            elif user_row.messages_reset_at < now:
-                new_reset_at = now + timedelta(days=reset_days)
-                async with AsyncSessionLocal() as db:
-                    await db.execute(
-                        update(User).where(User.client_id == client_id).values(
-                            messages_consumed=0,
-                            messages_reset_at=new_reset_at
-                        )
-                    )
-                    await db.commit()
-                user_row.messages_consumed = 0
-                user_row.messages_reset_at = new_reset_at
-                log.info(f"Messages counter reset for {client_id}, next reset: {new_reset_at}")
-        
-        is_expired = False
-        if t_name != 'start' and user_row.tariff_expires_at:
-            if user_row.tariff_expires_at < datetime.now():
-                is_expired = True
 
-        is_limit_exceeded = False
+        async with AsyncSessionLocal() as db:
+            db_user = await db.get(User, user_row.id)
+            from .db_service import ensure_messages_period, get_message_quota_state
+            from .notification_service import notify_messages_quota_exhausted
+            db_user = await ensure_messages_period(db_user, db, reset_days=rules.get('reset_period_days', 30))
+            quota = get_message_quota_state(db_user, rules.get('base_limit', 30))
+            user_row = db_user
+
+        is_expired = bool(t_name != 'start' and user_row.tariff_expires_at and user_row.tariff_expires_at < datetime.now())
+        is_limit_exceeded = quota['total_remaining'] <= 0
         cost = 0
-        if user_row.messages_consumed >= rules['base_limit']:
-            fresh_user = await get_user_by_client_id(client_id)
-            if fresh_user:
-                user_row = fresh_user
-            if user_row.balance < rules.get('base_cost', 15):
-                is_limit_exceeded = True
-            else:
-                cost = rules.get('base_cost', 15)
-        
-        if is_expired:
-            is_limit_exceeded = True
 
-        if is_limit_exceeded and not is_admin:
-            if t_name != 'start':
-                log.warning(f"Downgrading {client_id} from {t_name} to start: limit exceeded, balance insufficient")
-                async with AsyncSessionLocal() as db:
-                    await db.execute(
-                        update(User).where(User.client_id == client_id).values(
-                            tariff_name='start',
-                            tariff_expires_at=None,
-                            messages_consumed=0,
-                            messages_reset_at=datetime.now() + timedelta(days=TARIFF_RULES['start']['reset_period_days'])
-                        )
-                    )
-                    await db.commit()
-                
-                await send_telegram_notification(
-                    f"⚠️ *Тариф '{rules.get('name', t_name)}' отключён!*\n\n"
-                    f"Клиент: `{client_id}`\nПричина: лимит сообщений исчерпан, баланс недостаточен для оплаты.\n"
-                    f"Тариф изменён на «Старт». Для возврата на платный тариф пополните баланс и смените тариф в панели управления."
+        if (is_expired or is_limit_exceeded) and not is_admin:
+            log.warning(f"AI disabled for {client_id} due to limits/expiration. Switching to operator mode.")
+            async with AsyncSessionLocal() as db:
+                await db.execute(
+                    update(ChatSession)
+                    .where(ChatSession.session_id == session_id)
+                    .values(is_operator_mode=True, status='waiting')
                 )
-                if user_row.email:
-                    await send_email(
-                        user_row.email,
-                        f"⚠️ Тариф '{rules.get('name', t_name)}' отключён — Mitya AI",
-                        f"Ваш тарифный план '{rules.get('name', t_name)}' отключён, так как лимит сообщений исчерпан, а баланс недостаточен для оплаты.\n\n"
-                        f"Тариф изменён на «Старт» (30 бесплатных сообщений в месяц).\n\n"
-                        f"Для возврата на платный тариф пополните баланс и смените тариф в панели управления."
-                    )
-                
-                t_name = 'start'
-                rules = TARIFF_RULES['start']
-                cost = 0
-                is_limit_exceeded = False
-            else:
-                log.warning(f"AI disabled for {client_id} due to limits/expiration. Switching to operator mode.")
-                async with AsyncSessionLocal() as db:
-                    await db.execute(
-                        update(ChatSession)
-                        .where(ChatSession.session_id == session_id)
-                        .values(is_operator_mode=True, status='waiting')
-                    )
-                    await db.commit()
-                
-                alert_text = (
-                    f"⚠️ Лимит ИИ исчерпан!\n\n"
-                    f"Ваш ассистент на сайте временно переведен в режим ручного управления, "
-                    f"так как лимит сообщений по тарифу '{rules.get('name', t_name)}' исчерпан или баланс недостаточен.\n\n"
-                    f"Пожалуйста, ответьте клиенту в панели управления или пополните баланс для активации ИИ."
-                )
-                
-                await send_telegram_notification(f"⚠️ *Лимит ИИ исчерпан!*\n\nКлиент: `{client_id}`\nЧат переведен на ручное управление.")
-                
-                if user_row.email:
-                    await send_email(user_row.email, "⚠️ Лимит ИИ исчерпан — Mitya AI", alert_text)
-                
-                op_msg_default = "Я передал ваш вопрос оператору, он ответит вам в ближайшее время."
-                op_msg = op_msg_default
-                try:
-                    client_config = await get_client_config(client_id)
-                    bot_settings = client_config.raw.get('bot_settings', {})
-                    ai_unavailable_message = (bot_settings.get('ai_unavailable_message') or '').strip()
-                    if ai_unavailable_message:
-                        op_msg = ai_unavailable_message
-                except Exception:
-                    pass
+                await db.commit()
 
-                if getattr(data, 'source', None) == 'widget':
-                    client_config = await get_client_config(client_id)
-                    widget_settings = client_config.raw.get('integrations', {}).get('widget', {})
-                    autoreply_enabled = bool(widget_settings.get('autoreply_enabled', False))
-                    autoreply_message = (widget_settings.get('autoreply_message') or '').strip()
-                    if autoreply_enabled and autoreply_message:
-                        op_msg = autoreply_message
-                await save_chat_message(session_id, 'assistant', op_msg)
+            if not is_expired:
+                period_marker = str(getattr(db_user, 'messages_period_started_at', '') or '')
+                await notify_messages_quota_exhausted(client_id, dedupe_key=f"quota-exhausted:{client_id}:{period_marker}")
 
-                if stream:
-                    async def limit_gen():
-                        yield f"data: {json.dumps({'status': 'waiting_for_operator', 'message': op_msg})}\n\n"
-                    return limit_gen()
-                return {"status": "waiting_for_operator", "response": op_msg}
+            alert_text = (
+                "⚠️ Подписка истекла. Ассистент временно остановлен, пока тариф не будет продлён."
+                if is_expired else
+                "⚠️ Лимит сообщений ассистента исчерпан. Чтобы вернуть ответы ассистента, докупите пакет сообщений или смените тариф."
+            )
+
+            await send_telegram_notification(f"⚠️ *Ассистент переведён в ручной режим!*\n\nКлиент: `{client_id}`")
+            if user_row.email:
+                await send_email(user_row.email, "⚠️ Ассистент переведён в ручной режим — Mitya AI", alert_text)
+
+            op_msg_default = "Я передал ваш вопрос оператору, он ответит вам в ближайшее время."
+            op_msg = op_msg_default
+            try:
+                client_config = await get_client_config(client_id, assistant_id=assistant_id)
+                bot_settings = client_config.raw.get('bot_settings', {})
+                ai_unavailable_message = (bot_settings.get('ai_unavailable_message') or '').strip()
+                if ai_unavailable_message:
+                    op_msg = ai_unavailable_message
+            except Exception:
+                pass
+
+            await save_chat_message(session_id, 'assistant', op_msg)
+
+            if stream:
+                async def limit_gen():
+                    yield f"data: {json.dumps({'status': 'waiting_for_operator', 'message': op_msg})}\n\n"
+                return limit_gen()
+            return {"status": "waiting_for_operator", "response": op_msg}
 
         if user_msg.startswith('[scenario]:') or user_msg == '[PRESENTATION_START]':
             res = await scenario_engine.process(client_id, session_id, user_msg)
@@ -893,15 +892,15 @@ class ChatService:
             sess_metadata = sess_data[1] if sess_data else {}
             widget_settings = {}
 
-            # Проверка глобального отключения ассистента для виджета
             if getattr(data, 'source', None) == 'widget':
-                client_config = await get_client_config(client_id)
+                client_config = await get_client_config(client_id, assistant_id=assistant_id)
                 widget_settings = client_config.raw.get('integrations', {}).get('widget', {})
-                if not widget_settings.get('assistant_enabled', True):
+                # Older or partial integration configs may omit this field. Treat
+                # only an explicit false as disabled so new widget sessions keep AI replies.
+                if widget_settings.get('assistant_enabled') is False:
                     log.info(f"Global widget assistant disabled for {client_id}")
                     is_operator = True
 
-            # Проверка индивидуального отключения в метаданных сессии
             if sess_metadata.get('assistant_disabled'):
                 log.info(f"Assistant disabled for specific session {session_id}")
                 is_operator = True
@@ -909,46 +908,77 @@ class ChatService:
             if is_operator:
                 log.info(f"Operator mode active for session {session_id}. AI response skipped.")
 
-                op_msg = "Оператор скоро ответит вам. Пожалуйста, подождите."
-
                 if getattr(data, 'source', None) == 'widget':
-                    autoreply_enabled = bool(widget_settings.get('autoreply_enabled', False))
-                    autoreply_message = (widget_settings.get('autoreply_message') or '').strip()
-                    if autoreply_enabled and autoreply_message:
-                        op_msg = autoreply_message
+                    from .operator_notification_service import (
+                        build_incoming_message_notification,
+                        notify_operators,
+                    )
+                    await notify_operators(
+                        client_id,
+                        build_incoming_message_notification(
+                            source="widget",
+                            sender=(sess_metadata or {}).get("displayName")
+                            or (sess_metadata or {}).get("first_name")
+                            or "Клиент",
+                            message=user_msg,
+                            is_operator=True,
+                        ),
+                        assistant_id=assistant_id,
+                    )
 
-                await save_chat_message(session_id, 'assistant', op_msg)
-
+                # Manual operator mode does not send a canned reply. The message
+                # is visible in Inbox and the operator writes the actual response.
                 if stream:
                     async def op_gen():
-                        yield f"data: {json.dumps({'content': op_msg})}\n\n"
                         yield f"data: {json.dumps({'status': 'waiting_for_operator', 'done': True})}\n\n"
                     return op_gen()
-                return {"status": "waiting_for_operator", "response": op_msg}
+                return {"status": "waiting_for_operator", "response": ""}
+
+        # Уведомление о новом сообщении из виджета (всегда, независимо от режима)
+        if getattr(data, 'source', None) == 'widget':
+            from .operator_notification_service import (
+                build_incoming_message_notification,
+                notify_operators,
+            )
+            await notify_operators(
+                client_id,
+                build_incoming_message_notification(
+                    source="widget",
+                    sender=(sess_metadata or {}).get("displayName")
+                    or (sess_metadata or {}).get("first_name")
+                    or "Клиент",
+                    message=user_msg,
+                    is_operator=bool(is_operator),
+                ),
+                assistant_id=assistant_id,
+            )
 
         audio_url = None
         config_was_updated = False
         
-        client_config = await get_client_config(client_id)
+        client_config = await get_client_config(client_id, assistant_id=assistant_id)
         bot_settings = client_config.raw.get('bot_settings', {})
 
         if bot_settings.get('enable_cache'):
             q_hash = hashlib.md5(user_msg.strip().lower().encode()).hexdigest()
-            cache_key = f"ai_cache:{client_id}:{q_hash}"
+            cache_key = f"ai_cache:{client_id}:{assistant_id or 'main'}:{q_hash}"
             cached_answer = cache_service.get(cache_key)
             
             if cached_answer:
                 log.info(f"AI Cache Hit (Redis) for {client_id}: {user_msg[:30]}...")
-                return await self._send_direct_response(session_id, user_msg, cached_answer, stream, client_id=client_id, cost=0, skip_counter=True)
+                return await self._send_direct_response(
+                    session_id, user_msg, cached_answer, stream,
+                    client_id=client_id, assistant_id=assistant_id, cost=0, skip_counter=True
+                )
 
         effective_stream = stream
         if bot_settings.get('enable_web_search'):
             effective_stream = False
 
         ai_response = await self._get_ai_response(
-            client_id, session_id, user_msg, data.context, rules, 
-            stream=effective_stream, total_msg_cost=cost, user_row=user_row, 
-            voice_output=voice_output, is_admin=is_admin, 
+            client_id, assistant_id, session_id, user_msg, data.context, rules,
+            stream=effective_stream, total_msg_cost=cost, user_row=user_row,
+            voice_output=voice_output, is_admin=is_admin,
             attachments=attachments, ai_custom_msg=ai_user_msg
         )
 
@@ -968,7 +998,7 @@ class ChatService:
                         except: pass
                         yield chunk
                     
-                    await self._save_to_cache(client_id, user_msg, full_text_for_tts, bot_settings)
+                    await self._save_to_cache(client_id, assistant_id, user_msg, full_text_for_tts, bot_settings)
 
                     if voice_output and full_text_for_tts:
                         try:
@@ -988,7 +1018,10 @@ class ChatService:
 
         if isinstance(ai_response, dict) and ai_response.get('status') == 'function_call':
             func_data = ai_response['function']
-            func_res_obj = await self.execute_function_call(client_id, func_data, is_admin=is_admin, context=data.context, session_id=session_id)
+            func_res_obj = await self.execute_function_call(
+                client_id, func_data, is_admin=is_admin, context=data.context,
+                session_id=session_id, assistant_id=assistant_id
+            )
             
             history_data = await get_chat_history(session_id, limit=rules.get('context_limit', 15))
             messages_for_ai = [{"role": m['role'], "content": m['content']} for m in history_data]
@@ -999,8 +1032,8 @@ class ChatService:
             messages_for_ai.append({"role": "function", "name": func_data['name'], "content": json.dumps(func_res_obj, ensure_ascii=False)})
 
             ai_response = await self._get_ai_response(
-                client_id, session_id, user_msg, data.context, rules, 
-                stream=effective_stream, total_msg_cost=cost, 
+                client_id, assistant_id, session_id, user_msg, data.context, rules,
+                stream=effective_stream, total_msg_cost=cost,
                 user_row=user_row, voice_output=voice_output,
                 is_admin=is_admin, custom_messages=messages_for_ai,
                 attachments=attachments, ai_custom_msg=ai_user_msg
@@ -1013,14 +1046,17 @@ class ChatService:
 
             if isinstance(ai_response, dict) and ai_response.get('status') == 'function_call':
                 func_data = ai_response['function']
-                func_res_obj = await self.execute_function_call(client_id, func_data, is_admin=is_admin, context=data.context, session_id=session_id)
+                func_res_obj = await self.execute_function_call(
+                    client_id, func_data, is_admin=is_admin, context=data.context,
+                    session_id=session_id, assistant_id=assistant_id
+                )
                 
                 messages_for_ai.append({"role": "assistant", "function_call": func_data})
                 messages_for_ai.append({"role": "function", "name": func_data['name'], "content": json.dumps(func_res_obj, ensure_ascii=False)})
 
                 ai_response = await self._get_ai_response(
-                    client_id, session_id, user_msg, data.context, rules, 
-                    stream=effective_stream, total_msg_cost=cost, 
+                    client_id, assistant_id, session_id, user_msg, data.context, rules,
+                    stream=effective_stream, total_msg_cost=cost,
                     user_row=user_row, voice_output=voice_output,
                     is_admin=is_admin, custom_messages=messages_for_ai,
                     attachments=attachments, ai_custom_msg=ai_user_msg
@@ -1036,7 +1072,9 @@ class ChatService:
             final_text = ai_response.get('response') if isinstance(ai_response, dict) else ai_response
             
             await save_chat_message(session_id, "assistant", final_text)
-            await update_user_balance(client_id, cost, consumed_increment=1)
+            await update_user_balance(client_id, cost, consumed_increment=0)
+            from .db_service import consume_message_quota
+            await consume_message_quota(client_id, rules.get('base_limit', 30), reset_days=rules.get('reset_period_days', 30))
             
             if stream:
                 async def fake_stream():
@@ -1062,7 +1100,9 @@ class ChatService:
 
         if isinstance(final_text, str) and len(final_text) > 0:
             await save_chat_message(session_id, 'assistant', final_text, author_role='assistant')
-            await update_user_balance(client_id, cost, consumed_increment=1)
+            await update_user_balance(client_id, cost, consumed_increment=0)
+            from .db_service import consume_message_quota
+            await consume_message_quota(client_id, rules.get('base_limit', 30), reset_days=rules.get('reset_period_days', 30))
             
             if voice_output:
                 try:
@@ -1101,7 +1141,7 @@ class ChatService:
                     if audio_url:
                         yield f"data: {json.dumps({'audio_url': audio_url})}\n\n"
                     
-                    await self._save_to_cache(client_id, user_msg, text_to_send, bot_settings)
+                    await self._save_to_cache(client_id, assistant_id, user_msg, text_to_send, bot_settings)
 
                     yield f"data: {json.dumps({'done': True})}\n\n"
                 else:
@@ -1112,7 +1152,7 @@ class ChatService:
         if config_was_updated: res_payload["config_updated"] = True
         return res_payload
 
-    async def execute_function_call(self, client_id, func_data, is_admin=False, context=None, session_id=None):
+    async def execute_function_call(self, client_id, func_data, is_admin=False, context=None, session_id=None, assistant_id=None):
         """Выполняет команду от ИИ."""
         name = func_data['name']
         
@@ -1129,7 +1169,7 @@ class ChatService:
 
         try:
             from ..services.clients import get_client_config, save_client_config
-            config = await get_client_config(client_id)
+            config = await get_client_config(client_id, assistant_id=assistant_id)
             
             if name == "get_datetime":
                 from datetime import datetime
@@ -1199,9 +1239,9 @@ class ChatService:
 
         return {"status": "error", "message": "Unknown function"}
 
-    async def _get_ai_response(self, client_id, session_id, user_msg, context, rules, stream=False, total_msg_cost=0, user_row=None, voice_output=False, custom_messages=None, is_admin=False, attachments=None, ai_custom_msg=None):
-        """Получение ответа от ИИ через ai_service."""
-        client_config = await get_client_config(client_id)
+    async def _get_ai_response(self, client_id, assistant_id, session_id, user_msg, context, rules, stream=False, total_msg_cost=0, user_row=None, voice_output=False, custom_messages=None, is_admin=False, attachments=None, ai_custom_msg=None):
+        """Получение ответа ИИ в контексте конкретного ассистента."""
+        client_config = await get_client_config(client_id, assistant_id=assistant_id)
         
         inline_buttons_enabled = client_config.raw.get('theme', {}).get('inline_buttons_enabled', True)
         
@@ -1225,6 +1265,7 @@ class ChatService:
                 client_config,
                 stream=True,
                 client_id=client_id,
+                assistant_id=assistant_id,
                 session_id=session_id,
                 total_msg_cost=total_msg_cost,
                 user_row=user_row,
@@ -1241,6 +1282,7 @@ class ChatService:
             client_config,
             stream=False,
             client_id=client_id,
+            assistant_id=assistant_id,
             session_id=session_id,
             total_msg_cost=total_msg_cost,
             user_row=user_row,
@@ -1252,18 +1294,21 @@ class ChatService:
             context=context
         )
 
-    async def _send_direct_response(self, session_id, user_msg, response_text, stream, client_id=None, voice_output=False, cost=0, skip_counter=False):
+    async def _send_direct_response(self, session_id, user_msg, response_text, stream, client_id=None, assistant_id=None, voice_output=False, cost=0, skip_counter=False):
         await save_chat_message(session_id, 'user', user_msg)
         
         await save_chat_message(session_id, 'assistant', response_text)
         if client_id:
-            await update_user_balance(client_id, cost, consumed_increment=0 if skip_counter else 1)
+            await update_user_balance(client_id, cost, consumed_increment=0)
+            if not skip_counter:
+                from .db_service import consume_message_quota
+                await consume_message_quota(client_id, rules.get('base_limit', 30), reset_days=rules.get('reset_period_days', 30))
         
-        client_config = await get_client_config(client_id) if client_id else None
+        client_config = await get_client_config(client_id, assistant_id=assistant_id) if client_id else None
         bot_settings = client_config.raw.get('bot_settings', {}) if client_config else {}
 
         if client_id:
-            await self._save_to_cache(client_id, user_msg, response_text, bot_settings)
+            await self._save_to_cache(client_id, assistant_id, user_msg, response_text, bot_settings)
 
         audio_url = None
         if voice_output and client_id:
@@ -1284,7 +1329,7 @@ class ChatService:
                     for i, word in enumerate(words):
                         chunk = word + (' ' if i < len(words) - 1 else '')
                         yield f"data: {json.dumps({'content': chunk})}\n\n"
-                        await asyncio.sleep(0.02) # Скорость печати
+                        await asyncio.sleep(0.02)
                     if audio_url:
                         yield f"data: {json.dumps({'audio_url': audio_url})}\n\n"
                     yield f"data: {json.dumps({'done': True})}\n\n"

@@ -3,11 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from ..services.avito_service import (
     check_avito_credentials, setup_avito_webhook, delete_avito_webhook,
-    handle_avito_message, get_avito_chat_info, avito_sync_progress, sync_avito_history,
-    extract_avito_attachments
+    handle_avito_message, get_avito_chat_info, extract_avito_attachments
 )
 from .admin_router import verify_token
-from ..services.integrations_service import get_integration_settings, save_integration_settings
+from ..services.integrations_service import get_integration_settings, list_integration_settings, save_integration_settings
 from pydantic import BaseModel
 from ..core.config import log
 
@@ -33,15 +32,17 @@ async def check_token(req: AvitoCheckRequest, client_id: str, request: Request, 
 
 
 @router.post("/setup")
-async def setup_avito(request: Request, client_id: str = None, user_data: dict = Depends(verify_token)):
+async def setup_avito(request: Request, client_id: str = None, assistant_id: str | None = None, user_data: dict = Depends(verify_token)):
     """Настройка интеграции Avito."""
     target_client_id = client_id or user_data.get("sub")
     if not target_client_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     data = await request.json()
-    avito_client_id = data.get("client_id", "").strip()
-    avito_client_secret = data.get("client_secret", "").strip()
+    settings = await get_integration_settings(target_client_id, "avito", assistant_id=assistant_id)
+    # Keep existing credentials when the form did not intentionally provide new ones.
+    avito_client_id = data.get("client_id", "").strip() or settings.get("client_id", "")
+    avito_client_secret = data.get("client_secret", "").strip() or settings.get("client_secret", "")
     enabled = data.get("enabled", False)
 
     if enabled and avito_client_id and avito_client_secret:
@@ -53,14 +54,15 @@ async def setup_avito(request: Request, client_id: str = None, user_data: dict =
             log.warning(f"[AVITO_CHECK] Could not validate: {e}")
             pass
 
-    settings = await get_integration_settings(target_client_id, "avito")
     settings.update({
         "client_id": avito_client_id,
         "client_secret": avito_client_secret,
         "enabled": enabled,
-        "sync_history": data.get("sync_history", False)
+        "assistant_enabled": bool(data.get("assistant_enabled", False)),
+        "autoreply_enabled": False,
+        "autoreply_message": ""
     })
-    await save_integration_settings(target_client_id, "avito", settings)
+    await save_integration_settings(target_client_id, "avito", settings, assistant_id=assistant_id)
 
     if enabled and avito_client_id and avito_client_secret:
         # Используем webhook_url, присланный с фронтенда (там знают реальный публичный адрес)
@@ -78,42 +80,6 @@ async def setup_avito(request: Request, client_id: str = None, user_data: dict =
         await delete_avito_webhook(avito_client_id, avito_client_secret)
 
     return {"status": "success"}
-
-
-@router.get("/status/{client_id}")
-async def get_avito_status(client_id: str, user=Depends(verify_token)):
-    """Возвращает статус синхронизации Avito."""
-    progress = avito_sync_progress.get(client_id, {"status": "idle"})
-    
-    response_data = {
-        "is_synced": True,
-        "status": progress.get("status", "idle"),
-        "progress": progress
-    }
-
-    if progress.get("status") == "completed":
-        avito_sync_progress[client_id] = {"status": "idle"}
-
-    return response_data
-
-
-class AvitoSyncRequest(BaseModel):
-    client_id: str
-    force: bool = False
-
-
-@router.post("/sync")
-async def start_avito_sync(data: AvitoSyncRequest, user=Depends(verify_token)):
-    """Запускает синхронизацию истории Avito."""
-    settings = await get_integration_settings(data.client_id, "avito")
-    if not settings or not settings.get("enabled"):
-        raise HTTPException(status_code=400, detail="Интеграция Avito не включена")
-    
-    # Запускаем фоновую задачу
-    import asyncio
-    asyncio.create_task(sync_avito_history(data.client_id, settings, force=data.force))
-    
-    return {"status": "ok", "message": "Синхронизация запущена"}
 
 
 @router.post("/webhook")
@@ -192,14 +158,11 @@ async def avito_webhook(request: Request):
             for cid in clients:
                 if not cid:
                     continue
-                settings = await get_integration_settings(cid, "avito")
-                if isinstance(settings, str):
-                    try:
-                        settings = json.loads(settings)
-                    except Exception:
+                matches = await list_integration_settings(cid, "avito")
+                for assistant_id, settings in matches:
+                    if not settings.get("enabled"):
                         continue
-                if settings.get("enabled"):
-                    log.info(f"[AVITO_WEBHOOK] Routing to client {cid}")
+                    log.info(f"[AVITO_WEBHOOK] Routing to client {cid}:{assistant_id}")
                     # Пробуем получить контекст объявления (title, price, url) из API
                     item_context = {}
                     try:
@@ -220,11 +183,16 @@ async def avito_webhook(request: Request):
                     except Exception as e:
                         log.warning(f"[AVITO_WEBHOOK] Failed to fetch chat info: {e}")
 
-                    # Извлекаем и скачиваем вложения
-                    session_id = f"avito-{cid}-{author_id or user_id}"
-                    attachment_links = await extract_avito_attachments(event_value, cid, session_id)
+                    # Извлекаем и скачиваем вложения (функция возвращает кортеж
+                    # (тексты-ссылки, сохранённые вложения)).
+                    session_id = f"avito-{cid}-{assistant_id}-{author_id or user_id}"
+                    attachment_links, stored_attachments = await extract_avito_attachments(
+                        event_value, cid, session_id, assistant_id=assistant_id
+                    )
                     if not attachment_links:
-                        attachment_links = await extract_avito_attachments(payload, cid, session_id)
+                        attachment_links, stored_attachments = await extract_avito_attachments(
+                            payload, cid, session_id, assistant_id=assistant_id
+                        )
 
                     if attachment_links:
                         extra_text = "\n".join(attachment_links)
@@ -233,9 +201,12 @@ async def avito_webhook(request: Request):
                     await handle_avito_message(
                         cid, settings.get("client_secret", ""), chat_id, author_id or user_id, text or "",
                         item_id=item_id, author_id=author_id, item_context=item_context,
-                        account_id=user_id
+                        account_id=user_id, assistant_id=assistant_id,
+                        attachments=stored_attachments or None
                     )
                     found = True
+                    break
+                if found:
                     break
             if not found:
                 log.warning(f"[AVITO_WEBHOOK] No enabled Avito integration found")

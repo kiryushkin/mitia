@@ -129,15 +129,47 @@ class TestChat:
 
     @pytest.mark.asyncio
     async def test_stop_chat(self, client):
-        """Принудительная остановка генерации."""
-        response = await client.post("/api/chat/stop", json={
-            "session_id": "sess_001",
-            "last_text": "Неполный отв"
-        })
+        """Принудительная остановка генерации для своей сессии."""
+        session_result = MagicMock()
+        session_result.scalar_one_or_none.return_value = 1
+        message_result = MagicMock()
+        message_result.scalar_one_or_none.return_value = None
+
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[session_result, message_result])
+        db.__aenter__ = AsyncMock(return_value=db)
+        db.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("api.chat.services.db_service.AsyncSessionLocal", return_value=db):
+            response = await client.post("/api/chat/stop", json={
+                "session_id": "sess_001",
+                "client_id": "usr_test",
+                "last_text": "Неполный отв",
+            })
 
         assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "ok"
+        assert response.json()["status"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_stop_chat_rejects_other_tenant(self, client):
+        """Нельзя остановить и изменить чужой диалог."""
+        session_result = MagicMock()
+        session_result.scalar_one_or_none.return_value = None
+
+        db = MagicMock()
+        db.execute = AsyncMock(return_value=session_result)
+        db.__aenter__ = AsyncMock(return_value=db)
+        db.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("api.chat.services.db_service.AsyncSessionLocal", return_value=db):
+            response = await client.post("/api/chat/stop", json={
+                "session_id": "sess_other",
+                "client_id": "usr_attacker",
+                "last_text": "Подменённый текст",
+            })
+
+        assert response.status_code == 403
+        assert db.execute.await_count == 1
 
     @pytest.mark.asyncio
     async def test_history_endpoint(self, client):
@@ -162,6 +194,56 @@ class TestChat:
         assert data["status"] == "success"
         assert len(data["history"]) == 2
         assert data["history"][0]["role"] == "user"
+
+    @pytest.mark.asyncio
+    async def test_history_requires_client_id(self, client):
+        """Публичная история недоступна по одному session_id."""
+        response = await client.get("/api/chat/history?token=sess_001")
+
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_history_caps_excessive_limit(self, client):
+        """Сервер не позволяет запросить чрезмерно большую историю."""
+        session = MagicMock()
+        with patch("sqlalchemy.select") as mock_select:
+            result = MagicMock()
+            result.scalar_one_or_none.return_value = session
+            mock_select.return_value.where.return_value = result
+            with patch("api.chat.routers.chat_router.get_chat_history", AsyncMock(return_value=[])) as get_history:
+                response = await client.get(
+                    "/api/chat/history?token=sess_001&client_id=usr_test&limit=1000000"
+                )
+
+        assert response.status_code == 200
+        get_history.assert_awaited_once_with("sess_001", 500)
+
+    @pytest.mark.asyncio
+    async def test_delete_message_rejects_other_tenant(self, client):
+        """Пользователь не может удалить сообщение другого клиента."""
+        message = MagicMock()
+        message.session_id = "sess_other"
+        message.attachments = []
+
+        message_result = MagicMock()
+        message_result.scalar_one_or_none.return_value = message
+        owner_result = MagicMock()
+        owner_result.scalar_one_or_none.return_value = "usr_owner"
+
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[message_result, owner_result])
+        db.__aenter__ = AsyncMock(return_value=db)
+        db.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("jwt.decode", return_value={"sub": "usr_attacker"}):
+            with patch("api.chat.services.db_service.AsyncSessionLocal", return_value=db):
+                response = await client.delete(
+                    "/api/chat/history/42",
+                    headers={"Authorization": "Bearer test-token"},
+                )
+
+        assert response.status_code == 403
+        assert db.execute.await_count == 2
 
     @pytest.mark.asyncio
     async def test_ask_json_content_type(self, client):

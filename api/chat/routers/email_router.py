@@ -1,11 +1,11 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from ..services.email_service import email_service
 from ..routers.admin_router import verify_token
-from ..services.integrations_service import get_integration_settings
+from ..services.email_service import email_service
 import imaplib
 import smtplib
-import asyncio
 
 router = APIRouter(prefix="/api/chat/email", tags=["email"])
 
@@ -139,63 +139,3 @@ async def check_email_auth(data: EmailCheckRequest, user=Depends(verify_token)):
         if results.get("imap") != "ok": error_msg += f"IMAP: {results['imap']} "
         if results.get("smtp") != "ok": error_msg += f"SMTP: {results['smtp']}"
         return {"status": "error", "error": error_msg.strip()}
-
-@router.get("/status/{client_id}")
-async def get_email_status(client_id: str, user=Depends(verify_token)):
-    """Возвращает статус синхронизации почты."""
-    from ..services.cache_service import cache_service
-    sync_key = f"email_sync_done:{client_id}"
-    is_synced = cache_service.get(sync_key)
-    
-    progress = email_service.sync_progress.get(client_id, {"status": "idle"})
-    
-    return {
-        "is_synced": bool(is_synced),
-        "status": progress.get("status", "ready" if is_synced else "idle"),
-        "progress": progress
-    }
-
-class EmailSyncRequest(BaseModel):
-    client_id: str
-    mode: str = "sync_only"
-    force: bool = False
-
-@router.post("/sync")
-async def start_email_sync(data: EmailSyncRequest, user=Depends(verify_token)):
-    """Запускает синхронизацию истории."""
-    from ..core.config import log
-    log.info(f"[EMAIL_ROUTER] Start sync request for client: {data.client_id}, mode: {data.mode}")
-    
-    settings = await get_integration_settings(data.client_id, "email")
-    if not settings:
-        log.error(f"[EMAIL_ROUTER] Settings not found for {data.client_id}")
-        raise HTTPException(status_code=400, detail="Настройки интеграции не найдены")
-        
-    if not settings.get("enabled"):
-        log.error(f"[EMAIL_ROUTER] Email integration disabled for {data.client_id}")
-        raise HTTPException(status_code=400, detail="Интеграция Email не включена")
-    
-    if not settings.get("email_address") or not settings.get("email_password"):
-        log.error(f"[EMAIL_ROUTER] Email credentials missing for {data.client_id}")
-        raise HTTPException(status_code=400, detail="Email или пароль не настроены")
-    
-    await email_service.sync_historical_emails(data.client_id, settings, mode=data.mode, force=data.force)
-    return {"status": "ok", "message": "Синхронизация запущена"}
-
-@router.get("/folders/{client_id}")
-async def get_email_folders(client_id: str, user=Depends(verify_token)):
-    """Возвращает список папок почтового ящика."""
-    settings = await get_integration_settings(client_id, "email")
-    if not settings:
-        raise HTTPException(status_code=400, detail="Настройки не найдены")
-    
-    email_addr = settings.get("email_address")
-    password = settings.get("email_password")
-    imap_server = settings.get("imap_server") or email_service._guess_imap(email_addr)
-    
-    if not email_addr or not password or not imap_server:
-        raise HTTPException(status_code=400, detail="Email не настроен")
-
-    folders = await asyncio.to_thread(email_service._list_folders, email_addr, password, imap_server)
-    return {"folders": folders}
-

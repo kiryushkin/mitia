@@ -44,11 +44,42 @@ async def get_gigachat_token():
             log.error(f"GigaChat Auth Exception: {e}")
     return None
 
-async def handle_gigachat_request(messages: List[Dict], target_model: str, stream: bool = False, **kwargs):
-    """Обработка запроса к GigaChat."""
+async def upload_gigachat_file(file_path: str, file_name: str, content_type: str) -> Optional[str]:
+    """Загружает файл в хранилище GigaChat для vision/file-aware ответа."""
     token = await get_gigachat_token()
     if not token:
-        return "Ошибка авторизации GigaChat"
+        return None
+
+    try:
+        with open(file_path, "rb") as file_obj:
+            files = {"file": (file_name, file_obj, content_type)}
+            data = {"purpose": "general"}
+            headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+            async with httpx.AsyncClient(verify=CERT_VERIFY) as client:
+                response = await client.post(
+                    "https://gigachat.devices.sberbank.ru/api/v1/files",
+                    headers=headers,
+                    data=data,
+                    files=files,
+                    timeout=60.0,
+                )
+        if response.status_code in (200, 201):
+            return response.json().get("id")
+        log.warning("GigaChat file upload failed: %s %s", response.status_code, response.text[:500])
+    except Exception as error:
+        log.warning("GigaChat file upload error for %s: %s", file_name, error)
+    return None
+
+
+GIGACHAT_FALLBACK_MODELS = ["GigaChat", "GigaChat-Max", "GigaChat-Pro", "GigaChat-Lite"]
+GIGACHAT_ULTRA_MODEL = "GigaChat-Ultra"
+
+async def handle_gigachat_request(messages: List[Dict], target_model: str, stream: bool = False, **kwargs):
+    """Обработка запроса к GigaChat с перебором моделей (fallback)."""
+    token = await get_gigachat_token()
+    if not token:
+        log.error("GigaChat token is unavailable — check GIGACHAT_KEY in .env")
+        return "Ассистент временно недоступен. Пожалуйста, попробуйте позже."
 
     url = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
     headers = {
@@ -57,50 +88,72 @@ async def handle_gigachat_request(messages: List[Dict], target_model: str, strea
         'Authorization': f'Bearer {token}'
     }
 
-    payload = {
-        "model": target_model,
+    # Строим цепочку fallback: Ultra → target_model → Max → Pro → Lite
+    fallback_chain = [GIGACHAT_ULTRA_MODEL]
+    for m in [target_model] + GIGACHAT_FALLBACK_MODELS:
+        if m not in fallback_chain:
+            fallback_chain.append(m)
+
+    payload_template = {
         "messages": messages,
         "temperature": kwargs.get('temperature', 0.7),
         "stream": stream
     }
-
     if kwargs.get('available_tools'):
-        payload["functions"] = kwargs['available_tools']
-        payload["function_call"] = "auto"
+        payload_template["functions"] = kwargs['available_tools']
+        payload_template["function_call"] = "auto"
 
-    if stream:
-        return gigachat_stream_generator(url, headers, payload, **kwargs)
-
-    retries = kwargs.get('retries', 3)
+    retries = kwargs.get('retries', 2)
     retry_delay = kwargs.get('retry_delay', 1.5)
 
-    async with httpx.AsyncClient(verify=CERT_VERIFY) as client:
-        for attempt in range(retries):
-            try:
-                res = await client.post(url, headers=headers, json=payload, timeout=30.0)
-                if res.status_code == 200:
-                    choice = res.json()['choices'][0]['message']
-                    if 'function_call' in choice:
-                        return {"status": "function_call", "function": choice['function_call']}
-                    return choice.get('content', '')
+    for model_idx, model in enumerate(fallback_chain):
+        payload = {**payload_template, "model": model}
+        if stream and model_idx > 0:
+            log.warning(f"GigaChat stream fallback to {model} — not supported, falling back to non-stream")
+            return await handle_gigachat_request(messages, model, stream=False, **kwargs)
 
-                if res.status_code in (429, 500, 502, 503, 504) and attempt < retries - 1:
-                    delay = retry_delay * (attempt + 1)
-                    log.warning(f"GigaChat temporary error {res.status_code}, retry in {delay:.1f}s")
-                    await anyio.sleep(delay)
-                    continue
+        if stream:
+            return gigachat_stream_generator(url, headers, payload, **kwargs)
 
-                return f"Ошибка API: {res.status_code}"
-            except Exception as e:
-                if attempt < retries - 1:
-                    delay = retry_delay * (attempt + 1)
-                    log.warning(f"GigaChat Error on attempt {attempt + 1}/{retries}: {e}. Retry in {delay:.1f}s")
-                    await anyio.sleep(delay)
-                    continue
-                log.error(f"GigaChat Error: {e}")
-                return "Ошибка при запросе к GigaChat"
+        async with httpx.AsyncClient(verify=CERT_VERIFY) as client:
+            for attempt in range(retries):
+                try:
+                    res = await client.post(url, headers=headers, json=payload, timeout=30.0)
+                    if res.status_code == 200:
+                        choice = res.json()['choices'][0]['message']
+                        if 'function_call' in choice:
+                            return {"status": "function_call", "function": choice['function_call']}
+                        return choice.get('content', '')
 
-    return "Ошибка при запросе к GigaChat"
+                    if res.status_code in (401, 403):
+                        log.warning(f"GigaChat {model} auth error ({res.status_code}), trying next model...")
+                        break
+
+                    if res.status_code == 429:
+                        log.warning(f"GigaChat {model} quota exhausted (429), trying next model...")
+                        break
+
+                    if res.status_code in (500, 502, 503, 504) and attempt < retries - 1:
+                        delay = retry_delay * (attempt + 1)
+                        log.warning(f"GigaChat {model} temporary error {res.status_code}, retry in {delay:.1f}s")
+                        await anyio.sleep(delay)
+                        continue
+
+                    log.error(f"GigaChat API error: {res.status_code} - {res.text[:300]}")
+                    return "Ассистент временно недоступен. Пожалуйста, попробуйте позже."
+                except Exception as e:
+                    if attempt < retries - 1:
+                        delay = retry_delay * (attempt + 1)
+                        log.warning(f"GigaChat Error on attempt {attempt + 1}/{retries}: {e}. Retry in {delay:.1f}s")
+                        await anyio.sleep(delay)
+                        continue
+                    log.error(f"GigaChat Error: {e}")
+                    return "Ассистент временно недоступен. Пожалуйста, попробуйте позже."
+            # Если вышли из retry по 429 — пробуем следующую модель
+            continue
+
+    log.error("GigaChat request failed after all models")
+    return "Ассистент временно недоступен. Пожалуйста, попробуйте позже."
 
 async def get_gigachat_embeddings(texts: List[str]) -> List[List[float]]:
     """Получает векторные представления (embeddings) для списка текстов."""

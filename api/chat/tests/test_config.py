@@ -12,6 +12,7 @@ class TestConfig:
     async def test_config_mitia_assistant(self, client):
         """Конфиг для mitia_assistant всегда доступен."""
         mock_config = MagicMock()
+        mock_config.raw = {"allowed_origins": ["localhost"]}
         mock_config.public_dict.return_value = {
             "client_id": "mitia_assistant",
             "bot_name": "Митя",
@@ -21,7 +22,7 @@ class TestConfig:
 
         with patch("api.chat.routers.chat_router.get_user_by_client_id", AsyncMock(return_value=None)):
             with patch("api.chat.routers.chat_router.get_client_config", AsyncMock(return_value=mock_config)):
-                response = await client.get("/api/chat/config?client_id=mitia_assistant")
+                response = await client.get("/api/chat/config?client_id=mitia_assistant", headers={"referer": "http://localhost/widget"})
 
         assert response.status_code == 200
         data = response.json()
@@ -32,6 +33,7 @@ class TestConfig:
     async def test_config_default_client_id(self, client):
         """Пустой client_id или 'default' → mitia_assistant."""
         mock_config = MagicMock()
+        mock_config.raw = {"allowed_origins": ["localhost"]}
         mock_config.public_dict.return_value = {
             "client_id": "mitia_assistant",
             "bot_name": "Митя",
@@ -40,7 +42,7 @@ class TestConfig:
 
         with patch("api.chat.routers.chat_router.get_user_by_client_id", AsyncMock(return_value=None)):
             with patch("api.chat.routers.chat_router.get_client_config", AsyncMock(return_value=mock_config)):
-                response = await client.get("/api/chat/config?client_id=default")
+                response = await client.get("/api/chat/config?client_id=default", headers={"referer": "http://localhost/widget"})
 
         assert response.status_code == 200
         data = response.json()
@@ -48,16 +50,20 @@ class TestConfig:
 
     @pytest.mark.asyncio
     async def test_config_payment_required(self, client):
-        """Баланс <= -1 → 402 Payment Required."""
+        """Баланс <= -1 → конфиг доступен, но AI помечен как отключённый."""
         mock_user = MagicMock()
         mock_user.balance = -5.0
+        mock_config = MagicMock()
+        mock_config.raw = {"allowed_origins": ["debtor.local"]}
+        mock_config.public_dict.return_value = {"client_id": "usr_debtor", "widget_enabled": True}
 
         with patch("api.chat.routers.chat_router.get_user_by_client_id", AsyncMock(return_value=mock_user)):
-            response = await client.get("/api/chat/config?client_id=usr_debtor")
+            with patch("api.chat.routers.chat_router.get_client_config", AsyncMock(return_value=mock_config)):
+                response = await client.get("/api/chat/config?client_id=usr_debtor", headers={"referer": "https://debtor.local/page"})
 
-        assert response.status_code == 402
+        assert response.status_code == 200
         data = response.json()
-        assert data["hidden"] is True
+        assert data["ai_disabled"] is True
 
     @pytest.mark.asyncio
     async def test_config_domain_blocked(self, client):
@@ -66,7 +72,7 @@ class TestConfig:
         mock_user.balance = 0.0
 
         mock_config = MagicMock()
-        mock_config.raw = {"site_url": "https://my-site.ru"}
+        mock_config.raw = {"site_url": "https://my-site.ru", "allowed_origins": ["my-site.ru"]}
 
         with patch("api.chat.routers.chat_router.get_user_by_client_id", AsyncMock(return_value=mock_user)):
             with patch("api.chat.routers.chat_router.get_client_config", AsyncMock(return_value=mock_config)):
@@ -84,7 +90,7 @@ class TestConfig:
         mock_user.balance = 0.0
 
         mock_config = MagicMock()
-        mock_config.raw = {"site_url": "https://my-site.ru"}
+        mock_config.raw = {"site_url": "https://my-site.ru", "allowed_origins": ["my-site.ru"]}
         mock_config.public_dict.return_value = {"client_id": "usr_test", "widget_enabled": True}
 
         with patch("api.chat.routers.chat_router.get_user_by_client_id", AsyncMock(return_value=mock_user)):
@@ -103,7 +109,7 @@ class TestConfig:
         mock_user.balance = 0.0
 
         mock_config = MagicMock()
-        mock_config.raw = {"site_url": None, "contacts": {}}
+        mock_config.raw = {"site_url": None, "contacts": {}, "allowed_origins": []}
 
         with patch("api.chat.routers.chat_router.get_user_by_client_id", AsyncMock(return_value=mock_user)):
             with patch("api.chat.routers.chat_router.get_client_config", AsyncMock(return_value=mock_config)):
@@ -128,6 +134,7 @@ class TestConfig:
     async def test_config_public_dict_structure(self, client):
         """public_dict содержит все обязательные поля."""
         mock_config = MagicMock()
+        mock_config.raw = {"allowed_origins": ["test.ru"]}
         mock_config.public_dict.return_value = {
             "client_id": "usr_test",
             "bot_name": "ТестБот",
@@ -144,7 +151,7 @@ class TestConfig:
 
         with patch("api.chat.routers.chat_router.get_user_by_client_id", AsyncMock(return_value=None)):
             with patch("api.chat.routers.chat_router.get_client_config", AsyncMock(return_value=mock_config)):
-                response = await client.get("/api/chat/config?client_id=usr_test")
+                response = await client.get("/api/chat/config?client_id=usr_test", headers={"referer": "https://test.ru/widget"})
 
         assert response.status_code == 200
         data = response.json()

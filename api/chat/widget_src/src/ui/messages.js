@@ -97,6 +97,8 @@ export async function addMessage(text, role, options = {}, config, els) {
     textDiv.className = 'message-text';
     contentDiv.appendChild(textDiv);
 
+    // Имя оператора показываем только в панели, не в виджете на сайте
+
     if (buttons.length > 0 && inlineButtonsEnabled) {
         const buttonsContainer = document.createElement('div');
         buttonsContainer.className = 'chat-inline-buttons-container';
@@ -133,22 +135,28 @@ export async function addMessage(text, role, options = {}, config, els) {
         const fileEl = document.createElement('div');
         fileEl.className = 'message-file-item';
         const fileType = file.type || '';
-        if (fileType.startsWith('image/')) {
+        const fileName = file.name || '';
+        const isImage = fileType.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(fileName);
+        if (isImage) {
           const img = document.createElement('img');
           img.className = 'message-image-preview chat-inline-image';
           try {
-            img.src = file.isHistory ? `data:${file.type || 'image/png'};base64,${file.data}` : (file instanceof Blob ? URL.createObjectURL(file) : '');
+            img.src = file.isHistory
+              ? (file.url || (file.data ? `data:${file.type || 'image/png'};base64,${file.data}` : ''))
+              : (file instanceof Blob ? URL.createObjectURL(file) : '');
           } catch (e) { console.error('Error creating image URL', e); }
           img.onclick = () => {
             if (window.MityaWidget && window.MityaWidget.openLightbox) window.MityaWidget.openLightbox(img.src);
-            else if (typeof openImageLightbox !== 'undefined') openImageLightbox(img.src);
+            else if (typeof openImageLightbox !== 'undefined') openImageLightbox(img.src, els.messagesContainer);
           };
           fileEl.appendChild(img);
         } else {
           fileEl.classList.add('is-document');
           let fileUrl = '';
           try {
-            fileUrl = file.isHistory ? `data:${file.type};base64,${file.data}` : (file instanceof Blob ? URL.createObjectURL(file) : '');
+            fileUrl = file.isHistory
+              ? (file.url || (file.data ? `data:${file.type || 'application/octet-stream'};base64,${file.data}` : ''))
+              : (file instanceof Blob ? URL.createObjectURL(file) : '');
           } catch (e) { console.error('Error creating file URL', e); }
           fileEl.innerHTML = `<div class="file-info"><a href="${fileUrl}" download="${escapeHtml(file.name || 'file')}" class="file-name" title="${escapeHtml(file.name || 'file')}">${escapeHtml(file.name || 'file')}</a></div>`;
         }

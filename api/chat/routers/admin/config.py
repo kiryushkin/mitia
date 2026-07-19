@@ -8,7 +8,15 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from ...core.config import log, deep_merge, TARIFF_RULES
 from ...services.db_service import AsyncSessionLocal, User
-from ...services.clients import reload_client_config
+from ...services.clients import reload_client_config, get_client_config
+from ...services.assistants_service import (
+    get_account_config,
+    get_assistant_config,
+    save_account_config,
+    save_assistant_config,
+    get_active_admin_assistant_id,
+    clear_assistant_runtime_cache,
+)
 from ...services.cache_service import cache_service
 from .deps import verify_token
 from .files import move_temp_file, delete_old_file
@@ -17,225 +25,140 @@ router = APIRouter()
 
 
 @router.api_route("/config", methods=["GET", "POST"])
-async def admin_config(request: Request, client_id: str, token_data: dict = Depends(verify_token)):
-    """Получение и сохранение конфигурации клиента."""
+async def admin_config(request: Request, client_id: str, assistant_id: str | None = None, token_data: dict = Depends(verify_token)):
+    """Совместимый endpoint общего конфига: account-level + assistant-level в контексте выбранного assistant_id."""
     if token_data['sub'] != client_id and token_data['sub'] != 'admin':
         raise HTTPException(status_code=403, detail="Access denied")
 
     target_client_id = (client_id or 'mitia_assistant').strip()
     if target_client_id == 'default':
         target_client_id = 'mitia_assistant'
-
-    from ...services.db_service import ClientConfig as DBClientConfig
-    from sqlalchemy.dialects.postgresql import insert
+    target_assistant_id = assistant_id or await get_active_admin_assistant_id(target_client_id)
 
     if request.method == "POST":
         new_data = await request.json()
         new_data['updated_at'] = time.time()
         top_keys = sorted(list(new_data.keys()))
-        log.info(f"Updating config for {target_client_id}. keys={top_keys}")
+        log.info(f"Updating config for {target_client_id}:{target_assistant_id}. keys={top_keys}")
 
-        async with AsyncSessionLocal() as db:
-            result = await db.execute(select(DBClientConfig).where(DBClientConfig.client_id == target_client_id))
-            db_config_obj = result.scalar_one_or_none()
+        # Нормализация allowed_origins: https://example.com без path/slash
+        if 'allowed_origins' in new_data:
+            raw_origins = new_data.get('allowed_origins') or []
+            if isinstance(raw_origins, str):
+                raw_origins = [raw_origins] if raw_origins.strip() else []
+            normalized = []
+            for raw in raw_origins:
+                value = str(raw or '').strip()
+                if not value:
+                    continue
+                if not value.startswith(('http://', 'https://')):
+                    value = f'https://{value}'
+                value = value.rstrip('/')
+                try:
+                    from urllib.parse import urlparse
+                    parsed = urlparse(value)
+                    if parsed.netloc:
+                        value = f"{parsed.scheme}://{parsed.netloc}"
+                except Exception:
+                    pass
+                if value not in normalized:
+                    normalized.append(value)
+            new_data['allowed_origins'] = normalized
 
-            updated_config = {}
-            if not db_config_obj:
-                updated_config = new_data
-                db_config_obj = DBClientConfig(client_id=target_client_id, config_json=new_data)
-                db.add(db_config_obj)
+        account_patch = {}
+        assistant_patch = copy.deepcopy(new_data)
+
+        if 'email' in new_data:
+            account_patch['email'] = new_data['email']
+            assistant_patch.pop('email', None)
+        if 'auto_renew' in new_data:
+            account_patch['auto_renew'] = new_data['auto_renew']
+            assistant_patch.pop('auto_renew', None)
+
+        # The operator name is account-wide: one person answers messages from
+        # every assistant and every external channel.
+        theme_patch = dict(new_data.get('theme') or {})
+        if 'msg_operator_name' in theme_patch:
+            account_patch['theme'] = {'msg_operator_name': theme_patch['msg_operator_name']}
+            assistant_theme = dict(assistant_patch.get('theme') or {})
+            assistant_theme.pop('msg_operator_name', None)
+            if assistant_theme:
+                assistant_patch['theme'] = assistant_theme
             else:
-                current_config = db_config_obj.config_json or {}
+                assistant_patch.pop('theme', None)
 
-                file_fields = [
-                    ('theme', 'widget_img'),
-                    ('theme', 'msg_bot_avatar'),
-                    ('theme', 'msg_user_avatar'),
-                    ('theme', 'msg_operator_avatar'),
-                    ('theme', 'profile_avatar'),
-                    ('theme', 'window_bg_img'),
-                    ('theme', 'header_logo'),
-                    ('theme', 'welcome_img'),
-                    ('theme', 'inline_btn_accent_img'),
-                    ('theme', 'inline_btn_neutral_img'),
-                    ('theme', 'inline_btn_info_img'),
-                    ('bot_settings', 'knowledge_file_url'),
-                    ('bot_settings', 'knowledge_file_name')
-                ]
+        file_fields = [
+            ('theme', 'widget_img'),
+            ('theme', 'msg_bot_avatar'),
+            ('theme', 'msg_user_avatar'),
+            ('theme', 'msg_operator_avatar'),
+            ('theme', 'profile_avatar'),
+            ('theme', 'window_bg_img'),
+            ('theme', 'header_logo'),
+            ('theme', 'welcome_img'),
+            ('theme', 'inline_btn_accent_img'),
+            ('theme', 'inline_btn_neutral_img'),
+            ('theme', 'inline_btn_info_img'),
+            ('bot_settings', 'knowledge_file_url'),
+            ('bot_settings', 'knowledge_file_name')
+        ]
 
-                for section, field in file_fields:
-                    old_val = current_config.get(section, {}).get(field)
+        current_assistant_config = await get_assistant_config(target_client_id, target_assistant_id)
+        for section, field in file_fields:
+            old_val = current_assistant_config.get(section, {}).get(field)
+            if section in assistant_patch and field in assistant_patch[section]:
+                new_val = assistant_patch[section][field]
+                if new_val and "/uploads/temp/" in str(new_val):
+                    subfolder = "avatars" if field != 'knowledge_file_url' else "knowledge"
+                    new_val = move_temp_file(new_val, f"{target_client_id}/{target_assistant_id}", subfolder, field)
+                    assistant_patch[section][field] = new_val
+                if old_val and old_val != new_val:
+                    delete_old_file(old_val)
 
-                    if section in new_data and field in new_data[section]:
-                        new_val = new_data[section][field]
+        if assistant_patch.get('bot_settings', {}).get('ai_model') == 'local':
+            assistant_patch['bot_settings']['ai_model'] = 'local_start'
 
-                        if new_val and "/uploads/temp/" in str(new_val):
-                            subfolder = "avatars" if field != 'knowledge_file_url' else "knowledge"
-                            new_val = move_temp_file(new_val, target_client_id, subfolder, field)
-                            new_data[section][field] = new_val
+        if 'theme' in assistant_patch:
+            theme = assistant_patch.get('theme', {}) or {}
+            theme['widget_dots_display'] = 'none' if theme.get('widget_img') not in [None, '', 'none', 'null'] else 'block'
+            assistant_patch['theme'] = theme
 
-                        if old_val and old_val != new_val:
-                            log.info(f"[CLEANUP] Detected change in {section}.{field}. Old: {old_val}, New: {new_val}")
-                            delete_old_file(old_val)
-                    elif section in new_data and field not in new_data[section] and section == 'bot_settings' and field == 'knowledge_file_url':
-                        pass
+        saved_assistant_config = await save_assistant_config(target_client_id, target_assistant_id, assistant_patch)
+        if account_patch:
+            await save_account_config(target_client_id, account_patch)
 
-                if 'bot_settings' in new_data and 'knowledge_file_name' in new_data['bot_settings']:
-                    if 'bot_settings' not in current_config:
-                        current_config['bot_settings'] = {}
-                    current_config['bot_settings']['knowledge_file_name'] = new_data['bot_settings']['knowledge_file_name']
-                    log.info(f"[SAVE] Preserved knowledge_file_name: {new_data['bot_settings']['knowledge_file_name']}")
+        await reload_client_config(target_client_id, assistant_id=target_assistant_id)
+        await clear_assistant_runtime_cache(target_client_id, target_assistant_id)
 
-                # НОРМАЛИЗАЦИЯ: синхронизируем корневой widget_enabled с theme.widget_enabled,
-                # чтобы избежать рассинхронизации (в конфиге два поля с одним смыслом)
-                if 'theme' in new_data and 'widget_enabled' in new_data['theme']:
-                    current_config['widget_enabled'] = new_data['theme']['widget_enabled']
-                    log.info(f"[SYNC] Root widget_enabled synced with theme.widget_enabled: {new_data['theme']['widget_enabled']}")
+        try:
+            from ...services.vector_service import VectorService
+            vector_db = VectorService(f"{target_client_id}:{target_assistant_id}")
+            vector_db.clear()
+        except Exception as ve:
+            log.error(f"[Vector] Error clearing index on save: {ve}")
 
-                updated_config = deep_merge(current_config, new_data)
+        try:
+            from ..ws_router import manager
+            await manager.broadcast_to_client(target_client_id, {
+                "type": "config_update",
+                "assistant_id": target_assistant_id,
+                "config": saved_assistant_config
+            })
+        except Exception as e:
+            log.error(f"Error broadcasting config update: {e}")
 
-                if 'contacts' in new_data:
-                    if 'contacts' not in updated_config:
-                        updated_config['contacts'] = {}
-                    for c_key, c_val in new_data['contacts'].items():
-                        updated_config['contacts'][c_key] = c_val
-                    log.info(f"[DEBUG] Contacts explicitly updated: {updated_config['contacts']}")
+        merged_config = await get_client_config(target_client_id, use_cache=False, assistant_id=target_assistant_id)
+        return {"status": "success", "config": merged_config.raw, "assistant_id": target_assistant_id, "message": "Настройки сохранены, кэш обновлен"}
 
-                if 'legal_data' in new_data:
-                    if 'legal_data' not in updated_config:
-                        updated_config['legal_data'] = {'ip': {}, 'ooo': {}, 'self': {}}
+    config = await get_client_config(target_client_id, use_cache=False, assistant_id=target_assistant_id)
+    if config.db_data:
+        tariff_info = TARIFF_RULES.get(config.db_data.get('tariff_name') or 'start', TARIFF_RULES['start'])
+        config.raw['tariff_name'] = tariff_info.get('name', config.db_data.get('tariff_name'))
+        config.raw['messages_limit'] = tariff_info.get('base_limit', 30)
+        config.raw['messages_used'] = config.db_data.get('messages_consumed', 0)
+        config.raw['is_active'] = config.db_data.get('is_active', True)
 
-                    for l_type, l_fields in new_data['legal_data'].items():
-                        if l_type not in updated_config['legal_data']:
-                            updated_config['legal_data'][l_type] = {}
-                        if isinstance(l_fields, dict):
-                            for f_key, f_val in l_fields.items():
-                                updated_config['legal_data'][l_type][f_key] = f_val
-                    log.info(f"[DEBUG] Legal data explicitly updated")
-
-                # НОРМАЛИЗАЦИЯ: Переносим параметры личности в bot_settings
-                if 'bot_settings' not in updated_config:
-                    updated_config['bot_settings'] = {}
-
-                new_name = updated_config.get('bot_name') or updated_config.get('theme', {}).get('bot_name')
-                if new_name:
-                    updated_config['bot_settings']['bot_name'] = new_name
-                    updated_config.pop('bot_name', None)
-                    if 'theme' in updated_config:
-                        updated_config['theme'].pop('bot_name', None)
-
-                new_role = updated_config.get('bot_role') or updated_config.get('theme', {}).get('bot_role')
-                if new_role:
-                    updated_config['bot_settings']['bot_role'] = new_role
-                    updated_config.pop('bot_role', None)
-                    if 'theme' in updated_config:
-                        updated_config['theme'].pop('bot_role', None)
-
-                new_welcome = updated_config.get('welcome_msg') or updated_config.get('theme', {}).get('welcome_msg')
-                if new_welcome:
-                    updated_config['welcome_msg'] = new_welcome
-                    if 'theme' in updated_config:
-                        updated_config['theme'].pop('welcome_msg', None)
-
-                new_model = None
-                if 'bot_settings' in new_data and 'ai_model' in new_data['bot_settings']:
-                    new_model = new_data['bot_settings']['ai_model']
-
-                if not new_model:
-                    new_model = new_data.get('ai_model') or new_data.get('theme', {}).get('ai_model')
-
-                if new_model:
-                    if 'bot_settings' not in updated_config:
-                        updated_config['bot_settings'] = {}
-                    updated_config['bot_settings']['ai_model'] = new_model
-                    updated_config.pop('ai_model', None)
-                    if 'theme' in updated_config:
-                        updated_config['theme'].pop('ai_model', None)
-
-                if updated_config.get('bot_settings', {}).get('ai_model') == 'local':
-                    updated_config['bot_settings']['ai_model'] = 'local_start'
-
-                log.info(f"[DEBUG] Final ai_model in bot_settings: {updated_config.get('bot_settings', {}).get('ai_model')}")
-
-                theme = updated_config.get('theme', {})
-                if not theme.get('widget_img') or theme.get('widget_img') in ['none', 'null', '']:
-                    theme['widget_dots_display'] = 'block'
-                else:
-                    theme['widget_dots_display'] = 'none'
-                updated_config['theme'] = theme
-
-                log.info(f"[DEBUG] Final config to save for {target_client_id}: {json.dumps(updated_config, ensure_ascii=False)}")
-
-                db_config_obj.config_json = copy.deepcopy(updated_config)
-                flag_modified(db_config_obj, "config_json")
-
-            if 'theme' in new_data and 'widget_enabled' in new_data['theme']:
-                await db.execute(
-                    update(User)
-                    .where(User.client_id == target_client_id)
-                    .values(is_active=bool(new_data['theme']['widget_enabled']))
-                )
-
-            if 'email' in new_data:
-                await db.execute(
-                    update(User)
-                    .where(User.client_id == target_client_id)
-                    .values(email=new_data['email'])
-                )
-
-            if 'auto_renew' in new_data:
-                await db.execute(
-                    update(User)
-                    .where(User.client_id == target_client_id)
-                    .values(auto_renew=bool(new_data['auto_renew']))
-                )
-
-            await db.commit()
-
-            await reload_client_config(target_client_id)
-            cache_service.clear_pattern(f"ai_cache:{target_client_id}:*")
-
-            # Очистка векторной базы знаний, чтобы при следующей загрузке она переиндексировалась
-            try:
-                from ...services.vector_service import VectorService
-                vector_db = VectorService(target_client_id)
-                vector_db.clear()
-                log.info(f"[Vector] Cleared index for {target_client_id} on config save")
-            except Exception as ve:
-                log.error(f"[Vector] Error clearing index on save: {ve}")
-
-            # Оповещаем все активные виджеты об обновлении конфигурации
-            try:
-                from ..ws_router import manager
-                await manager.broadcast_to_client(target_client_id, {
-                    "type": "config_update",
-                    "config": updated_config
-                })
-            except Exception as e:
-                log.error(f"Error broadcasting config update: {e}")
-
-            log.info(f"[SAVE] Config and Redis Cache updated for {target_client_id}")
-
-            return {"status": "success", "config": updated_config, "message": "Настройки сохранены, кэш обновлен"}
-
-    async with AsyncSessionLocal() as db:
-        res_cfg = await db.execute(select(DBClientConfig.config_json).where(DBClientConfig.client_id == target_client_id))
-        config = res_cfg.scalar_one_or_none() or {}
-
-        res_user = await db.execute(select(User).where(User.client_id == target_client_id))
-        user = res_user.scalar_one_or_none()
-
-        if user:
-            tariff_info = TARIFF_RULES.get(user.tariff_name or 'start', TARIFF_RULES['start'])
-            messages_limit = tariff_info.get('base_limit', 30)
-            config['email'] = user.email
-            config['balance'] = user.balance
-            config['tariff_name'] = tariff_info.get('name', user.tariff_name)
-            config['messages_used'] = user.messages_consumed
-            config['messages_limit'] = messages_limit
-            config['is_active'] = user.is_active
-
-        return {"status": "success", "config": config}
+    return {"status": "success", "config": config.raw, "assistant_id": target_assistant_id}
 
 
 @router.get("/global-operator-status")
@@ -283,24 +206,67 @@ async def clear_client_ai_cache(client_id: str, token_data: dict = Depends(verif
 
 
 @router.get("/integrations")
-async def get_integrations(client_id: str, token_data: dict = Depends(verify_token)):
+async def get_integrations(client_id: str, assistant_id: str | None = None, token_data: dict = Depends(verify_token)):
     """Получение всех интеграций клиента."""
     if token_data['sub'] != client_id and token_data['sub'] != 'admin':
         raise HTTPException(status_code=403, detail="Access denied")
 
-    from ...services.clients import get_client_config
-    config = await get_client_config(client_id)
-    return {"status": "success", "integrations": config.raw.get('integrations', {})}
+    config = await get_client_config(client_id, assistant_id=assistant_id)
+    return {"status": "success", "integrations": config.raw.get('integrations', {}), "assistant_id": config.raw.get('assistant_id')}
 
 
 @router.post("/integrations/{name}")
-async def update_integration(name: str, client_id: str, request: Request, token_data: dict = Depends(verify_token)):
+async def update_integration(name: str, client_id: str, assistant_id: str | None = None, request: Request = None, token_data: dict = Depends(verify_token)):
     """Обновление настроек конкретной интеграции."""
     if token_data['sub'] != client_id and token_data['sub'] != 'admin':
         raise HTTPException(status_code=403, detail="Access denied")
 
     data = await request.json()
+    target_assistant_id = assistant_id or await get_active_admin_assistant_id(client_id)
 
-    from ...services.integrations_service import save_integration_settings
-    await save_integration_settings(client_id, name, data)
-    return {"status": "success"}
+    current = await get_assistant_config(client_id, target_assistant_id)
+    integrations = copy.deepcopy(current.get('integrations') or {})
+    integration_payload = copy.deepcopy(data)
+    integration_payload['assistant_id'] = target_assistant_id
+    integrations[name] = integration_payload
+    await save_assistant_config(client_id, target_assistant_id, {'integrations': integrations})
+
+    if name == 'widget':
+        widget_enabled = bool(data.get('enabled', False))
+        allowed_origins_value = data.get('allowed_origins', '')
+        if isinstance(allowed_origins_value, str):
+            allowed_origins = [allowed_origins_value] if allowed_origins_value else []
+        elif isinstance(allowed_origins_value, list):
+            allowed_origins = [v for v in allowed_origins_value if v]
+        else:
+            allowed_origins = []
+
+        # Нормализуем домены: https://example.com, без пути и слэша в конце.
+        normalized_origins = []
+        for raw in allowed_origins:
+            value = str(raw or '').strip()
+            if not value:
+                continue
+            if not value.startswith(('http://', 'https://')):
+                value = f'https://{value}'
+            value = value.rstrip('/')
+            # Убираем path, оставляем origin
+            try:
+                from urllib.parse import urlparse
+                parsed = urlparse(value)
+                if parsed.netloc:
+                    value = f"{parsed.scheme}://{parsed.netloc}"
+            except Exception:
+                pass
+            if value not in normalized_origins:
+                normalized_origins.append(value)
+
+        await save_assistant_config(client_id, target_assistant_id, {
+            'allowed_origins': normalized_origins,
+            'theme': {'widget_enabled': widget_enabled}
+        })
+
+    await reload_client_config(client_id, assistant_id=target_assistant_id)
+    await clear_assistant_runtime_cache(client_id, target_assistant_id)
+
+    return {"status": "success", "assistant_id": target_assistant_id}

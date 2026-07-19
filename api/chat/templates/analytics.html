@@ -4,39 +4,38 @@
         <div class="appearance-column" id="profile-left-column">
             <div class="bento-card" id="card-analytics-filters">
                 <div class="card-header-flex">
-                    <div class="card-title-group" onclick="if(window.innerWidth <= 1024) this.closest('.bento-card').classList.toggle('is-collapsed')">
-                        <div class="collapse-icon mobile-only"></div>
-                        <div>
-                            <h3 class="card-title intelligence-title-accent">Аналитика</h3>
-                            <p class="card-subtitle">Настройка фокуса и временных рамок исследования</p>
-                        </div>
+                    <div class="card-title-group">
+                        <h3 class="card-title intelligence-title-accent">Аналитика</h3>
                     </div>
-                </div>
-
-                <div class="settings-form">
-                    <div class="flex-between">
-                        <h3 class="subtitle-card-bold white">Фильтры</h3>
-                        <button class="icon-btn-sm" id="btn-analytics-reset-filters" title="Сбросить фильтры" aria-label="Сбросить фильтры">
+                    <div class="card-actions-mini">
+                        <button class="icon-btn-sm" id="btn-analytics-reset-filters" type="button" title="Сбросить фильтры" aria-label="Сбросить фильтры">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
                         </button>
+                        <button class="icon-btn-sm analytics-filters-collapse-btn" type="button" onclick="this.closest('.bento-card').classList.toggle('is-collapsed')" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                    </div>
+                </div>
+                <p class="card-description">Настройка фокуса и&nbsp;временных рамок исследования</p>
+
+                <div class="settings-form">
+
+                    <div class="flex-between">
+                        <h3 class="subtitle-card-bold white">Фильтры</h3>
+                    </div>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Ассистент</label>
+                        <div class="filters-buttons" id="analytics-assistant-buttons"></div>
                     </div>
                     <div class="setting-item">
                         <label class="subtitle-card">Период</label>
                         <div class="filters-buttons" id="analytics-period-buttons">
                             <button class="filter-btn analytics-period-btn" data-period="yesterday">Вчера</button>
                             <button class="filter-btn analytics-period-btn" data-period="today">Сегодня</button>
-                            <button class="filter-btn analytics-period-btn active" data-period="week">Неделя</button>
+                            <button class="filter-btn analytics-period-btn" data-period="week">Неделя</button>
                             <button class="filter-btn analytics-period-btn" data-period="month">Месяц</button>
                             <button class="filter-btn analytics-period-btn" data-period="quarter">Квартал</button>
                             <button class="filter-btn analytics-period-btn" data-period="year">Год</button>
-                        </div>
-                    </div>
-                    <div class="setting-item">
-                        <label class="subtitle-card">Режим</label>
-                        <div class="filters-buttons" id="analytics-mode-buttons">
-                            <button class="filter-btn analytics-mode-btn active" data-mode="all">Общий</button>
-                            <button class="filter-btn analytics-mode-btn" data-mode="assistant">Ассистент</button>
-                            <button class="filter-btn analytics-mode-btn" data-mode="operator">Оператор</button>
                         </div>
                     </div>
                     <div class="setting-item">
@@ -46,35 +45,18 @@
                     </div>
                 </div>
             </div>
-            <div class="bento-card ai-insight-card" id="card-insight">
-                <div class="card-header-flex">
-                    <h3 class="card-title">AI-Стратегия</h3>
-                    <div class="ai-thinking-indicator">
-                        <span></span><span></span><span></span>
-                    </div>
-                </div>
-                <div class="flex-between">
-                    <div class="setting-item">
-                        <div class="insight-text" id="ai-insight-text">
-                            Формирую стратегические инсайты...
-                        </div>
-                    </div>
-                </div>
-            </div>
+
         </div>
         <div class="appearance-column" id="profile-middle-column">
             <div class="bento-card analytics-card" id="card-analytics-platforms" data-analytics-card="platforms">
                 <div class="card-header-flex">
                     <div>
-                        <h3 class="card-title">Анализ источников</h3>
-                        <p class="card-subtitle">Распределение входящего трафика по точкам контакта</p>
+                        <h3 class="card-title">Каналы</h3>
+                        <p class="card-subtitle">Распределение диалогов по каналам связи, через которые клиенты обращаются в&nbsp;компанию.</p>
                     </div>
                     <div class="period-selector">
                         <button class="period-btn icon-square-btn btn-analytics-expand analytics-collapsed-only" type="button" title="Открыть график на весь экран" aria-label="Открыть график на весь экран">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M8 21H3v-5"></path></svg>
-                        </button>
-                        <button class="period-btn icon-square-btn btn-analytics-close analytics-expanded-only" type="button" title="Закрыть полноэкранный режим" aria-label="Закрыть полноэкранный режим">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     </div>
                 </div>
@@ -90,15 +72,12 @@
             <div class="bento-card analytics-card" id="card-analytics-messages" data-analytics-card="messages">
                 <div class="card-header-flex">
                     <div>
-                        <h3 class="card-title">Тепловая карта спроса</h3>
-                        <p class="card-subtitle">Идентификация пиковых периодов клиентской активности</p>
+                        <h3 class="card-title">Спрос</h3>
+                        <p class="card-subtitle">Интенсивность клиентских сообщений по&nbsp;дням недели и&nbsp;часам для&nbsp;выявления периодов пикового спроса.</p>
                     </div>
                     <div class="period-selector">
                         <button class="period-btn icon-square-btn btn-analytics-expand analytics-collapsed-only" type="button" title="Открыть график на весь экран" aria-label="Открыть график на весь экран">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M8 21H3v-5"></path></svg>
-                        </button>
-                        <button class="period-btn icon-square-btn btn-analytics-close analytics-expanded-only" type="button" title="Закрыть полноэкранный режим" aria-label="Закрыть полноэкранный режим">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     </div>
                 </div>
@@ -107,22 +86,17 @@
                         <div class="activity-series-controls"></div>
                     </div>
                 </div>
-                <div class="main-chart-container analytics-main-chart-container">
-                    <canvas id="activity-messages-chart"></canvas>
-                </div>
+                <div class="main-chart-container analytics-main-chart-container demand-heatmap-container" id="activity-demand-heatmap"></div>
             </div>
             <div class="bento-card analytics-card" id="card-analytics-results" data-analytics-card="results">
                 <div class="card-header-flex">
                     <div>
-                        <h3 class="card-title">Воронка конверсии</h3>
-                        <p class="card-subtitle">Эффективность трансформации диалогов в результат</p>
+                        <h3 class="card-title">Конверсия</h3>
+                        <p class="card-subtitle">Переход от общего объёма диалогов к&nbsp;качественным обращениям, лидам и&nbsp;участию оператора.</p>
                     </div>
                     <div class="period-selector">
                         <button class="period-btn icon-square-btn btn-analytics-expand analytics-collapsed-only" type="button" title="Открыть график на весь экран" aria-label="Открыть график на весь экран">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M8 21H3v-5"></path></svg>
-                        </button>
-                        <button class="period-btn icon-square-btn btn-analytics-close analytics-expanded-only" type="button" title="Закрыть полноэкранный режим" aria-label="Закрыть полноэкранный режим">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     </div>
                 </div>
@@ -140,13 +114,10 @@
             <div class="bento-card analytics-card analytics-mode-chart-card" id="card-analytics-mode-share" data-analytics-card="mode-share">
                 <div class="card-header-flex">
                     <div>
-                        <h3 class="card-title">Эффективность ассистента</h3>
-                        <p class="card-subtitle">Доля задач, делегированных искусственному интеллекту</p>
+                        <h3 class="card-title">Роли</h3>
+                        <p class="card-subtitle">Соотношение объёма ответов ассистента и&nbsp;оператора в&nbsp;общей коммуникации с&nbsp;клиентами.</p>
                     </div>
                     <div class="period-selector">
-                        <button class="period-btn icon-square-btn btn-analytics-close analytics-expanded-only" type="button" title="Закрыть полноэкранный режим" aria-label="Закрыть полноэкранный режим">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        </button>
                     </div>
                 </div>
                 <div class="main-chart-container analytics-main-chart-container analytics-mode-chart-wrap">
@@ -156,15 +127,12 @@
             <div class="bento-card analytics-card analytics-mode-chart-card" id="card-analytics-mode-trend" data-analytics-card="mode-trend">
                 <div class="card-header-flex">
                     <div>
-                        <h3 class="card-title">Баланс обработки</h3>
-                        <p class="card-subtitle">Сравнительная динамика работы ИИ и операторов</p>
+                        <h3 class="card-title">Динамика</h3>
+                        <p class="card-subtitle">Изменение количества ответов ассистента и&nbsp;оператора во&nbsp;времени.</p>
                     </div>
                     <div class="period-selector">
                         <button class="period-btn icon-square-btn btn-analytics-expand analytics-collapsed-only" type="button" title="Открыть график на весь экран" aria-label="Открыть график на весь экран">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M8 21H3v-5"></path></svg>
-                        </button>
-                        <button class="period-btn icon-square-btn btn-analytics-close analytics-expanded-only" type="button" title="Закрыть полноэкранный режим" aria-label="Закрыть полноэкранный режим">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     </div>
                 </div>
@@ -175,15 +143,12 @@
             <div class="bento-card analytics-card analytics-mode-chart-card" id="card-analytics-mode-funnel" data-analytics-card="mode-funnel">
                 <div class="card-header-flex">
                     <div>
-                        <h3 class="card-title">Итоговая продуктивность</h3>
-                        <p class="card-subtitle">Консолидированный результат по этапам воронки</p>
+                        <h3 class="card-title">Сравнение</h3>
+                        <p class="card-subtitle">Сопоставление объёма сообщений, диалогов и&nbsp;лидов с&nbsp;участием ассистента и&nbsp;оператора.</p>
                     </div>
                     <div class="period-selector">
                         <button class="period-btn icon-square-btn btn-analytics-expand analytics-collapsed-only" type="button" title="Открыть график на весь экран" aria-label="Открыть график на весь экран">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M8 21H3v-5"></path></svg>
-                        </button>
-                        <button class="period-btn icon-square-btn btn-analytics-close analytics-expanded-only" type="button" title="Закрыть полноэкранный режим" aria-label="Закрыть полноэкранный режим">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     </div>
                 </div>
@@ -194,12 +159,12 @@
             <div class="bento-card faq-card analytics-card" id="card-faq" data-analytics-card="faq">
                 <div class="card-header-flex">
                     <div>
-                        <h3 class="card-title">Голос клиента</h3>
-                        <p class="card-subtitle">Анализ наиболее востребованных запросов аудитории</p>
+                        <h3 class="card-title">Запросы</h3>
+                        <p class="card-subtitle">Наиболее частые темы и&nbsp;формулировки в&nbsp;сообщениях клиентов.</p>
                     </div>
                     <div class="period-selector">
-                        <button class="period-btn icon-square-btn btn-analytics-close analytics-expanded-only" type="button" title="Закрыть полноэкранный режим" aria-label="Закрыть полноэкранный режим">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        <button class="period-btn icon-square-btn btn-analytics-expand analytics-collapsed-only" type="button" title="Открыть на весь экран" aria-label="Открыть на весь экран">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"></path><path d="M8 21H3v-5"></path></svg>
                         </button>
                     </div>
                 </div>

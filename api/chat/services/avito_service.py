@@ -89,16 +89,38 @@ def extract_avito_text(payload: dict) -> str:
     return ""
 
 
+async def get_avito_voice_file_url(client_id: str, client_secret: str, account_id: str, voice_id: str) -> str | None:
+    """Resolve a temporary Avito voice URL by voice_id."""
+    token = await get_access_token(client_id, client_secret)
+    if not token or not account_id or not voice_id:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.get(
+                f"{AVITO_API}/messenger/v1/accounts/{account_id}/getVoiceFiles",
+                params={"voice_ids": voice_id},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        if response.status_code == 200:
+            return (response.json().get("voices_urls") or {}).get(voice_id)
+        log.warning("[AVITO] Voice URL request failed: HTTP %s", response.status_code)
+    except Exception as exc:
+        log.warning("[AVITO] Voice URL request error: %s", exc)
+    return None
+
+
 async def extract_avito_attachments(
-    msg: dict, client_id: str, session_id: str
-) -> list:
+    msg: dict, client_id: str, session_id: str, assistant_id: str | None = None,
+    avito_client_id: str = "", avito_client_secret: str = "", account_id: str = "",
+) -> tuple[list[str], list[dict]]:
     """Извлекает и скачивает вложения из сообщения Avito.
     Возвращает список строк-ссылок для подстановки в текст."""
     content = msg.get("content", {})
     if not isinstance(content, dict):
-        return []
+        return [], []
 
     links = []
+    stored_attachments = []
 
     # Изображения
     image = content.get("image", {})
@@ -109,14 +131,33 @@ async def extract_avito_attachments(
             if best_url:
                 local_url = await download_and_save_file(
                     best_url, client_id, session_id=session_id,
-                    file_name="photo.jpg", category="chat_file"
+                    file_name="photo.jpg", category="chat_file", assistant_id=assistant_id
                 )
                 links.append(f"🖼 Фото: {local_url or best_url}")
+                if local_url:
+                    stored_attachments.append({"name": "photo.jpg", "content_type": "image/jpeg", "local_url": local_url})
 
-    # Голосовые сообщения
+    # Voice URLs are short-lived, so download the actual file immediately.
     voice = content.get("voice", {})
     if isinstance(voice, dict) and voice.get("voice_id"):
-        links.append(f"🎤 Голосовое сообщение (ID: {voice['voice_id']})")
+        voice_id = str(voice["voice_id"])
+        voice_url = await get_avito_voice_file_url(
+            avito_client_id, avito_client_secret, account_id, voice_id
+        )
+        if voice_url:
+            local_url = await download_and_save_file(
+                voice_url, client_id, session_id=session_id, file_name="avito-voice.mp4",
+                category="chat_file", assistant_id=assistant_id,
+            )
+            links.append(f"🎤 Голосовое: {local_url or voice_url}")
+            if local_url:
+                stored_attachments.append({"name": "avito-voice.mp4", "content_type": "audio/mp4", "local_url": local_url})
+                from .stt_service import transcribe_voice
+                transcript = await transcribe_voice(local_url)
+                if transcript:
+                    links.append(f"📝 Расшифровка голосового: {transcript}")
+        else:
+            links.append("🎤 Голосовое сообщение")
 
     # Ссылка с preview
     link = content.get("link", {})
@@ -129,7 +170,7 @@ async def extract_avito_attachments(
                 if best_url:
                     local_url = await download_and_save_file(
                         best_url, client_id, session_id=session_id,
-                        file_name="preview.jpg", category="chat_file"
+                        file_name="preview.jpg", category="chat_file", assistant_id=assistant_id
                     )
                     links.append(f"🖼 Превью: {local_url or best_url}")
 
@@ -141,7 +182,7 @@ async def extract_avito_attachments(
         if item_url:
             links.append(f"📦 Объявление: {item_title} ({item_url})")
 
-    return links
+    return links, stored_attachments
 
 
 async def get_access_token(client_id: str, client_secret: str) -> Optional[str]:
@@ -371,9 +412,9 @@ async def get_avito_user_info(client_id: str, client_secret: str, account_id: st
     return {}
 
 
-async def get_or_create_avito_session(client_id: str, user_id: str, metadata: Optional[dict] = None) -> str:
+async def get_or_create_avito_session(client_id: str, user_id: str, metadata: Optional[dict] = None, assistant_id: str | None = None) -> str:
     """Создает или получает существующую сессию для пользователя Avito."""
-    session_id = f"avito-{client_id}-{user_id}"
+    session_id = f"avito-{client_id}-{assistant_id or 'main'}-{user_id}"
 
     user_info = {
         "platform": "avito",
@@ -384,7 +425,7 @@ async def get_or_create_avito_session(client_id: str, user_id: str, metadata: Op
         user_info.update(metadata)
 
     async with AsyncSessionLocal() as db:
-        await get_or_create_session(session_id, client_id, metadata=user_info)
+        await get_or_create_session(session_id, client_id, metadata=user_info, assistant_id=assistant_id)
 
     return session_id
 
@@ -392,7 +433,8 @@ async def get_or_create_avito_session(client_id: str, user_id: str, metadata: Op
 async def handle_avito_message(
     client_id: str, client_secret: str, chat_id: str, user_id: str, user_text: str,
     item_id: Optional[str] = None, author_id: str = "", item_context: Optional[dict] = None,
-    timestamp=None, skip_ai=False, account_id: str = ""
+    timestamp=None, skip_ai=False, account_id: str = "", assistant_id: str | None = None,
+    attachments: list[dict] | None = None,
 ) -> bool:
     """Основная логика обработки сообщения от Avito."""
     metadata = {}
@@ -403,7 +445,7 @@ async def handle_avito_message(
     if author_id:
         metadata["author_id"] = author_id
 
-    settings = await get_integration_settings(client_id, "avito")
+    settings = await get_integration_settings(client_id, "avito", assistant_id=assistant_id)
     if isinstance(settings, str):
         try:
             import json
@@ -416,8 +458,6 @@ async def handle_avito_message(
     avito_client_id = settings.get("client_id", "")
     avito_client_secret = settings.get("client_secret", client_secret)
 
-    # Получаем информацию о собеседнике Avito (имя, аватар, контакты).
-    # Для API нужен ID нашего аккаунта Avito, а для session_id — ID собеседника.
     avito_account_id = account_id or user_id
     target_user_id = user_id
     if author_id and author_id != str(avito_account_id):
@@ -427,17 +467,28 @@ async def handle_avito_message(
     if user_info:
         metadata.update(user_info)
 
-    session_id = await get_or_create_avito_session(client_id, target_user_id, metadata=metadata)
+    session_id = await get_or_create_avito_session(client_id, target_user_id, metadata=metadata, assistant_id=assistant_id)
 
-    # Проверка режима оператора
     is_operator = await is_operator_mode(session_id)
-
-    if is_operator:
-        await save_chat_message(session_id, "user", user_text)
-        await send_avito_message(avito_client_id, avito_client_secret, chat_id, "⏳ Оператор скоро ответит вам. Пожалуйста, подождите.", user_id=user_id)
+    assistant_enabled = bool(settings.get("assistant_enabled", False))
+    if is_operator or not assistant_enabled:
+        await save_chat_message(session_id, "user", user_text, attachments=attachments or None)
+        from .operator_notification_service import (
+            build_incoming_message_notification,
+            notify_operators,
+        )
+        await notify_operators(
+            client_id,
+            build_incoming_message_notification(
+                source="avito",
+                sender=metadata.get("name") or metadata.get("first_name") or str(target_user_id),
+                message=user_text,
+                is_operator=bool(is_operator),
+            ),
+            assistant_id=assistant_id,
+        )
         return True
 
-    # Подготовка данных для chat_service
     context = {}
     if item_id:
         context["item_id"] = item_id
@@ -447,13 +498,15 @@ async def handle_avito_message(
 
     data = AskData(
         client_id=client_id,
+        assistant_id=assistant_id,
         session_id=session_id,
         message=user_text,
         token=session_id,
         context=context,
         voice_output=False,
         stream=False,
-        timestamp=timestamp
+        timestamp=timestamp,
+        attachments=attachments or None,
     )
 
     try:
@@ -476,6 +529,7 @@ async def handle_avito_message(
         log.error(f"Avito message handling error: {e}")
         return False
 
+
 async def send_operator_message_to_avito(
     client_id: str, session_id: str, message: str, operator_name: str = "Оператор"
 ) -> bool:
@@ -484,8 +538,13 @@ async def send_operator_message_to_avito(
         return False
 
     user_id = session_id.split(f"avito-{client_id}-", 1)[-1]
+    assistant_id = None
+    parts = session_id.split("-")
+    if len(parts) >= 4:
+        assistant_id = parts[2]
+        user_id = "-".join(parts[3:])
 
-    settings = await get_integration_settings(client_id, "avito")
+    settings = await get_integration_settings(client_id, "avito", assistant_id=assistant_id)
     if isinstance(settings, str):
         try:
             import json
@@ -495,7 +554,6 @@ async def send_operator_message_to_avito(
     avito_client_id = settings.get("client_id", "")
     avito_client_secret = settings.get("client_secret", "")
 
-    # Получаем chat_id из метаданных сессии
     from ..services.db_service import AsyncSessionLocal, ChatSession
     from sqlalchemy import select
     async with AsyncSessionLocal() as db:
@@ -512,7 +570,7 @@ async def send_operator_message_to_avito(
         logger.warning(f"[AVITO_OPERATOR] No avito_chat_id found for session {session_id}")
         return False
 
-    display_message = f"👤 {operator_name}: {message}" if message else ""
+    display_message = f"{operator_name}: {message}" if message else ""
     if display_message:
         return await send_avito_message(avito_client_id, avito_client_secret, avito_chat_id, display_message, user_id=user_id)
     return False
@@ -841,9 +899,6 @@ async def poll_avito_updates(client_id: str, avito_client_id: str, avito_client_
     """Опрос новых сообщений Avito для одного клиента."""
     logger.info(f"[AVITO_POLL] Starting polling for client {client_id}")
 
-    if settings and settings.get("sync_history"):
-        asyncio.create_task(sync_avito_history(client_id, settings))
-
     _poll_processed = {}
     _POLL_DEDUP_TTL = 600
 
@@ -936,8 +991,12 @@ async def poll_avito_updates(client_id: str, avito_client_id: str, avito_client_
                         continue
 
                     # Извлекаем и скачиваем вложения из сообщения Avito
-                    session_id = f"avito-{client_id}-{author_id}"
-                    attachment_links = await extract_avito_attachments(msg, client_id, session_id)
+                    resolved_assistant_id = settings.get("assistant_id")
+                    session_id = f"avito-{client_id}-{resolved_assistant_id or 'main'}-{author_id}"
+                    attachment_links, stored_attachments = await extract_avito_attachments(
+                        msg, client_id, session_id, resolved_assistant_id,
+                        avito_client_id, avito_client_secret, current_user_id,
+                    )
 
                     if attachment_links:
                         extra_text = "\n".join(attachment_links)
@@ -952,7 +1011,8 @@ async def poll_avito_updates(client_id: str, avito_client_id: str, avito_client_
                     success = await handle_avito_message(
                         client_id, avito_client_secret, chat_id, author_id, text or "",
                         item_id=item_id, author_id=author_id, item_context=item_context,
-                        timestamp=msg_timestamp, account_id=current_user_id
+                        timestamp=msg_timestamp, account_id=current_user_id,
+                        assistant_id=resolved_assistant_id, attachments=stored_attachments,
                     )
                     if success:
                         processed_any = True

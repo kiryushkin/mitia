@@ -1,154 +1,319 @@
+import asyncio
 import json
 import re
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import select, update, text
+from sqlalchemy import select, update, text, or_
 
-from ...core.config import log, TARIFF_RULES
-from ...services.db_service import (
-    AsyncSessionLocal, User, ChatSession, ChatMessage, get_metrics_summary,
-    AICache, get_ai_cache, save_ai_cache, get_user_by_client_id, update_user_balance,
-    get_storage_usage, get_storage_items, get_storage_objects
+from ...core.config import (
+    TARIFF_RULES,
+    MESSAGE_PACK_RULES,
+    ASSISTANT_SLOT_PACK_RULES,
+    STORAGE_PACK_RULES,
+    ASSISTANT_SLOTS_SOFT_CAP,
+    ASSISTANT_SLOTS_HARD_CAP,
+    ASSISTANT_SLOTS_AVAILABLE_ON_START,
+    get_message_pack,
+    get_assistant_slot_pack,
+    get_storage_pack,
+    log,
 )
+from ...services.assistants_service import get_effective_account_limits
+
+from ...services.db_service import (
+    AsyncSessionLocal, ChatSession, ChatMessage, SessionCase, Lead, User, SitePage,
+    AICache, get_ai_cache, save_ai_cache, get_user_by_client_id, update_user_balance,
+    add_balance_transaction, ensure_messages_period, get_message_quota_state,
+    get_storage_usage, get_storage_items, get_storage_file_by_id,
+)
+
 from ...services.ai_service import ask_ai, generate_faq
 from ...services.cache_service import cache_service
+from ...services.clients import list_clients, get_client_config, save_client_config
+from ...services.security.access_control import ensure_client_access
+from ...services.storage_access import build_storage_file_response
+from ...services.assistants_service import build_assistant_filter_conditions, get_assistant_config, save_assistant_config
+from ...services.notification_service import notify_tariff_changed, notify_tariff_downgraded, notify_message_pack_purchased, notify_assistant_pack_purchased, notify_storage_pack_purchased
 from .deps import verify_token
+from .analytics_shared import (
+    analytics_scope_key as _analytics_scope_key,
+    day_cache_key as _day_cache_key,
+    empty_snapshot_payload as _empty_snapshot_payload,
+    extract_client_analytics_time as _extract_client_analytics_time,
+    extract_snapshot_date_to as _extract_snapshot_date_to,
+    normalize_business_data as _normalize_business_data,
+    parse_cache_json as _parse_cache_json,
+    rolling_24h_cache_key as _rolling_24h_cache_key,
+    safe_int as _safe_int,
+)
+from .analytics_settings import router as analytics_settings_router
+from .analytics_activity import router as analytics_activity_router
+from .analytics_cases import router as analytics_cases_router
+from .analytics_snapshots import router as analytics_snapshots_router
 
 router = APIRouter()
+router.include_router(analytics_settings_router)
+router.include_router(analytics_activity_router)
+router.include_router(analytics_cases_router)
+router.include_router(analytics_snapshots_router)
 
 
 async def run_ai_analysis_task(target_id: str, cache_key: str):
-    """Фоновая задача для генерации рекомендаций и FAQ."""
+    """Legacy manual analysis task for compatibility."""
     try:
-        async with AsyncSessionLocal() as db:
-            query = text("""
-                SELECT m.role, m.content, m.session_id
-                FROM chat_messages m
-                WHERE m.session_id IN (
-                    SELECT session_id FROM chat_sessions
-                    WHERE client_id = :client_id AND is_deleted = false
-                    ORDER BY start_time DESC LIMIT 30
-                )
-                ORDER BY m.id ASC
-            """)
-            result = await db.execute(query, {"client_id": target_id})
-            rows = result.all()
-
-            page_query = text("""
-                SELECT source_url, COUNT(*) as count 
-                FROM leads 
-                WHERE client_id = :client_id
-                GROUP BY source_url ORDER BY count DESC LIMIT 5
-            """)
-            page_res = await db.execute(page_query, {"client_id": target_id})
-            top_pages = [{"url": r.source_url, "count": r.count} for r in page_res.all()]
-
-            full_dialog_history = ""
-            user_only_history = ""
-            for r in reversed(rows):
-                line = f"{'Клиент' if r.role == 'user' else 'Бот'}: {r.content}\n"
-                full_dialog_history += line
-                if r.role == 'user':
-                    user_only_history += r.content + "\n"
-
-        try:
-            if len(user_only_history) < 10:
-                result_data = {
-                    "status": "success",
-                    "traffic_analysis": "Недостаточно данных для анализа.",
-                    "business_recommendations": "👋 **Добро пожаловать!**\n\nПока у вас мало диалогов. Как только клиенты начнут спрашивать о товарах и ценах, здесь появится глубокая бизнес-аналитика.",
-                    "frequent_requests": [],
-                    "top_pages": [],
-                    "generated_at": datetime.now().isoformat()
-                }
-            else:
-                frequent_requests, traffic_quality, spam_detected = await generate_faq(target_id, user_only_history)
-
-                stop_patterns = ['привет', 'здравствуй', 'добрый день', 'добрый вечер', 'спасибо', 'благодарю', 'как дела', 'что нового', 'ты кто', 'кто ты', 'о платформе']
-                business_keywords = ['цена', 'стоимость', 'сколько', 'как', 'где', 'когда', 'купить', 'заказать', 'услуг', 'срок', 'доставк', 'оплат', 'гарант']
-
-                filtered_requests = []
-                for item in frequent_requests:
-                    q = item.get('question', '').strip()
-                    q_lower = q.lower()
-                    if any(p in q_lower for p in stop_patterns) and len(q) < 30:
-                        continue
-                    if len(q) < 10 and not any(bk in q_lower for bk in business_keywords):
-                        continue
-                    filtered_requests.append(item)
-                frequent_requests = filtered_requests[:10]
-
-                prompt = f"""Ты — Senior Business Analyst. Проанализируй диалоги и данные о страницах.
-Твоя цель: найти точки роста прибыли и "дыры" в сервисе.
-
-ДАННЫЕ:
-1. Топ страниц, где открывали чат: {json.dumps(top_pages)}
-2. История диалогов:
-{full_dialog_history}
-
-ВЫДАЙ АНАЛИЗ СТРОГО В ФОРМАТЕ JSON:
-{{
-  "lost_profit": "текст про упущенную выгоду",
-  "barriers": "текст про барьеры",
-  "strategy": "текст про стратегию",
-  "sentiment": 85, (число от 0 до 100, где 100 - полный восторг клиентов)
-  "hot_leads_count": 3 (сколько человек были максимально близки к покупке)
-}}
-Будь максимально конкретным. Не лей воду.
-"""
-                raw_recs = await ask_ai([{"role": "user", "content": prompt}])
-
-                if not raw_recs:
-                    raise ValueError("ask_ai returned None")
-
-                try:
-                    json_match = re.search(r'\{.*\}', raw_recs, re.DOTALL)
-                    business_data = json.loads(json_match.group(0))
-                except:
-                    business_data = {
-                        "lost_profit": (raw_recs or "")[:200],
-                        "barriers": "Требуется ручной анализ",
-                        "strategy": "Обновите базу знаний",
-                        "sentiment": 70,
-                        "hot_leads_count": 0
-                    }
-
-                result_data = {
-                    "status": "success",
-                    "traffic_analysis": traffic_quality,
-                    "business_data": business_data,
-                    "frequent_requests": frequent_requests,
-                    "top_pages": top_pages,
-                    "spam_detected": spam_detected,
-                    "generated_at": datetime.now().isoformat()
-                }
-        except Exception as e:
-            log.exception(f"Error during AI analysis for {target_id}: {e}")
-            result_data = {
-                "status": "success",
-                "traffic_analysis": "Временная ошибка аналитики. Используется безопасный fallback.",
-                "business_data": {
-                    "lost_profit": "Недостаточно данных для расчета упущенной выгоды.",
-                    "barriers": "Проверьте интеграции и накопите больше диалогов для точной аналитики.",
-                    "strategy": "Соберите больше целевых обращений и повторите анализ позже.",
-                    "sentiment": 70,
-                    "hot_leads_count": 0
-                },
-                "frequent_requests": [],
-                "top_pages": top_pages if 'top_pages' in locals() else [],
-                "spam_detected": False,
-                "generated_at": datetime.now().isoformat(),
-                "fallback": True,
-                "message": "Аналитика временно недоступна, показан базовый результат."
-            }
-
-        await save_ai_cache(target_id, cache_key, json.dumps(result_data))
+        tick_time = datetime.now().replace(second=0, microsecond=0)
+        payload = await _generate_rolling_24h_payload(target_id, tick_time)
+        await save_ai_cache(target_id, cache_key, json.dumps(payload))
+        await save_ai_cache(target_id, _day_cache_key(target_id, tick_time.date()), json.dumps(payload))
         log.info(f"Background AI analysis completed for {target_id}")
     except Exception as e:
         log.error(f"Error in background AI analysis: {e}")
+
+
+
+
+async def _generate_payload_for_window(
+    target_id: str,
+    window_from: datetime,
+    window_to: datetime,
+    range_from: Optional[date] = None,
+    range_to: Optional[date] = None,
+    assistant_filter: Optional[str] = None
+) -> dict:
+    try:
+        async with AsyncSessionLocal() as db:
+            query = (
+                select(ChatMessage.role, ChatMessage.content, ChatMessage.timestamp)
+                .join(ChatSession, ChatSession.session_id == ChatMessage.session_id)
+                .where(
+                    ChatSession.client_id == target_id,
+                    ChatSession.is_deleted == False,
+                    ChatMessage.timestamp >= window_from,
+                    ChatMessage.timestamp <= window_to,
+                )
+                .order_by(ChatMessage.timestamp.asc(), ChatMessage.id.asc())
+            )
+            assistant_conditions = build_assistant_filter_conditions(ChatSession.assistant_id, assistant_filter)
+            if assistant_conditions:
+                query = query.where(or_(*assistant_conditions))
+            result = await db.execute(query)
+            rows = result.all()
+
+        user_only_history = ""
+        for r in rows:
+            if r.role == 'user' and r.content:
+                user_only_history += r.content + "\n"
+
+        user_only_history = user_only_history.strip()
+        if len(user_only_history) > 12000:
+            user_only_history = user_only_history[-12000:]
+            user_only_history = f"...(усечено до последних сообщений)\n{user_only_history}"
+
+        from_dt = range_from or window_from.date()
+        to_dt = range_to or window_to.date()
+
+        if len(user_only_history) < 10:
+            return {
+                "status": "success",
+                "frequent_requests": [],
+                "date_from": str(from_dt),
+                "date_to": str(to_dt),
+                "window_from": window_from.isoformat(),
+                "window_to": window_to.isoformat(),
+                "range_mode": True,
+                "generated_at": datetime.now().isoformat()
+            }
+
+        frequent_requests, _, _ = await generate_faq(target_id, user_only_history)
+
+        stop_patterns = ['привет', 'здравствуй', 'добрый день', 'добрый вечер', 'спасибо', 'благодарю', 'как дела', 'что нового', 'ты кто', 'кто ты', 'о платформе']
+        business_keywords = ['цена', 'стоимость', 'сколько', 'как', 'где', 'когда', 'купить', 'заказать', 'услуг', 'срок', 'доставк', 'оплат', 'гарант']
+
+        filtered_requests = []
+        for item in frequent_requests or []:
+            q = (item.get('question') or item.get('q') or '').strip()
+            q_lower = q.lower()
+            if any(p in q_lower for p in stop_patterns) and len(q) < 30:
+                continue
+            if len(q) < 10 and not any(bk in q_lower for bk in business_keywords):
+                continue
+            filtered_requests.append(item)
+
+        filtered_top = filtered_requests[:10]
+
+        return {
+            "status": "success",
+            "frequent_requests": filtered_top,
+            "date_from": str(from_dt),
+            "date_to": str(to_dt),
+            "window_from": window_from.isoformat(),
+            "window_to": window_to.isoformat(),
+            "range_mode": True,
+            "generated_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        log.error(f"Date-range FAQ analytics failed for {target_id}: {e}")
+        return {
+            "status": "success",
+            "frequent_requests": [],
+            "date_from": str(range_from or window_from.date()),
+            "date_to": str(range_to or window_to.date()),
+            "window_from": window_from.isoformat(),
+            "window_to": window_to.isoformat(),
+            "range_mode": True,
+            "generated_at": datetime.now().isoformat()
+        }
+
+async def _generate_range_payload(target_id: str, from_dt: date, to_dt: date, assistant_filter: Optional[str] = None) -> dict:
+    window_from = datetime.combine(from_dt, datetime.min.time())
+    window_to = datetime.combine(to_dt, datetime.max.time())
+    return await _generate_payload_for_window(target_id, window_from, window_to, from_dt, to_dt, assistant_filter=assistant_filter)
+
+
+async def _generate_rolling_24h_payload(target_id: str, tick_time: datetime, assistant_filter: Optional[str] = None) -> dict:
+    window_to = tick_time.replace(second=0, microsecond=0)
+    window_from = window_to - timedelta(hours=24)
+    payload = await _generate_payload_for_window(
+        target_id=target_id,
+        window_from=window_from,
+        window_to=window_to,
+        range_from=window_from.date(),
+        range_to=window_to.date(),
+        assistant_filter=assistant_filter
+    )
+    payload["snapshot_type"] = "rolling_24h"
+    payload["cache_day"] = window_to.date().isoformat()
+    payload["assistant_filter"] = str(assistant_filter or 'all')
+    payload["generated_at"] = datetime.now().isoformat()
+    return payload
+
+
+async def _get_day_snapshot(target_id: str, day_dt: date) -> Optional[dict]:
+    day_key = _day_cache_key(target_id, day_dt)
+    return _parse_cache_json(await get_ai_cache(target_id, day_key))
+
+
+def _aggregate_day_payloads(payloads: list[dict], from_dt: date, to_dt: date, missing_days: Optional[list[str]] = None) -> dict:
+    missing_days = missing_days or []
+    if not payloads:
+        payload = _empty_snapshot_payload(from_dt, to_dt)
+        payload["missing_days"] = missing_days
+        payload["is_partial"] = bool(missing_days)
+        return payload
+
+    business_by_day = []
+    freq_totals: dict[str, int] = {}
+
+    for payload in payloads:
+        day_label = payload.get("cache_day") or payload.get("date_from") or payload.get("date_to") or "день"
+        
+        daily_questions: dict[str, int] = {}
+
+        day_freq = payload.get("frequent_requests") if isinstance(payload, dict) else None
+        if isinstance(day_freq, list):
+            for item in day_freq:
+                q = str(item.get("q") or item.get("question") or "").strip()
+                if not q:
+                    continue
+                c = _safe_int(item.get("count"), 0)
+                if c <= 0:
+                    continue
+                daily_questions[q] = daily_questions.get(q, 0) + c
+
+        for q, c in daily_questions.items():
+            freq_totals[q] = freq_totals.get(q, 0) + c
+
+    frequent_requests = [
+        {"q": q, "count": c}
+        for q, c in sorted(freq_totals.items(), key=lambda it: it[1], reverse=True)[:10]
+    ]
+
+    return {
+        "status": "success",
+        "frequent_requests": frequent_requests,
+        "date_from": str(from_dt),
+        "date_to": str(to_dt),
+        "range_mode": True,
+        "generated_at": datetime.now().isoformat(),
+        "aggregated_from_cache": True,
+        "missing_days": missing_days,
+        "is_partial": bool(missing_days)
+    }
+
+    return {
+        "status": "success",
+        "business_data": business_data,
+        "business_by_day": business_by_day,
+        "date_from": str(from_dt),
+        "date_to": str(to_dt),
+        "range_mode": True,
+        "generated_at": datetime.now().isoformat(),
+        "aggregated_from_cache": True,
+        "missing_days": missing_days,
+        "is_partial": bool(missing_days)
+    }
+
+
+async def precompute_daily_ai_snapshots_for_all_clients(tick_time: Optional[datetime] = None, only_clients: Optional[list[str]] = None):
+    tick_dt = (tick_time or datetime.now()).replace(second=0, microsecond=0)
+    clients = only_clients or await list_clients()
+    for cid in clients:
+        try:
+            payload = await _generate_rolling_24h_payload(cid, tick_dt)
+            rolling_key = _rolling_24h_cache_key(cid, tick_dt)
+            day_key = _day_cache_key(cid, tick_dt.date())
+            await save_ai_cache(cid, rolling_key, json.dumps(payload))
+            await save_ai_cache(cid, day_key, json.dumps(payload))
+        except Exception as e:
+            log.error(f"Failed to precompute daily AI snapshot for {cid} ({tick_dt.isoformat()}): {e}")
+
+
+async def _collect_due_clients_by_time(now: datetime) -> list[str]:
+    due_clients: list[str] = []
+    clients = await list_clients()
+
+    for cid in clients:
+        try:
+            cfg = await get_client_config(cid)
+            run_time = _extract_client_analytics_time(getattr(cfg, "raw", {}) or {})
+            hh, mm = run_time.split(":")
+            if int(hh) == now.hour and int(mm) == now.minute:
+                due_clients.append(cid)
+        except Exception as e:
+            log.error(f"Failed to resolve analytics time for {cid}: {e}")
+
+    return due_clients
+
+
+async def daily_ai_snapshot_scheduler_loop(run_initial: bool = True):
+    if run_initial:
+        try:
+            await precompute_daily_ai_snapshots_for_all_clients(datetime.now())
+        except Exception as e:
+            log.error(f"Daily AI snapshot initial run failed: {e}")
+
+    while True:
+        try:
+            now = datetime.now()
+            next_tick = (now + timedelta(minutes=1)).replace(second=0, microsecond=0)
+            sleep_for = max(1, int((next_tick - now).total_seconds()))
+            await asyncio.sleep(sleep_for)
+
+            tick_time = datetime.now().replace(second=0, microsecond=0)
+            due_clients = await _collect_due_clients_by_time(tick_time)
+            if due_clients:
+                await precompute_daily_ai_snapshots_for_all_clients(
+                    tick_time,
+                    only_clients=due_clients
+                )
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            log.error(f"Daily AI snapshot scheduler error: {e}")
+            await asyncio.sleep(300)
 
 
 @router.post("/history/{token}/analyze")
@@ -186,9 +351,40 @@ async def analyze_conversation(token: str, client_id: str, token_data: dict = De
     return {"status": "success", "analysis": analysis}
 
 
+@router.get("/tariffs-pricing")
+async def get_tariffs_pricing(token_data: dict = Depends(verify_token)):
+    """Единый источник цен тарифов и пакетов для фронтенда.
+
+    Возвращает данные из TARIFF_RULES/*_PACK_RULES, чтобы цены не приходилось
+    дублировать в tariffs.js — фронт берёт их отсюда.
+    """
+    def _fmt(amount) -> str:
+        value = float(amount or 0)
+        return "Бесплатно" if value <= 0 else f"{int(value):,}".replace(",", "\u00a0") + "\u00a0\u20bd"
+
+    tariffs = {}
+    for tariff_id, info in TARIFF_RULES.items():
+        month_price = float(info.get('price', 0) or 0)
+        year_price = float(info.get('year_price') or month_price * 12)
+        tariffs[tariff_id] = {
+            'name': info.get('name', tariff_id),
+            'month_price': month_price,
+            'year_price': year_price,
+            'month_label': _fmt(month_price),
+            'year_label': _fmt(year_price),
+        }
+
+    return {
+        'tariffs': tariffs,
+        'message_packs': MESSAGE_PACK_RULES,
+        'assistant_slot_packs': ASSISTANT_SLOT_PACK_RULES,
+        'storage_packs': STORAGE_PACK_RULES,
+    }
+
+
 @router.get("/balance")
 async def get_balance(client_id: str, token_data: dict = Depends(verify_token)):
-    """Получение текущего баланса пользователя с проверкой срока тарифа."""
+    """Получение текущего баланса, тарифа и остатков сообщений."""
     if token_data['sub'] != client_id and token_data['sub'] != 'admin':
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -197,57 +393,89 @@ async def get_balance(client_id: str, token_data: dict = Depends(verify_token)):
         user = result.scalar_one_or_none()
 
         if user:
-            tariff_info = TARIFF_RULES.get(user.tariff_name, TARIFF_RULES.get('start'))
-            messages_limit = tariff_info.get('base_limit', 30)
+            tariff_key = str(user.tariff_name or 'start').strip().lower() or 'start'
+            tariff_info = TARIFF_RULES.get(tariff_key, TARIFF_RULES.get('start'))
+            limits = get_effective_account_limits(user)
+            messages_limit = limits['messages_limit']
             display_name = tariff_info.get('name', user.tariff_name)
-            
-            # Инициализация даты сброса сообщений, если её ещё нет
-            reset_days = tariff_info.get('reset_period_days', 30)
-            now = datetime.now()
-            if user.messages_reset_at is None:
-                user.messages_reset_at = now + timedelta(days=reset_days)
-                await db.execute(
-                    update(User).where(User.client_id == client_id).values(
-                        messages_reset_at=user.messages_reset_at
-                    )
-                )
-                await db.commit()
-            elif user.messages_reset_at < now:
-                new_reset_at = now + timedelta(days=reset_days)
-                
-                # Автоматический сброс счетчика сообщений делаем только для тарифа «Старт».
-                # Для платных тарифов лимит не обнуляется просто так.
-                update_values = {"messages_reset_at": new_reset_at}
-                if user.tariff_name == 'start':
-                    update_values["messages_consumed"] = 0
-                    user.messages_consumed = 0
-                    log.info(f"Messages counter reset for {client_id} (Start tariff)")
-                
-                await db.execute(
-                    update(User).where(User.client_id == client_id).values(**update_values)
-                )
-                await db.commit()
-                user.messages_reset_at = new_reset_at
-
-            # Дату сброса лимита показываем только для бесплатного тарифа «Старт».
-            # Для платных тарифов лимит — это пакет, который не обновляется сам по себе.
-            show_reset_date = (user.tariff_name == 'start')
+            # Название «Персональный» назначается только суперадмином через флаг
+            # is_personal_tariff. Самостоятельные докупки пользователя (сообщения,
+            # слоты, хранилище) не меняют название тарифа.
+            if bool(getattr(user, 'is_personal_tariff', False)):
+                display_name = 'Персональный'
+            tariff_assistants_limit = limits['tariff_assistants_limit']
+            extra_assistants_purchased = limits['extra_assistants_purchased']
+            total_assistants_limit = limits['assistants_limit']
+            reset_days = tariff_info.get('reset_period_days', 0)
+            user = await ensure_messages_period(user, db, reset_days=reset_days)
+            quota = get_message_quota_state(user, messages_limit)
+            subscription_expired = bool(
+                tariff_key != 'start' and user.tariff_expires_at and user.tariff_expires_at < datetime.now()
+            )
+            quota_state = 'subscription_expired' if subscription_expired else quota['quota_state']
 
             return {
                 "status": "success",
                 "balance": user.balance,
+                "tariff": tariff_key,
                 "tariff_name": display_name,
                 "tariff_expires_at": user.tariff_expires_at.isoformat() if user.tariff_expires_at else None,
+                "tariff_billing_period": getattr(user, 'tariff_billing_period', 'month'),
                 "messages_consumed": user.messages_consumed,
                 "messages_limit": messages_limit,
-                "messages_reset_at": user.messages_reset_at.isoformat() if (user.messages_reset_at and show_reset_date) else None,
+                "base_messages_limit": int(tariff_info.get('base_limit', 30) or 0),
+                "messages_reset_at": user.messages_reset_at.isoformat() if user.messages_reset_at else None,
+                "messages_period_started_at": user.messages_period_started_at.isoformat() if user.messages_period_started_at else None,
+                "monthly_messages_remaining": quota['base_remaining'],
+                "extra_messages_purchased": quota['extra_purchased'],
+                "extra_messages_used": quota['extra_used'],
+                "extra_messages_remaining": quota['extra_remaining'],
+                "messages_total_remaining": quota['total_remaining'],
+                "quota_state": quota_state,
+                "subscription_active": not subscription_expired,
+                "tariff_assistants_limit": tariff_assistants_limit,
+                "extra_assistants_purchased": extra_assistants_purchased,
+                "assistants_limit": total_assistants_limit,
+                "assistants_soft_cap": ASSISTANT_SLOTS_SOFT_CAP,
+                "assistants_hard_cap": limits['assistants_hard_cap'],
+                "extra_messages_limit": limits['extra_messages_limit'],
+                "extra_storage_bytes": limits['extra_storage_bytes'],
+                "extra_context_limit": limits['extra_context_limit'],
+                "extra_index_pages": limits['extra_index_pages'],
+                "extra_assistants_hard_cap": limits['extra_assistants_hard_cap'],
+                "assistant_slots_available_on_start": ASSISTANT_SLOTS_AVAILABLE_ON_START,
+                "available_message_packs": MESSAGE_PACK_RULES,
+                "available_assistant_slot_packs": ASSISTANT_SLOT_PACK_RULES,
+                "available_storage_packs": STORAGE_PACK_RULES,
                 "auto_renew": user.auto_renew,
                 "is_active": user.is_active,
+                "created_at": user.created_at.isoformat() if getattr(user, 'created_at', None) else None,
                 "used_storage": user.used_storage,
-                "storage_limit": tariff_info.get('storage_limit', 1 * 1024 * 1024 * 1024)
+                "storage_limit": limits['storage_limit'],
+                "storage_plan_pack_id": limits['storage_plan_pack_id'],
+                "context_limit": limits['context_limit'],
+                "max_index_pages": limits['max_index_pages']
             }
 
-    return {"status": "success", "balance": 0, "tariff_name": "Старт", "messages_consumed": 0, "is_active": True}
+    return {
+        "status": "success",
+        "balance": 0,
+        "tariff": "start",
+        "tariff_name": "Старт",
+        "messages_consumed": 0,
+        "is_active": True,
+        "created_at": None,
+        "tariff_assistants_limit": TARIFF_RULES['start'].get('assistants_limit', 1),
+        "extra_assistants_purchased": 0,
+        "assistants_limit": TARIFF_RULES['start'].get('assistants_limit', 1),
+        "assistants_soft_cap": ASSISTANT_SLOTS_SOFT_CAP,
+        "assistants_hard_cap": ASSISTANT_SLOTS_HARD_CAP,
+        "assistant_slots_available_on_start": ASSISTANT_SLOTS_AVAILABLE_ON_START,
+        "available_message_packs": MESSAGE_PACK_RULES,
+        "available_assistant_slot_packs": ASSISTANT_SLOT_PACK_RULES,
+        "available_storage_packs": STORAGE_PACK_RULES,
+        "storage_plan_pack_id": None,
+    }
 
 
 @router.get("/storage-usage")
@@ -259,12 +487,21 @@ async def get_storage_usage_endpoint(
     token_data: dict = Depends(verify_token)
 ):
     """Детализация хранилища: по категориям, по типам, текст, список файлов."""
-    if token_data['sub'] != client_id and token_data['sub'] != 'admin':
-        raise HTTPException(status_code=403, detail="Access denied")
+    target_client_id = ensure_client_access(token_data, client_id)
 
-    usage = await get_storage_usage(client_id)
-    files = await get_storage_items(client_id, category=category, limit=limit, offset=offset)
-    items = await get_storage_objects(client_id, category=category, limit=limit, offset=offset)
+    usage = await get_storage_usage(target_client_id)
+    files = await get_storage_items(
+        target_client_id,
+        category=category,
+        limit=limit,
+        offset=offset,
+        include_download_url=True
+    )
+    items = files
+
+    async with AsyncSessionLocal() as db:
+        user = (await db.execute(select(User).where(User.client_id == target_client_id))).scalar_one_or_none()
+        limits = get_effective_account_limits(user) if user else {"storage_limit": 1 * 1024 * 1024 * 1024}
 
     return {
         "status": "success",
@@ -273,31 +510,59 @@ async def get_storage_usage_endpoint(
         "files_total": usage["files_total"],
         "text_total": usage["text_total"],
         "text_breakdown": usage["text_breakdown"],
+        "storage_limit": limits['storage_limit'],
         "files": files,
         "items": items
     }
 
 
-@router.get("/metrics")
-async def get_metrics(client_id: str, days: int = 7, token_data: dict = Depends(verify_token)):
-    """Получение метрик для дашборда."""
-    if token_data['sub'] != client_id and token_data['sub'] != 'admin':
-        raise HTTPException(status_code=403, detail="Access denied")
+@router.get("/storage-file/{item_id}/download")
+async def download_storage_file(
+    item_id: int,
+    client_id: str,
+    token_data: dict = Depends(verify_token)
+):
+    token_sub = token_data.get("sub")
+    try:
+        target_client_id = ensure_client_access(token_data, client_id)
+    except HTTPException:
+        log.warning(
+            "[STORAGE_AUDIT] download denied: reason=forbidden tenant=%s user=%s item=%s",
+            client_id,
+            token_sub,
+            item_id
+        )
+        raise
 
-    target_id = client_id if client_id != 'default' else 'mitia_assistant'
+    file_item = await get_storage_file_by_id(target_client_id, item_id)
+    if not file_item:
+        log.warning(
+            "[STORAGE_AUDIT] download denied: reason=not_found tenant=%s user=%s item=%s",
+            target_client_id,
+            token_sub,
+            item_id
+        )
+        raise HTTPException(status_code=404, detail="File not found")
 
-    metrics = await get_metrics_summary(target_id)
-
-    total_dialogs = metrics["total_dialogs"]
-    total_leads = metrics["total_leads"]
-    conversion_rate = round((total_leads / total_dialogs * 100), 1) if total_dialogs > 0 else 0
-
-    return {
-        "status": "success",
-        "total_dialogs": total_dialogs,
-        "total_leads": total_leads,
-        "conversion_rate": conversion_rate
-    }
+    try:
+        response = build_storage_file_response(file_item.file_path or "", file_item.file_name)
+        log.info(
+            "[STORAGE_AUDIT] download success tenant=%s user=%s item=%s path=%s",
+            target_client_id,
+            token_sub,
+            item_id,
+            file_item.file_path
+        )
+        return response
+    except HTTPException as exc:
+        log.warning(
+            "[STORAGE_AUDIT] download denied: reason=%s tenant=%s user=%s item=%s",
+            exc.status_code,
+            target_client_id,
+            token_sub,
+            item_id
+        )
+        raise
 
 
 @router.post("/change-tariff")
@@ -308,12 +573,21 @@ async def change_tariff(client_id: str, request: Request, token_data: dict = Dep
 
     data = await request.json()
     new_tariff = data.get('tariff')
+    billing_period = str(data.get('billing_period') or 'month').strip().lower()
 
     if new_tariff not in TARIFF_RULES:
         raise HTTPException(status_code=400, detail="Invalid tariff name")
+    if billing_period not in {'month', 'year'}:
+        raise HTTPException(status_code=400, detail="Invalid billing period")
 
     tariff_info = TARIFF_RULES[new_tariff]
-    tariff_price = tariff_info.get('price', 0)
+    base_tariff_price = tariff_info.get('price', 0)
+    # Годовая цена берётся из тарифа (со скидкой, как показано в интерфейсе),
+    # а не price*12. Fallback на price*12, если year_price не задан.
+    if new_tariff != 'start' and billing_period == 'year':
+        tariff_price = tariff_info.get('year_price') or base_tariff_price * 12
+    else:
+        tariff_price = base_tariff_price
     tariff_name_ru = tariff_info.get('name', new_tariff)
 
     async with AsyncSessionLocal() as db:
@@ -323,51 +597,297 @@ async def change_tariff(client_id: str, request: Request, token_data: dict = Dep
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Не даём повторно выбрать тот же тариф
-        if user.tariff_name == new_tariff:
-            return {"status": "error", "message": f"Вы уже на тарифе «{tariff_name_ru}»"}
+        current_period = str(getattr(user, 'tariff_billing_period', 'month') or 'month')
+        if user.tariff_name == new_tariff and (new_tariff == 'start' or current_period == billing_period):
+            return {"status": "error", "message": f"Этот тариф уже активен, менять ничего не нужно."}
 
-        # Для платных тарифов проверяем баланс и списываем
         if tariff_price > 0:
             if user.balance < tariff_price:
                 return JSONResponse(
                     status_code=400,
-                    content={"status": "error", "message": f"Недостаточно средств. Тариф «{tariff_name_ru}» стоит {tariff_price} ₽, у вас {user.balance:.0f} ₽"}
+                    content={"status": "error", "message": f"Недостаточно средств. На балансе не хватает денег для смены тарифа «{tariff_name_ru}»."}
                 )
             user.balance -= tariff_price
-            user.tariff_expires_at = datetime.now() + timedelta(days=30)
+            period_days = 365 if billing_period == 'year' else 30
+            user.tariff_expires_at = datetime.now() + timedelta(days=period_days)
         else:
-            # Бесплатный тариф (Старт) — сбрасываем срок
             user.tariff_expires_at = None
 
+        previous_tariff = str(user.tariff_name or 'start').lower()
+        if previous_tariff == 'start' and new_tariff != 'start':
+            user.start_trial_messages_used = max(
+                int(getattr(user, 'start_trial_messages_used', 0) or 0),
+                int(user.messages_consumed or 0),
+            )
         user.tariff_name = new_tariff
-        user.messages_consumed = 0
+        user.tariff_billing_period = billing_period if new_tariff != 'start' else 'month'
+        user.is_personal_tariff = False
+        # Leaving a paid tariff burns its included-period remainder. The one-time
+        # Start trial and separately purchased packs remain available.
+        user.messages_consumed = (
+            int(getattr(user, 'start_trial_messages_used', 0) or 0)
+            if new_tariff == 'start' and previous_tariff != 'start'
+            else 0
+        )
+        # Extra message packs are paid separately and survive tariff changes.
+        user.messages_period_started_at = datetime.now()
+        reset_days = int(tariff_info.get('reset_period_days', 0) or 0)
+        user.messages_reset_at = (
+            datetime.now() + timedelta(days=reset_days)
+            if reset_days > 0 else None
+        )
         await db.commit()
 
-    return {"status": "success", "message": f"Тариф изменён на «{tariff_name_ru}»"}
+    if tariff_price > 0:
+        period_label = 'год' if billing_period == 'year' else 'месяц'
+        await add_balance_transaction(
+            client_id=client_id,
+            amount=-float(tariff_price),
+            source='tariff',
+            description=f"Смена тарифа на «{tariff_name_ru}» ({period_label})"
+        )
+
+    if new_tariff == 'start' and previous_tariff != 'start':
+        await notify_tariff_downgraded(client_id, previous_tariff, manual=True)
+    else:
+        await notify_tariff_changed(
+            client_id,
+            tariff_name_ru,
+            billing_period=billing_period,
+            expires_at=user.tariff_expires_at,
+        )
+
+    return {
+        "status": "success",
+        "message": "Новый тариф сохранён и уже активен.",
+        "tariff": new_tariff,
+        "billing_period": billing_period,
+        "charged_amount": tariff_price,
+        "balance": user.balance,
+        "tariff_expires_at": user.tariff_expires_at.isoformat() if user.tariff_expires_at else None,
+    }
 
 
-@router.post("/reindex")
-async def reindex_site(client_id: str, token_data: dict = Depends(verify_token)):
-    """Ручная переиндексация сайта (платная)."""
+@router.post("/purchase-message-pack")
+async def purchase_message_pack(client_id: str, request: Request, token_data: dict = Depends(verify_token)):
     if token_data['sub'] != client_id and token_data['sub'] != 'admin':
         raise HTTPException(status_code=403, detail="Access denied")
 
-    REINDEX_COST = 50.0
+    data = await request.json()
+    pack_id = str(data.get('pack_id') or '').strip()
+    if not pack_id:
+        raise HTTPException(status_code=400, detail="pack_id is required")
+
+    pack = get_message_pack(pack_id)
+    if not pack:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": "Этот вариант докупки больше недоступен. Обновите страницу и выберите другой пакет."}
+        )
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(User).where(User.client_id == client_id))
         user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
 
-        if not user or user.balance < REINDEX_COST:
-            return JSONResponse(status_code=400, content={"status": "error", "message": "Недостаточно средств на балансе (нужно 50 ₽)"})
+        tariff_info = TARIFF_RULES.get(user.tariff_name, TARIFF_RULES['start'])
+        user = await ensure_messages_period(user, db, reset_days=tariff_info.get('reset_period_days', 0))
+        pack_price = float(pack.get('price') or 0)
+        pack_messages = int(pack.get('messages') or 0)
 
-        user.balance -= REINDEX_COST
+        if user.balance < pack_price:
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "message": "Для покупки этого пакета нужно пополнить баланс."}
+            )
+
+        user.balance -= pack_price
+        user.extra_messages_purchased = int(user.extra_messages_purchased or 0) + pack_messages
         await db.commit()
+        await db.refresh(user)
+        quota = get_message_quota_state(user, tariff_info.get('base_limit', 30))
 
-        log.info(f"Manual reindexing started for {client_id}. Cost: {REINDEX_COST}")
+    await add_balance_transaction(
+        client_id=client_id,
+        amount=-pack_price,
+        source='message_pack',
+        description=f"Покупка пакета «{pack.get('label')}»"
+    )
+    await notify_message_pack_purchased(client_id, str(pack.get('label') or 'Пакет сообщений'))
 
-    return {"status": "success", "message": "Reindexing started"}
+    return {
+        "status": "success",
+        "message": "Дополнительные сообщения уже добавлены к вашему лимиту.",
+        "pack_id": pack_id,
+        "balance": user.balance,
+        "extra_messages_purchased": quota['extra_purchased'],
+        "extra_messages_used": quota['extra_used'],
+        "extra_messages_remaining": quota['extra_remaining'],
+        "messages_total_remaining": quota['total_remaining']
+    }
+
+
+@router.post("/purchase-storage-pack")
+async def purchase_storage_pack(client_id: str, request: Request, token_data: dict = Depends(verify_token)):
+    if token_data['sub'] != client_id and token_data['sub'] != 'admin':
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    data = await request.json()
+    pack_id = str(data.get('pack_id') or '').strip()
+    if not pack_id:
+        raise HTTPException(status_code=400, detail="pack_id is required")
+
+    pack = get_storage_pack(pack_id)
+    if not pack:
+        return JSONResponse(status_code=400, content={"status": "error", "message": "Этот пакет хранилища больше недоступен. Обновите страницу и выберите другой вариант."})
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(User).where(User.client_id == client_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        monthly_price = float(pack.get('monthly_price') or 0)
+        if monthly_price <= 0:
+            return JSONResponse(status_code=400, content={"status": "error", "message": "Некорректный пакет хранилища."})
+
+        user.extra_storage_purchased_bytes = int(pack.get('bytes') or 0)
+        user.storage_plan_pack_id = str(pack.get('pack_id') or '') or None
+        await db.commit()
+        await db.refresh(user)
+        limits = get_effective_account_limits(user)
+
+    await notify_storage_pack_purchased(client_id, str(pack.get('label') or 'Пакет хранилища'))
+
+    return {
+        "status": "success",
+        "message": "Расширение хранилища уже включено и будет учитываться при следующем ежемесячном продлении.",
+        "pack_id": pack_id,
+        "monthly_price": monthly_price,
+        "balance": user.balance,
+        "storage_limit": limits['storage_limit'],
+        "extra_storage_purchased_bytes": limits['extra_storage_purchased_bytes'],
+        "storage_plan_pack_id": limits['storage_plan_pack_id'],
+    }
+
+
+@router.post("/cancel-storage-pack")
+async def cancel_storage_pack(client_id: str, token_data: dict = Depends(verify_token)):
+    if token_data['sub'] != client_id and token_data['sub'] != 'admin':
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(User).where(User.client_id == client_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user.extra_storage_purchased_bytes = 0
+        user.storage_plan_pack_id = None
+        await db.commit()
+        await db.refresh(user)
+        limits = get_effective_account_limits(user)
+
+    return {
+        "status": "success",
+        "message": "Расширение хранилища отключено. Если текущее использование выше тарифного лимита, новые файлы и вложения будут заблокированы, пока вы не освободите место или не подключите новое расширение.",
+        "storage_limit": limits['storage_limit'],
+        "extra_storage_purchased_bytes": limits['extra_storage_purchased_bytes'],
+        "storage_plan_pack_id": limits['storage_plan_pack_id'],
+    }
+
+
+@router.post("/purchase-assistant-pack")
+async def purchase_assistant_pack(client_id: str, request: Request, token_data: dict = Depends(verify_token)):
+    if token_data['sub'] != client_id and token_data['sub'] != 'admin':
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    data = await request.json()
+    pack_id = str(data.get('pack_id') or '').strip()
+    if not pack_id:
+        raise HTTPException(status_code=400, detail="pack_id is required")
+
+    pack = get_assistant_slot_pack(pack_id)
+    if not pack:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": "Этот пакет ассистентов больше недоступен. Обновите страницу и выберите другой вариант."}
+        )
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(User).where(User.client_id == client_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        tariff_key = str(user.tariff_name or 'start').strip().lower() or 'start'
+        if tariff_key == 'start' and not ASSISTANT_SLOTS_AVAILABLE_ON_START:
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "message": "На тарифе «Старт» покупка дополнительных слотов пока недоступна."}
+            )
+
+        tariff_info = TARIFF_RULES.get(tariff_key, TARIFF_RULES['start'])
+        limits = get_effective_account_limits(user)
+        tariff_assistants_limit = limits['tariff_assistants_limit']
+        current_extra = int(getattr(user, 'extra_assistants_purchased', 0) or 0)
+        current_total = limits['assistants_limit']
+        assistants_hard_cap = limits['assistants_hard_cap']
+        slots_to_add = int(pack.get('slots') or 0)
+        target_total = current_total + slots_to_add
+        pack_price = float(pack.get('price') or 0)
+
+        if current_total >= assistants_hard_cap:
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "message": f"Для этого аккаунта уже достигнут технический предел — {assistants_hard_cap} ассистентов."}
+            )
+
+        if target_total > assistants_hard_cap:
+            available_to_hard_cap = max(assistants_hard_cap - current_total, 0)
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "message": f"Этот пакет превышает технический предел аккаунта. Сейчас можно добавить ещё только {available_to_hard_cap} ассистентов."}
+            )
+
+        if user.balance < pack_price:
+            return JSONResponse(
+                status_code=400,
+                content={"status": "error", "message": "Для покупки этого пакета ассистентов нужно пополнить баланс."}
+            )
+
+        user.balance -= pack_price
+        user.extra_assistants_purchased = current_extra + slots_to_add
+        await db.commit()
+        await db.refresh(user)
+        total_limit = min(tariff_assistants_limit + int(user.extra_assistants_purchased or 0), assistants_hard_cap)
+
+    await add_balance_transaction(
+        client_id=client_id,
+        amount=-pack_price,
+        source='assistant_slot_pack',
+        description=f"Покупка пакета слотов «{pack.get('label')}»"
+    )
+    await notify_assistant_pack_purchased(client_id, str(pack.get('label') or 'Пакет слотов'))
+
+    message = "Постоянные слоты ассистентов уже добавлены к вашему аккаунту."
+    if total_limit >= ASSISTANT_SLOTS_SOFT_CAP:
+        message = f"Постоянные слоты уже добавлены. У аккаунта высокий лимит ({total_limit}), при росте списка ассистентов может понадобиться дополнительная настройка UX."
+
+    return {
+        "status": "success",
+        "message": message,
+        "pack_id": pack_id,
+        "balance": user.balance,
+        "tariff_assistants_limit": tariff_assistants_limit,
+        "extra_assistants_purchased": int(user.extra_assistants_purchased or 0),
+        "assistants_limit": total_limit,
+        "assistants_soft_cap": ASSISTANT_SLOTS_SOFT_CAP,
+        "assistants_hard_cap": assistants_hard_cap,
+    }
+
+
 
 
 @router.get("/ai-recommendations")
@@ -377,25 +897,45 @@ async def get_ai_recommendations(
     force: str = "false",
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
+    assistant_id: Optional[str] = None,
     token_data: dict = Depends(verify_token)
 ):
-    """
-    Получение рекомендаций. 
-    Автоматически генерируется бесплатно по понедельникам.
-    При ручном нажатии (force=true) всегда списывается 49 руб.
-    """
     is_force = force.lower() == "true"
-    
-    # Используем client_id из токена для обычных пользователей
-    # Админы могут запрашивать данные других пользователей
+
     if token_data['sub'] != 'admin':
-        # Обычный пользователь может видеть только свои данные
         target_id = token_data['sub']
     else:
-        # Админ может запросить данные конкретного пользователя
         target_id = client_id if client_id != 'default' else 'mitia_assistant'
 
-    # Режим фильтра по датам: возвращаем FAQ по выбранному диапазону.
+    assistant_scope = str(assistant_id or 'all').strip() or 'all'
+    scope_key = _analytics_scope_key(target_id, assistant_scope)
+
+    async def get_last_cached_snapshot() -> Optional[dict]:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(AICache.content)
+                .where(
+                    AICache.client_id == target_id,
+                    or_(
+                        AICache.cache_key.like(f"dashboard_recs_24h_{scope_key}_%"),
+                        AICache.cache_key.like(f"dashboard_recs_day_{scope_key}_%")
+                    )
+                )
+                .order_by(AICache.created_at.desc())
+                .limit(1)
+            )
+            raw = result.scalar_one_or_none()
+        return _parse_cache_json(raw)
+
+    if is_force:
+        cache_key = _rolling_24h_cache_key(scope_key, datetime.now())
+        background_tasks.add_task(run_ai_analysis_task, target_id, cache_key)
+        return {
+            "status": "processing",
+            "message": "Анализ запущен. Дождитесь завершения фоновой задачи.",
+            "manual_recalc": True
+        }
+
     if date_from and date_to:
         try:
             from_dt = datetime.strptime(date_from, "%Y-%m-%d").date()
@@ -405,247 +945,71 @@ async def get_ai_recommendations(
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid date range format")
 
-        range_cache_key = f"faq_range_{target_id}_{from_dt}_{to_dt}"
-        cached_range = await get_ai_cache(target_id, range_cache_key)
-        if cached_range:
-            try:
-                cached_payload = json.loads(cached_range)
-                if isinstance(cached_payload, dict):
-                    return cached_payload
-            except Exception:
-                log.warning(f"Invalid date-range cache payload for {target_id}, regenerating")
-
-        try:
-            async with AsyncSessionLocal() as db:
-                query = text("""
-                    SELECT m.role, m.content, m.timestamp::date AS day
-                    FROM chat_messages m
-                    JOIN chat_sessions s ON s.session_id = m.session_id
-                    WHERE s.client_id = :client_id
-                      AND s.is_deleted = false
-                      AND m.timestamp::date >= :date_from
-                      AND m.timestamp::date <= :date_to
-                    ORDER BY m.timestamp ASC, m.id ASC
-                """)
-                result = await db.execute(query, {
-                    "client_id": target_id,
-                    "date_from": from_dt,
-                    "date_to": to_dt
-                })
-                rows = result.all()
-
-            user_only_history = ""
-            user_history_by_day: dict[str, str] = {}
-            for r in rows:
-                if r.role == 'user' and r.content:
-                    user_only_history += r.content + "\n"
-                    day_key = r.day.isoformat() if r.day else None
-                    if day_key:
-                        user_history_by_day[day_key] = user_history_by_day.get(day_key, "") + r.content + "\n"
-
-            if len(user_only_history.strip()) < 10:
-                payload = {
-                    "status": "success",
-                    "frequent_requests": [],
-                    "faq_by_day": [],
-                    "date_from": str(from_dt),
-                    "date_to": str(to_dt),
-                    "range_mode": True
-                }
-                await save_ai_cache(target_id, range_cache_key, json.dumps(payload))
-                return payload
-
-            frequent_requests, _, _ = await generate_faq(target_id, user_only_history)
-
-            stop_patterns = ['привет', 'здравствуй', 'добрый день', 'добрый вечер', 'спасибо', 'благодарю', 'как дела', 'что нового', 'ты кто', 'кто ты', 'о платформе']
-            business_keywords = ['цена', 'стоимость', 'сколько', 'как', 'где', 'когда', 'купить', 'заказать', 'услуг', 'срок', 'доставк', 'оплат', 'гарант']
-
-            filtered_requests = []
-            for item in frequent_requests or []:
-                q = (item.get('question') or item.get('q') or '').strip()
-                q_lower = q.lower()
-                if any(p in q_lower for p in stop_patterns) and len(q) < 30:
-                    continue
-                if len(q) < 10 and not any(bk in q_lower for bk in business_keywords):
-                    continue
-                filtered_requests.append(item)
-
-            filtered_top = filtered_requests[:10]
-            question_tokens: dict[str, list[str]] = {}
-            for item in filtered_top:
-                question = (item.get('question') or item.get('q') or '').strip()
-                if not question:
-                    continue
-                tokens = [t for t in re.findall(r"[\wа-яА-ЯёЁ]+", question.lower()) if len(t) >= 4]
-                if not tokens:
-                    normalized = question.lower().strip()
-                    if normalized:
-                        tokens = [normalized]
-                if tokens:
-                    question_tokens[question] = sorted(set(tokens))
-
-            faq_by_day = []
-            for day_key in sorted(user_history_by_day.keys()):
-                day_history = (user_history_by_day.get(day_key, "") or "").lower()
-                if len(day_history.strip()) < 10 or not question_tokens:
-                    faq_by_day.append({"date": day_key, "frequent_requests": []})
-                    continue
-
-                day_items = []
-                for question, tokens in question_tokens.items():
-                    score = 0
-                    for token in tokens:
-                        score += day_history.count(token)
-                    if score > 0:
-                        day_items.append({"q": question, "count": score})
-
-                day_items.sort(key=lambda x: x.get("count", 0), reverse=True)
-                faq_by_day.append({"date": day_key, "frequent_requests": day_items[:10]})
-
-            payload = {
-                "status": "success",
-                "frequent_requests": filtered_top,
-                "faq_by_day": faq_by_day,
-                "date_from": str(from_dt),
-                "date_to": str(to_dt),
-                "range_mode": True,
-                "generated_at": datetime.now().isoformat()
+        today = datetime.now().date()
+        if from_dt > today:
+            return {
+                "status": "empty",
+                "message": "Для выбранной даты данные пока недоступны. Выберите более ранний период.",
+                "future_range": True,
+                "missing_days": [],
+                "is_partial": False
             }
-            await save_ai_cache(target_id, range_cache_key, json.dumps(payload))
-            return payload
-        except Exception as e:
-            log.error(f"Date-range FAQ analytics failed for {target_id}: {e}")
-            payload = {
-                "status": "success",
-                "frequent_requests": [],
-                "faq_by_day": [],
-                "date_from": str(from_dt),
-                "date_to": str(to_dt),
-                "range_mode": True,
-                "generated_at": datetime.now().isoformat()
+
+        effective_to_dt = to_dt if to_dt <= today else today
+        if from_dt > effective_to_dt:
+            return {
+                "status": "empty",
+                "message": "Для выбранной даты данные пока недоступны. Выберите более ранний период.",
+                "future_range": True,
+                "missing_days": [],
+                "is_partial": False
             }
-            await save_ai_cache(target_id, range_cache_key, json.dumps(payload))
-            return payload
 
-    now = datetime.now()
-    today_str = now.strftime('%Y-%m-%d')
-    cache_key = f"dashboard_recs_daily_{target_id}_{today_str}"
+        payloads: list[dict] = []
+        missing_days: list[str] = []
+        day_dt = from_dt
+        while day_dt <= effective_to_dt:
+            day_payload = await _get_day_snapshot(scope_key, day_dt)
+            if isinstance(day_payload, dict):
+                payloads.append(day_payload)
+            else:
+                missing_days.append(day_dt.isoformat())
+            day_dt += timedelta(days=1)
 
-    cached = await get_ai_cache(target_id, cache_key)
+        if not payloads:
+            last_snapshot = await get_last_cached_snapshot()
+            empty_payload = _empty_snapshot_payload(from_dt, effective_to_dt, status="processing" if last_snapshot else "empty")
+            empty_payload["missing_days"] = missing_days
+            empty_payload["is_partial"] = bool(missing_days)
+            empty_payload["future_range"] = False
+            if isinstance(last_snapshot, dict):
+                empty_payload["last_ready_snapshot_at"] = last_snapshot.get("generated_at")
+                if last_snapshot.get("window_from"):
+                    empty_payload["last_window_from"] = last_snapshot.get("window_from")
+                if last_snapshot.get("window_to"):
+                    empty_payload["last_window_to"] = last_snapshot.get("window_to")
+            return empty_payload
 
-    async def get_dashboard_cache_rows() -> list[dict]:
-        async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(AICache.content)
-                .where(
-                    AICache.client_id == target_id,
-                    AICache.cache_key.like("dashboard_recs_daily_%")
-                )
-                .order_by(AICache.created_at.desc())
-            )
-            rows = result.scalars().all()
-
-        parsed_rows = []
-        for raw in rows:
-            try:
-                parsed = json.loads(raw)
-            except Exception:
-                continue
-            if isinstance(parsed, dict):
-                parsed_rows.append(parsed)
-        return parsed_rows
-
-    async def get_last_successful_dashboard_cache() -> Optional[dict]:
-        rows = await get_dashboard_cache_rows()
-        for parsed in rows:
-            if parsed.get("status") != "success":
-                continue
-            if parsed.get("fallback") is True:
-                continue
-            return parsed
-        return None
-
-    async def get_last_faq_snapshot() -> Optional[list]:
-        rows = await get_dashboard_cache_rows()
-        for parsed in rows:
-            frequent_requests = parsed.get("frequent_requests")
-            if isinstance(frequent_requests, list) and frequent_requests:
-                return frequent_requests
-        return None
-
-    async def apply_faq_fallback(payload: dict, reason: str) -> dict:
-        faq_snapshot = await get_last_faq_snapshot()
-        if faq_snapshot:
-            payload = dict(payload)
-            payload["frequent_requests"] = faq_snapshot
-            payload["stale"] = True
-            payload["stale_reason"] = reason
-            payload["faq_stale_only"] = True
+        payload = _aggregate_day_payloads(payloads, from_dt, effective_to_dt, missing_days=missing_days)
+        payload["future_range"] = False
         return payload
 
-    if is_force:
-        user = await get_user_by_client_id(target_id)
-        cost = 49
-        if not user or user.balance < cost:
-            return {"status": "error", "message": f"Недостаточно средств"}
+    latest_snapshot = await get_last_cached_snapshot()
+    if isinstance(latest_snapshot, dict):
+        latest_snapshot["aggregated_from_cache"] = True
+        latest_snapshot.setdefault("missing_days", [])
+        latest_snapshot.setdefault("is_partial", False)
+        latest_snapshot.setdefault("future_range", False)
+        return latest_snapshot
 
-        await update_user_balance(target_id, cost, consumed_increment=0)
-        background_tasks.add_task(run_ai_analysis_task, target_id, cache_key)
-        return {"status": "processing", "message": "Анализ запущен. Результаты появятся через 10-20 секунд."}
-
-    if cached:
-        try:
-            cached_data = json.loads(cached)
-        except Exception:
-            log.warning(f"Invalid AI cache payload for {target_id}, regenerating")
-            background_tasks.add_task(run_ai_analysis_task, target_id, cache_key)
-            fallback_data = await get_last_successful_dashboard_cache()
-            if fallback_data:
-                fallback_data = dict(fallback_data)
-                fallback_data["stale"] = True
-                fallback_data["stale_reason"] = "invalid_today_cache"
-                return fallback_data
-            processing_payload = {"status": "processing", "message": "Обновляем аналитический отчет..."}
-            return await apply_faq_fallback(processing_payload, "invalid_today_cache_faq")
-
-        if isinstance(cached_data, dict) and cached_data.get("status") == "error":
-            log.info(f"Cached AI analysis has error status for {target_id}, regenerating")
-            background_tasks.add_task(run_ai_analysis_task, target_id, cache_key)
-            fallback_data = await get_last_successful_dashboard_cache()
-            if fallback_data:
-                fallback_data = dict(fallback_data)
-                fallback_data["stale"] = True
-                fallback_data["stale_reason"] = "error_today_cache"
-                return fallback_data
-            processing_payload = {"status": "processing", "message": "Повторно генерируем отчет после ошибки..."}
-            return await apply_faq_fallback(processing_payload, "error_today_cache_faq")
-
-        if isinstance(cached_data, dict) and cached_data.get("fallback") is True:
-            log.info(f"Cached AI analysis is fallback-only for {target_id}, trying previous successful snapshot")
-            background_tasks.add_task(run_ai_analysis_task, target_id, cache_key)
-            fallback_data = await get_last_successful_dashboard_cache()
-            if fallback_data:
-                fallback_data = dict(fallback_data)
-                fallback_data["stale"] = True
-                fallback_data["stale_reason"] = "fallback_today_cache"
-                return fallback_data
-            return await apply_faq_fallback(cached_data, "fallback_today_cache_faq")
-
-        return cached_data
-
-    if not cached:
-        log.info(f"Auto-generating free daily analysis for {target_id}")
-        background_tasks.add_task(run_ai_analysis_task, target_id, cache_key)
-        fallback_data = await get_last_successful_dashboard_cache()
-        if fallback_data:
-            fallback_data = dict(fallback_data)
-            fallback_data["stale"] = True
-            fallback_data["stale_reason"] = "missing_today_cache"
-            return fallback_data
-        processing_payload = {"status": "processing", "message": "Генерируем ежедневный бесплатный отчет..."}
-        return await apply_faq_fallback(processing_payload, "missing_today_cache_faq")
-
-    return {"status": "empty", "message": "Накопите больше диалогов для анализа."}
+    return {
+        "status": "empty",
+        "message": "Срез аналитики пока не подготовлен. Данные появятся после плановой обработки.",
+        "aggregated_from_cache": True,
+        "missing_days": [],
+        "is_partial": False,
+        "future_range": False
+    }
 
 
 @router.post("/reindex-site")
@@ -695,380 +1059,15 @@ async def clear_ai_cache_admin(client_id: str, token_data: dict = Depends(verify
     return {"status": "success", "message": "Кэш успешно очищен"}
 
 
-@router.get("/visitor-stats")
-async def get_visitor_stats(client_id: str, days: int = 7, token_data: dict = Depends(verify_token)):
-    """Статистика посещений (диалогов) по дням."""
-    if token_data['sub'] != client_id and token_data['sub'] != 'admin':
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    async with AsyncSessionLocal() as db:
-        query = text("""
-            WITH RECURSIVE dates AS (
-                SELECT CURRENT_DATE - (:days - 1) * INTERVAL '1 day' as date
-                UNION ALL
-                SELECT date + INTERVAL '1 day'
-                FROM dates
-                WHERE date < CURRENT_DATE
-            )
-            SELECT 
-                d.date::date as date,
-                COALESCE(s.dialogs, 0) as dialogs,
-                COALESCE(l.leads, 0) as leads,
-                COALESCE(s.dialogs, 0) as humans,
-                0 as bots
-            FROM dates d
-            LEFT JOIN (
-                SELECT start_time::date as date, COUNT(*) as dialogs
-                FROM chat_sessions 
-                WHERE client_id = :client_id AND is_deleted = false
-                GROUP BY start_time::date
-            ) s ON d.date = s.date
-            LEFT JOIN (
-                SELECT created_at::date as date, COUNT(*) as leads
-                FROM leads
-                WHERE client_id = :client_id
-                GROUP BY created_at::date
-            ) l ON d.date = l.date
-            ORDER BY d.date ASC
-        """)
-        result = await db.execute(query, {"days": days, "client_id": client_id})
-        rows = result.mappings().all()
-        stats = [dict(r) for r in rows]
-
-    return {"status": "success", "stats": stats}
-
-
-@router.get("/dialog-case-history")
-async def get_dialog_case_history(
-    client_id: str,
-    date_from: Optional[str] = None,
-    date_to: Optional[str] = None,
-    mode: Optional[str] = None,
-    limit_dialogs: int = 20,
-    limit_cases: int = 3,
-    token_data: dict = Depends(verify_token)
-):
-    """История кейсов по диалогам для блока аналитики."""
-    if token_data['sub'] != client_id and token_data['sub'] != 'admin':
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    selected_mode = (mode or "").strip().lower()
-    if selected_mode not in {"assistant", "operator"}:
-        selected_mode = ""
-
-    limit_dialogs = max(1, min(limit_dialogs, 100))
-    limit_cases = max(1, min(limit_cases, 10))
-
-    params: dict = {
-        "client_id": client_id,
-        "limit_dialogs": limit_dialogs,
-        "limit_cases": limit_cases,
-    }
-
-    where_parts = [
-        "cs.client_id = :client_id",
-        "cs.is_deleted = false",
-    ]
-
-    if selected_mode == "operator":
-        where_parts.append("cs.is_operator_mode = true")
-    elif selected_mode == "assistant":
-        where_parts.append("cs.is_operator_mode = false")
-
-    if date_from and date_to:
-        try:
-            d_from = datetime.strptime(date_from, '%Y-%m-%d').date()
-            d_to = datetime.strptime(date_to, '%Y-%m-%d').date()
-            if d_from > d_to:
-                d_from, d_to = d_to, d_from
-            params.update({"date_from": d_from, "date_to": d_to})
-            where_parts.append("sc.opened_at::date >= :date_from")
-            where_parts.append("sc.opened_at::date <= :date_to")
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid date range format")
-
-    where_sql = " AND ".join(where_parts)
-
-    query = text("""
-        WITH ranked_cases AS (
-            SELECT
-                sc.id,
-                sc.session_id,
-                sc.case_number,
-                sc.is_active,
-                sc.open_reason,
-                sc.close_reason,
-                sc.opened_at,
-                sc.closed_at,
-                ROW_NUMBER() OVER (PARTITION BY sc.session_id ORDER BY sc.case_number DESC, sc.id DESC) AS case_rank,
-                MAX(sc.opened_at) OVER (PARTITION BY sc.session_id) AS latest_case_opened
-            FROM session_cases sc
-            JOIN chat_sessions cs ON cs.session_id = sc.session_id
-            WHERE """ + where_sql + """
-        ),
-        filtered_cases AS (
-            SELECT *
-            FROM ranked_cases
-            WHERE case_rank <= :limit_cases
-        ),
-        ranked_dialogs AS (
-            SELECT
-                session_id,
-                latest_case_opened,
-                ROW_NUMBER() OVER (ORDER BY latest_case_opened DESC, session_id) AS dialog_rank
-            FROM (
-                SELECT DISTINCT session_id, latest_case_opened
-                FROM filtered_cases
-            ) d
-        )
-        SELECT
-            fc.session_id,
-            COALESCE(
-                NULLIF(cs.metadata_json->>'platform', ''),
-                CASE
-                    WHEN cs.session_id LIKE 'tg-%' THEN 'telegram'
-                    WHEN cs.session_id LIKE 'max-%' THEN 'max'
-                    WHEN cs.session_id LIKE 'vk-%' THEN 'vk'
-                    WHEN cs.session_id LIKE 'email_%' THEN 'email'
-                    WHEN cs.session_id LIKE 'avito-%' THEN 'avito'
-                    ELSE 'web'
-                END
-            ) AS platform,
-            fc.case_number,
-            fc.is_active,
-            fc.open_reason,
-            fc.close_reason,
-            fc.opened_at,
-            fc.closed_at,
-            rd.latest_case_opened,
-            rd.dialog_rank
-        FROM filtered_cases fc
-        JOIN ranked_dialogs rd ON rd.session_id = fc.session_id
-        JOIN chat_sessions cs ON cs.session_id = fc.session_id
-        WHERE rd.dialog_rank <= :limit_dialogs
-        ORDER BY rd.dialog_rank ASC, fc.case_number ASC
-    """)
-
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(query, params)
-        rows = result.mappings().all()
-
-    dialogs_map: dict[str, dict] = {}
-    for row in rows:
-        session_id = row.get("session_id")
-        if not session_id:
-            continue
-
-        if session_id not in dialogs_map:
-            latest_case_opened = row.get("latest_case_opened")
-            dialogs_map[session_id] = {
-                "session_id": session_id,
-                "platform": row.get("platform") or "web",
-                "latest_case_opened": latest_case_opened.isoformat() if latest_case_opened else None,
-                "cases": []
-            }
-
-        opened_at = row.get("opened_at")
-        closed_at = row.get("closed_at")
-        dialogs_map[session_id]["cases"].append({
-            "case_number": row.get("case_number"),
-            "is_active": bool(row.get("is_active")),
-            "open_reason": row.get("open_reason"),
-            "close_reason": row.get("close_reason"),
-            "opened_at": opened_at.isoformat() if opened_at else None,
-            "closed_at": closed_at.isoformat() if closed_at else None,
-        })
-
-    dialogs = sorted(
-        dialogs_map.values(),
-        key=lambda d: d.get("latest_case_opened") or "",
-        reverse=True
-    )
-
-    return {
-        "status": "success",
-        "dialogs": dialogs,
-        "limit_dialogs": limit_dialogs,
-        "limit_cases": limit_cases
-    }
-
-
-@router.get("/close-reasons-analytics")
-async def get_close_reasons_analytics(
-    client_id: str,
-    days: int = 30,
-    date_from: Optional[str] = None,
-    date_to: Optional[str] = None,
-    mode: Optional[str] = None,
-    token_data: dict = Depends(verify_token)
-):
-    """Агрегированная аналитика по причинам закрытия кейсов (бизнес vs системные)."""
-    if token_data['sub'] != client_id and token_data['sub'] != 'admin':
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    selected_mode = (mode or "").strip().lower()
-    if selected_mode not in {"assistant", "operator"}:
-        selected_mode = ""
-
-    params = {"client_id": client_id}
-    where_parts = [
-        "cs.client_id = :client_id",
-        "cs.is_deleted = false",
-        "sc.closed_at IS NOT NULL",
-    ]
-
-    if selected_mode == "operator":
-        where_parts.append("cs.is_operator_mode = true")
-    elif selected_mode == "assistant":
-        where_parts.append("cs.is_operator_mode = false")
-
-    if date_from and date_to:
-        try:
-            d_from = datetime.strptime(date_from, '%Y-%m-%d').date()
-            d_to = datetime.strptime(date_to, '%Y-%m-%d').date()
-            if d_from > d_to:
-                d_from, d_to = d_to, d_from
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid date range format")
-    else:
-        days = max(1, min(days, 365))
-        d_to = datetime.utcnow().date()
-        d_from = d_to - timedelta(days=days - 1)
-
-    params["date_from"] = d_from
-    params["date_to"] = d_to
-    where_parts.append("sc.closed_at::date >= :date_from")
-    where_parts.append("sc.closed_at::date <= :date_to")
-
-    where_sql = " AND ".join(where_parts)
-
-    base_cte_sql = """
-        WITH base AS (
-            SELECT
-                sc.close_reason,
-                sc.closed_at::date AS closed_date,
-                CASE
-                    WHEN sc.close_reason IN ('manual_archive', 'auto_reopened') THEN 'system'
-                    WHEN sc.close_reason IS NULL OR btrim(sc.close_reason) = '' THEN 'unknown'
-                    ELSE 'user'
-                END AS reason_type
-            FROM session_cases sc
-            JOIN chat_sessions cs ON cs.session_id = sc.session_id AND cs.client_id = sc.client_id
-            WHERE """ + where_sql + """
-        )
-    """
-
-    summary_query = text(base_cte_sql + """
-        SELECT
-            COUNT(*)::int AS total_closed,
-            COUNT(*) FILTER (WHERE reason_type = 'user')::int AS total_user,
-            COUNT(*) FILTER (WHERE reason_type = 'system')::int AS total_system,
-            COUNT(*) FILTER (WHERE reason_type = 'unknown')::int AS total_unknown
-        FROM base
-    """)
-
-    top_query = text(base_cte_sql + """
-        SELECT
-            close_reason AS reason,
-            COUNT(*)::int AS cnt
-        FROM base
-        WHERE reason_type = 'user'
-        GROUP BY close_reason
-        ORDER BY cnt DESC, reason ASC
-        LIMIT 10
-    """)
-
-    trend_query = text(base_cte_sql + """
-        , daily AS (
-            SELECT
-                closed_date,
-                COUNT(*) FILTER (WHERE reason_type = 'user')::int AS user_count,
-                COUNT(*) FILTER (WHERE reason_type = 'system')::int AS system_count,
-                COUNT(*) FILTER (WHERE reason_type = 'unknown')::int AS unknown_count,
-                COUNT(*)::int AS total_count
-            FROM base
-            GROUP BY closed_date
-        )
-        SELECT
-            gs.d::date AS date,
-            COALESCE(d.user_count, 0)::int AS user_count,
-            COALESCE(d.system_count, 0)::int AS system_count,
-            COALESCE(d.unknown_count, 0)::int AS unknown_count,
-            COALESCE(d.total_count, 0)::int AS total_count
-        FROM generate_series(CAST(:date_from AS date), CAST(:date_to AS date), interval '1 day') AS gs(d)
-        LEFT JOIN daily d ON d.closed_date = gs.d::date
-        ORDER BY gs.d ASC
-    """)
-
-    system_breakdown_query = text(base_cte_sql + """
-        SELECT close_reason AS reason, COUNT(*)::int AS cnt
-        FROM base
-        WHERE reason_type = 'system'
-        GROUP BY close_reason
-        ORDER BY cnt DESC, reason ASC
-    """)
-
-    async with AsyncSessionLocal() as db:
-        summary_row = (await db.execute(summary_query, params)).mappings().first() or {}
-        top_rows = (await db.execute(top_query, params)).mappings().all()
-        trend_rows = (await db.execute(trend_query, params)).mappings().all()
-        system_rows = (await db.execute(system_breakdown_query, params)).mappings().all()
-
-    total_user = int(summary_row.get("total_user") or 0)
-    top_user_reasons = []
-    for row in top_rows:
-        cnt = int(row.get("cnt") or 0)
-        reason = row.get("reason") or "—"
-        share = round((cnt / total_user) * 100, 2) if total_user > 0 else 0.0
-        top_user_reasons.append({
-            "reason": reason,
-            "count": cnt,
-            "share_percent": share,
-        })
-
-    trend = []
-    for row in trend_rows:
-        dt = row.get("date")
-        trend.append({
-            "date": dt.isoformat() if dt else None,
-            "user_count": int(row.get("user_count") or 0),
-            "system_count": int(row.get("system_count") or 0),
-            "unknown_count": int(row.get("unknown_count") or 0),
-            "total_count": int(row.get("total_count") or 0),
-        })
-
-    system_breakdown = [
-        {"reason": r.get("reason") or "—", "count": int(r.get("cnt") or 0)}
-        for r in system_rows
-    ]
-
-    return {
-        "status": "success",
-        "range": {
-            "from": d_from.isoformat(),
-            "to": d_to.isoformat(),
-        },
-        "summary": {
-            "total_closed": int(summary_row.get("total_closed") or 0),
-            "total_user": total_user,
-            "total_system": int(summary_row.get("total_system") or 0),
-            "total_unknown": int(summary_row.get("total_unknown") or 0),
-        },
-        "top_user_reasons": top_user_reasons,
-        "system_breakdown": system_breakdown,
-        "trend": trend,
-    }
-
-
 @router.get("/activity-stats")
 async def get_activity_stats(
     client_id: str,
-    days: int = 7,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     statuses: Optional[str] = None,
     platforms: Optional[str] = None,
     mode: Optional[str] = None,
+    assistant_id: Optional[str] = None,
     token_data: dict = Depends(verify_token)
 ):
     """Единая статистика активности по дням.
@@ -1130,6 +1129,19 @@ async def get_activity_stats(
 
     params: dict = {"client_id": client_id}
 
+    normalized_assistant_filter = _normalize_assistant_filter_values(assistant_id)
+    if normalized_assistant_filter:
+        include_main = 'main' in normalized_assistant_filter
+        filtered_parts = [part for part in normalized_assistant_filter if part != 'main']
+        if filtered_parts and include_main:
+            session_filter_parts.append("(cs.assistant_id = ANY(:assistant_ids) OR cs.assistant_id IS NULL)")
+            params["assistant_ids"] = filtered_parts + ['main']
+        elif filtered_parts:
+            session_filter_parts.append("cs.assistant_id = ANY(:assistant_ids)")
+            params["assistant_ids"] = filtered_parts
+        elif include_main:
+            session_filter_parts.append("(cs.assistant_id = 'main' OR cs.assistant_id IS NULL)")
+
     if selected_platforms:
         platform_placeholders = []
         for i, p in enumerate(selected_platforms):
@@ -1141,6 +1153,8 @@ async def get_activity_stats(
     session_filters_sql = " AND ".join(session_filter_parts)
 
     async with AsyncSessionLocal() as db:
+        today = datetime.now().date()
+
         if date_from and date_to:
             # Конвертируем строки в объекты date для asyncpg
             try:
@@ -1149,6 +1163,20 @@ async def get_activity_stats(
             except Exception:
                 d_from = date_from
                 d_to = date_to
+
+            if d_from > d_to:
+                d_from, d_to = d_to, d_from
+
+            # Будущие даты не должны возвращать синтетический ряд.
+            if d_from > today:
+                return {"status": "success", "stats": [], "future_range": True}
+
+            # Для диапазона, который частично в будущем, обрезаем до сегодня.
+            if d_to > today:
+                d_to = today
+
+            if d_from > d_to:
+                return {"status": "success", "stats": [], "future_range": True}
 
             date_condition_msgs = "cm.timestamp::date >= :date_from AND cm.timestamp::date <= :date_to"
             date_condition_sessions = "fs.start_time::date >= :date_from AND fs.start_time::date <= :date_to"
@@ -1170,13 +1198,20 @@ async def get_activity_stats(
             """
             params.update({"date_from": d_from, "date_to": d_to})
         else:
-            d_to = datetime.now().date()
-            d_from = d_to - timedelta(days=days-1)
+            created_row = await db.execute(
+                select(User.created_at).where(User.client_id == client_id)
+            )
+            created_at = created_row.scalar_one_or_none()
+            if isinstance(created_at, datetime):
+                d_from = created_at.date()
+            else:
+                d_from = today
+            d_to = today
 
             date_condition_msgs = "cm.timestamp::date >= :date_from AND cm.timestamp::date <= :date_to"
             date_condition_sessions = "fs.start_time::date >= :date_from AND fs.start_time::date <= :date_to"
             date_condition_leads = "l.created_at::date >= :date_from AND l.created_at::date <= :date_to"
-            
+
             dates_cte = """
                 WITH RECURSIVE dates AS (
                     SELECT CAST(:date_from AS DATE) as date
@@ -1192,7 +1227,7 @@ async def get_activity_stats(
                     WHERE """ + session_filters_sql + """
                 )
             """
-            params.update({"date_from": d_from, "date_to": d_to, "days": days})
+            params.update({"date_from": d_from, "date_to": d_to})
 
         query = text(dates_cte + """
             SELECT
@@ -1204,6 +1239,7 @@ async def get_activity_stats(
                 COALESCE(m.spam_msgs, 0) as spam_msgs,
                 COALESCE(m.bulk_msgs, 0) as bulk_msgs,
                 COALESCE(s.total_dialogs, 0) as total_dialogs,
+                COALESCE(s.qualified_dialogs, 0) as qualified_dialogs,
                 COALESCE(s.web_dialogs, 0) as web_dialogs,
                 COALESCE(s.tg_dialogs, 0) as tg_dialogs,
                 COALESCE(s.max_dialogs, 0) as max_dialogs,
@@ -1219,7 +1255,11 @@ async def get_activity_stats(
                     COUNT(*) FILTER (WHERE cm.role = 'user') as user_msgs,
                     COUNT(*) FILTER (WHERE (cm.role = 'assistant' OR cm.role = 'bot') AND (cm.author_role IS NULL OR cm.author_role != 'operator')) as bot_msgs,
                     COUNT(*) FILTER (WHERE cm.author_role = 'operator' OR cm.role = 'operator') as operator_msgs,
-                    COUNT(*) as total_msgs,
+                    COUNT(*) FILTER (
+                        WHERE cm.role = 'user'
+                           OR ((cm.role = 'assistant' OR cm.role = 'bot') AND (cm.author_role IS NULL OR cm.author_role != 'operator'))
+                           OR cm.author_role = 'operator' OR cm.role = 'operator'
+                    ) as total_msgs,
                     COUNT(*) FILTER (WHERE cm.role = 'user' AND cm.author_role = 'spam') as spam_msgs,
                     COUNT(*) FILTER (WHERE cm.role = 'user' AND cm.author_role = 'bulk') as bulk_msgs,
                     -- Сообщения по платформам (общие)
@@ -1263,19 +1303,17 @@ async def get_activity_stats(
                 SELECT
                     fs.start_time::date as date,
                     COUNT(*) as total_dialogs,
+                    COUNT(*) FILTER (
+                        WHERE COALESCE(fs.is_archived, false) = false
+                          AND fs.status IS DISTINCT FROM 'spam'
+                          AND fs.status IS DISTINCT FROM 'archive'
+                    ) as qualified_dialogs,
                     COUNT(*) FILTER (WHERE fs.platform = 'web') as web_dialogs,
                     COUNT(*) FILTER (WHERE fs.platform = 'telegram') as tg_dialogs,
                     COUNT(*) FILTER (WHERE fs.platform = 'max') as max_dialogs,
                     COUNT(*) FILTER (WHERE fs.platform = 'vk') as vk_dialogs,
                     COUNT(*) FILTER (WHERE fs.platform = 'email') as email_dialogs,
-                    COUNT(*) FILTER (WHERE fs.platform = 'avito') as avito_dialogs
-                FROM filtered_sessions fs
-                WHERE fs.start_time::date >= :date_from AND fs.start_time::date <= :date_to
-                GROUP BY fs.start_time::date
-            ) s ON d.date = s.date
-            LEFT JOIN (
-                SELECT
-                    fs.last_time::date as date,
+                    COUNT(*) FILTER (WHERE fs.platform = 'avito') as avito_dialogs,
                     COUNT(*) FILTER (WHERE fs.status = 'lead' AND COALESCE(fs.is_archived, false) = false) as leads,
                     COUNT(*) FILTER (WHERE fs.is_operator_mode = true AND COALESCE(fs.is_archived, false) = false AND fs.status IS DISTINCT FROM 'archive' AND fs.status IS DISTINCT FROM 'lead') as applications,
                     -- Лиды по платформам
@@ -1293,9 +1331,41 @@ async def get_activity_stats(
                     COUNT(*) FILTER (WHERE fs.platform = 'email' AND fs.is_operator_mode = true AND COALESCE(fs.is_archived, false) = false AND fs.status IS DISTINCT FROM 'archive' AND fs.status IS DISTINCT FROM 'lead') as email_applications,
                     COUNT(*) FILTER (WHERE fs.platform = 'avito' AND fs.is_operator_mode = true AND COALESCE(fs.is_archived, false) = false AND fs.status IS DISTINCT FROM 'archive' AND fs.status IS DISTINCT FROM 'lead') as avito_applications
                 FROM filtered_sessions fs
+                WHERE fs.start_time::date >= :date_from AND fs.start_time::date <= :date_to
+                GROUP BY fs.start_time::date
+            ) s ON d.date = s.date
+            LEFT JOIN (
+                SELECT
+                    fs.start_time::date as date,
+                    COUNT(*) FILTER (WHERE fs.status = 'lead' AND COALESCE(fs.is_archived, false) = false) as leads,
+                    COUNT(*) FILTER (WHERE fs.is_operator_mode = true AND COALESCE(fs.is_archived, false) = false AND fs.status IS DISTINCT FROM 'archive' AND fs.status IS DISTINCT FROM 'lead') as applications,
+                    -- Лиды по платформам
+                    COUNT(*) FILTER (WHERE fs.platform = 'web' AND fs.status = 'lead' AND COALESCE(fs.is_archived, false) = false) as web_leads,
+                    COUNT(*) FILTER (WHERE fs.platform = 'telegram' AND fs.status = 'lead' AND COALESCE(fs.is_archived, false) = false) as tg_leads,
+                    COUNT(*) FILTER (WHERE fs.platform = 'max' AND fs.status = 'lead' AND COALESCE(fs.is_archived, false) = false) as max_leads,
+                    COUNT(*) FILTER (WHERE fs.platform = 'vk' AND fs.status = 'lead' AND COALESCE(fs.is_archived, false) = false) as vk_leads,
+                    COUNT(*) FILTER (WHERE fs.platform = 'email' AND fs.status = 'lead' AND COALESCE(fs.is_archived, false) = false) as email_leads,
+                    COUNT(*) FILTER (WHERE fs.platform = 'avito' AND fs.status = 'lead' AND COALESCE(fs.is_archived, false) = false) as avito_leads,
+                    -- Заявки по платформам
+                    COUNT(*) FILTER (WHERE fs.platform = 'web' AND fs.is_operator_mode = true AND COALESCE(fs.is_archived, false) = false AND fs.status IS DISTINCT FROM 'archive' AND fs.status IS DISTINCT FROM 'lead') as web_applications,
+                    COUNT(*) FILTER (WHERE fs.platform = 'telegram' AND fs.is_operator_mode = true AND COALESCE(fs.is_archived, false) = false AND fs.status IS DISTINCT FROM 'archive' AND fs.status IS DISTINCT FROM 'lead') as tg_applications,
+                    COUNT(*) FILTER (WHERE fs.platform = 'max' AND fs.is_operator_mode = true AND COALESCE(fs.is_archived, false) = false AND fs.status IS DISTINCT FROM 'archive' AND fs.status IS DISTINCT FROM 'lead') as max_applications,
+                    COUNT(*) FILTER (WHERE fs.platform = 'vk' AND fs.is_operator_mode = true AND COALESCE(fs.is_archived, false) = false AND fs.status IS DISTINCT FROM 'archive' AND fs.status IS DISTINCT FROM 'lead') as vk_applications,
+                    COUNT(*) FILTER (WHERE fs.platform = 'email' AND fs.is_operator_mode = true AND COALESCE(fs.is_archived, false) = false AND fs.status IS DISTINCT FROM 'archive' AND fs.status IS DISTINCT FROM 'lead') as email_applications,
+                    COUNT(*) FILTER (WHERE fs.platform = 'avito' AND fs.is_operator_mode = true AND COALESCE(fs.is_archived, false) = false AND fs.status IS DISTINCT FROM 'archive' AND fs.status IS DISTINCT FROM 'lead') as avito_applications
+                FROM filtered_sessions fs
+                WHERE fs.start_time::date >= :date_from AND fs.start_time::date <= :date_to
+                GROUP BY fs.start_time::date
+            ) l ON d.date = l.date
+            LEFT JOIN (
+                SELECT
+                    fs.last_time::date as date,
+                    COUNT(*) FILTER (WHERE fs.status = 'lead' AND COALESCE(fs.is_archived, false) = false) as leads,
+                    COUNT(*) FILTER (WHERE fs.is_operator_mode = true AND COALESCE(fs.is_archived, false) = false AND fs.status IS DISTINCT FROM 'archive' AND fs.status IS DISTINCT FROM 'lead') as applications
+                FROM filtered_sessions fs
                 WHERE fs.last_time::date >= :date_from AND fs.last_time::date <= :date_to
                 GROUP BY fs.last_time::date
-            ) l ON d.date = l.date
+            ) l_last ON d.date = l_last.date
             ORDER BY d.date ASC
         """)
 

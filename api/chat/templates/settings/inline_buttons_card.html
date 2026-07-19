@@ -1,27 +1,25 @@
-<!-- КНОПКИ ИНТЕРАКТИВНЫЕ -->
 <div class="bento-card" id="card-inline-buttons-design">
     <div class="card-header-flex">
-        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
-            <div class="collapse-icon"></div>
-            <h3 class="card-title">Кнопки интерактивные</h3>
+        <div class="card-title-group">
+            <h3 class="card-title">Интерактив</h3>
         </div>
-        <!-- Иконки -->
         <div class="card-actions-mini">
-            <button class="icon-btn-sm" onclick="window.resetButtonsToDefault()" title="Восстановить дизайн">
+            <button class="menu-dots-btn" onclick="window.resetButtonsToDefault()" title="Восстановить дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
             </button>
-            <button class="icon-btn-sm" onclick="window.randomizeButtonsDesign()" title="Магический дизайн">
+            <button class="menu-dots-btn" onclick="window.randomizeButtonsDesign()" title="Магический дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+            <button class="icon-btn-sm inline-buttons-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
         </div>
     </div>
-    <!-- Параметры интерактивных кнопок -->
+    <p class="card-description">Кнопки внутри переписки</p>
     <div id="inline-buttons-settings-group" class="settings-form">
-        <!-- СТАТУС ИНТЕРАКТИВНЫХ КНОПОК -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Статус</h3>
         </div>
-        <!-- Показать интерактивные кнопки в чате для настройки -->
         <div class="setting-item-compact">
             <div class="flex-between">
                 <label class="subtitle-card">Предпросмотр</label>
@@ -31,7 +29,6 @@
                 </label>
             </div>
         </div>
-        <!-- Отображение на сайте интерактивных кнопок -->
         <div class="setting-item-compact">
             <div class="flex-between">
                 <label class="subtitle-card">Отображение на сайте</label>
@@ -41,11 +38,9 @@
                 </label>
             </div>
         </div>
-        <!-- ГЕОМЕТРИЯ ИНТЕРАКТИВНЫХ КНОПОК -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Геометрия</h3>
         </div>
-        <!-- Высота интерактивных кнопок -->
         <div class="setting-item">
             <label class="subtitle-card">Высота</label>
             <div class="range-with-val">
@@ -53,7 +48,6 @@
                 <span class="range-value" id="inline-btn-height-val"></span>
             </div>
         </div>
-        <!-- Ширина интерактивных кнопок -->
         <div class="setting-item">
             <label class="subtitle-card">Ширина</label>
             <div class="range-with-val">
@@ -61,7 +55,6 @@
                 <span class="range-value" id="inline-btn-width-val"></span>
             </div>
         </div>
-        <!-- Скругление интерактивных кнопок -->
         <div class="setting-item">
             <label class="subtitle-card">Скругление</label>
             <div class="range-with-val">
@@ -69,11 +62,9 @@
                 <span class="range-value" id="inline-btn-radius-val"></span>
             </div>
         </div>
-        <!-- ИНТЕРАКТИВНАЯ КНОПКА -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Кнопки</h3>
         </div>
-        <!-- Выбор кнопки интерактивной для настройки -->
         <div class="setting-item">
             <label class="subtitle-card">Тип</label>
             <div class="type-switcher" id="button-style-switcher">
@@ -82,13 +73,10 @@
                 <button class="type-btn" data-style-id="info">Выбор</button>
             </div>
         </div>
-        <!-- ТЕКСТ ИНТЕРАКТИВНОЙ КНОПКИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Текст</h3>
         </div>
-        <!-- Параметры текста интерактивной кнопки -->
         <div id="inline-btn-text-enabled-group" class="settings-form-mini">
-            <!-- Шрифт текста интерактивной кнопки -->
             <div class="setting-item">
                 <label class="subtitle-card">Шрифт</label>
                 <div class="custom-select" id="inline-btn-font-family-custom-select">
@@ -100,7 +88,6 @@
                 </div>
                 <input type="hidden" id="inline-btn-font-family-select">
             </div>
-            <!-- Размер текста интерактивной кнопки -->
             <div class="setting-item">
                 <label class="subtitle-card">Размер</label>
                 <div class="range-with-val">
@@ -108,7 +95,6 @@
                     <span class="range-value" id="inline-btn-font-size-val"></span>
                 </div>
             </div>
-            <!-- Толщина начертания текста интерактивной кнопки -->
             <div class="setting-item">
                 <label class="subtitle-card">Толщина</label>
                 <div class="range-with-val">
@@ -116,7 +102,6 @@
                     <span class="range-value" id="inline-btn-font-weight-val"></span>
                 </div>
             </div>
-            <!-- Цвет текста интерактивной кнопки -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -127,7 +112,6 @@
                     <input type="text" id="inline-btn-text-hex" spellcheck="false" class="color_hex hex-input-full" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность текста интерактивной кнопки -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -135,7 +119,6 @@
                     <span class="range-value" id="inline-btn-text-opacity-val"></span>
                 </div>
             </div>
-            <!-- ТЕКСТ ПРИ НАВЕДЕНИИ -->
             <div class="flex-between">
                 <h3 class="subtitle-card-bold white">Текст при наведении</h3>
                 <label class="switch sm-switch">
@@ -144,7 +127,6 @@
                 </label>
             </div>
             <div id="inline-btn-text-h-group" class="settings-form-mini">
-                <!-- Цвет текста интерактивной кнопки при наведении -->
                 <div class="setting-item">
                     <label class="subtitle-card">Цвет</label>
                     <div class="color-input-group">
@@ -155,7 +137,6 @@
                         <input type="text" id="inline-btn-text-h-hex" spellcheck="false" class="color_hex hex-input-full" placeholder="Прозрачный">
                     </div>
                 </div>
-                <!-- Прозрачность текста интерактивной кнопки при наведении -->
                 <div class="setting-item">
                     <label class="subtitle-card">Прозрачность</label>
                     <div class="range-with-val">
@@ -165,7 +146,6 @@
                 </div>
             </div>
         </div>
-        <!-- ФОН ИНТЕРАКТИВНОЙ КНОПКИ -->
         <div class="flex-between with-margin">
             <h3 class="subtitle-card-bold">Фон</h3>
             <label class="switch sm-switch">
@@ -173,9 +153,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры фона интерактивной кнопки -->
         <div id="inline-btn-bg-group" class="settings-form-mini">
-            <!-- Цвет фона интерактивной кнопки -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -186,7 +164,6 @@
                     <input type="text" id="inline-btn-bg-hex" spellcheck="false" class="color_hex hex-input-full" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность фона интерактивной кнопки -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -195,7 +172,6 @@
                 </div>
             </div>
         </div>
-        <!-- ФОН ИНТЕРАКТИВНОЙ КНОПКИ ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Фон при наведении</h3>
             <label class="switch sm-switch">
@@ -203,9 +179,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры фона интерактивной кнопки при наведении -->
         <div id="inline-btn-bg-h-group" class="settings-form-mini">
-            <!-- Цвет фона интерактивной кнопки при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -216,7 +190,6 @@
                     <input type="text" id="inline-btn-bg-h-hex" spellcheck="false" class="color_hex hex-input-full" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность фона интерактивной кнопки при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -225,7 +198,6 @@
                 </div>
             </div>
         </div>
-        <!-- ОБВОДКА ИНТЕРАКТИВНОЙ КНОПКИ -->
         <div class="flex-between with-margin">
             <h3 class="subtitle-card-bold">Обводка</h3>
             <label class="switch sm-switch">
@@ -233,9 +205,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры обводки интерактивной кнопки -->
         <div id="inline-btn-border-group" class="settings-form-mini">
-            <!-- Цвет обводки интерактивной кнопки -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -246,7 +216,6 @@
                     <input type="text" id="inline-btn-border-color-hex" spellcheck="false" class="color_hex hex-input-full" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Толщина обводки интерактивной кнопки -->
             <div class="setting-item">
                 <label class="subtitle-card">Толщина</label>
                 <div class="range-with-val">
@@ -254,7 +223,6 @@
                     <span class="range-value" id="inline-btn-border-width-val"></span>
                 </div>
             </div>
-            <!-- Прозрачность обводки интерактивной кнопки -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -263,7 +231,6 @@
                 </div>
             </div>
         </div>
-        <!-- ОБВОДКА ИНТЕРАКТИВНОЙ КНОПКИ ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Обводка при наведении</h3>
             <label class="switch sm-switch">
@@ -271,9 +238,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры обводки интерактивной кнопки при наведении -->
         <div id="inline-btn-border-h-group" class="settings-form-mini">
-            <!-- Цвет обводки интерактивной кнопки при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -284,7 +249,6 @@
                     <input type="text" id="inline-btn-border-h-hex" spellcheck="false" class="color_hex hex-input-full" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность обводки интерактивной кнопки при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -292,7 +256,6 @@
                     <span class="range-value" id="inline-btn-border-h-opacity-val"></span>
                 </div>
             </div>
-            <!-- Толщина обводки интерактивной кнопки при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Толщина</label>
                 <div class="range-with-val">
@@ -301,7 +264,6 @@
                 </div>
             </div>
         </div>
-        <!-- ТЕНЬ ИНТЕРАКТИВНОЙ КНОПКИ -->
         <div class="flex-between with-margin">
             <h3 class="subtitle-card-bold">Тень</h3>
             <label class="switch sm-switch">
@@ -309,9 +271,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры тени интерактивной кнопки -->
         <div id="inline-btn-shadow-group" class="settings-form-mini">
-            <!-- Цвет тени интерактивной кнопки -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -322,7 +282,6 @@
                     <input type="text" id="inline-btn-shadow-color-hex" spellcheck="false" class="color_hex hex-input-full" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность тени интерактивной кнопки -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -330,7 +289,6 @@
                     <span class="range-value" id="inline-btn-shadow-opacity-val"></span>
                 </div>
             </div>
-            <!-- Размытие тени интерактивной кнопки -->
             <div class="setting-item">
                 <label class="subtitle-card">Размытие</label>
                 <div class="range-with-val">
@@ -339,7 +297,6 @@
                 </div>
             </div>
         </div>
-        <!-- ТЕНЬ ИНТЕРАКТИВНОЙ КНОПКИ ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Тень при наведении</h3>
             <label class="switch sm-switch">
@@ -347,9 +304,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры тени интерактивной кнопки при наведении -->
         <div id="inline-btn-shadow-h-group" class="settings-form-mini">
-            <!-- Цвет тени интерактивной кнопки при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -360,7 +315,6 @@
                     <input type="text" id="inline-btn-shadow-h-hex" spellcheck="false" class="color_hex hex-input-full" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность тени интерактивной кнопки при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -368,7 +322,6 @@
                     <span class="range-value" id="inline-btn-shadow-h-opacity-val"></span>
                 </div>
             </div>
-            <!-- Размытие тени интерактивной кнопки при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Размытие</label>
                 <div class="range-with-val">

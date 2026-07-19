@@ -12,7 +12,7 @@ import httpx
 
 from ..core.config import log
 from ..services.clients import list_clients, get_client_config
-from ..services.integrations_service import get_integration_settings
+from ..services.integrations_service import get_integration_settings, list_integration_settings
 from ..services.db_service import (
     AsyncSessionLocal, get_or_create_session, save_chat_message, is_operator_mode,
     download_and_save_file
@@ -27,36 +27,42 @@ def _token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()[:16]
 
 
-async def register_max_token(client_id: str, bot_token: str):
+async def register_max_token(client_id: str, bot_token: str, assistant_id: str | None = None):
     if bot_token:
-        cache_service.set(f"max_bot_token:{_token_hash(bot_token)}", client_id)
+        cache_service.set(
+            f"max_bot_token:{_token_hash(bot_token)}",
+            {"client_id": client_id, "assistant_id": assistant_id}
+        )
 
 
-async def find_client_by_token(bot_token: str) -> Optional[str]:
-    client_id = cache_service.get(f"max_bot_token:{_token_hash(bot_token)}")
-    if client_id:
-        return client_id
+async def find_client_by_token(bot_token: str) -> Optional[dict]:
+    cached = cache_service.get(f"max_bot_token:{_token_hash(bot_token)}")
+    if isinstance(cached, dict) and cached.get("client_id"):
+        return cached
+    if isinstance(cached, str):
+        return {"client_id": cached, "assistant_id": None}
     try:
         clients = await list_clients()
         for c in clients:
             cid = c
             if not cid:
                 continue
-            settings = await get_integration_settings(cid, "max")
-            if settings.get("bot_token") == bot_token and settings.get("enabled"):
-                cache_service.set(f"max_bot_token:{_token_hash(bot_token)}", cid)
-                return cid
+            for assistant_id, settings in await list_integration_settings(cid, "max"):
+                if settings.get("bot_token") == bot_token and settings.get("enabled"):
+                    payload = {"client_id": cid, "assistant_id": assistant_id}
+                    cache_service.set(f"max_bot_token:{_token_hash(bot_token)}", payload)
+                    return payload
     except Exception as e:
         log.error(f"Fallback client search failed: {e}")
     return None
 
 
-async def get_or_create_max_session(client_id: str, max_chat_id: int, from_user: dict = None) -> str:
-    cache_key = f"max_session:{client_id}:{max_chat_id}"
+async def get_or_create_max_session(client_id: str, max_chat_id: int, from_user: dict = None, assistant_id: str | None = None) -> str:
+    cache_key = f"max_session:{client_id}:{assistant_id or 'main'}:{max_chat_id}"
     session_id = cache_service.get(cache_key)
     if session_id:
         return session_id
-    session_id = f"max-{client_id}-{max_chat_id}"
+    session_id = f"max-{client_id}-{assistant_id or 'main'}-{max_chat_id}"
     
     user_info = {}
     if from_user:
@@ -67,7 +73,7 @@ async def get_or_create_max_session(client_id: str, max_chat_id: int, from_user:
         }
 
     async with AsyncSessionLocal() as db:
-        await get_or_create_session(session_id, client_id, metadata=user_info)
+        await get_or_create_session(session_id, client_id, metadata=user_info, assistant_id=assistant_id)
     cache_service.set(cache_key, session_id)
     return session_id
 
@@ -140,6 +146,8 @@ async def get_max_members(bot_token: str, chat_id: int) -> list:
 async def handle_max_message(
     client_id: str, bot_token: str, max_chat_id: int,
     user_text: str, from_user: dict,
+    assistant_id: str | None = None,
+    attachments: list[dict] | None = None,
 ) -> bool:
     log.info("="*50)
     log.info(f"[MAX DEEP DEBUG] FROM_USER: {json.dumps(from_user, ensure_ascii=False)}")
@@ -183,20 +191,20 @@ async def handle_max_message(
 
     if from_user.get("phone_number"):
         user_info["phone"] = from_user.get("phone_number")
-    session_id = f"max-{client_id}-{max_chat_id}"
+    session_id = f"max-{client_id}-{assistant_id or 'main'}-{max_chat_id}"
     
     async with AsyncSessionLocal() as db:
-        await get_or_create_session(session_id, client_id, metadata=user_info)
+        await get_or_create_session(session_id, client_id, metadata=user_info, assistant_id=assistant_id)
 
-    cache_key = f"max_session:{client_id}:{max_chat_id}"
+    cache_key = f"max_session:{client_id}:{assistant_id or 'main'}:{max_chat_id}"
     cache_service.set(cache_key, session_id)
 
-    settings = await get_integration_settings(client_id, "max")
+    settings = await get_integration_settings(client_id, "max", assistant_id=assistant_id)
     if not settings.get("enabled"):
         log.warning(f"MAX message ignored: integration disabled for client {client_id}")
         return False
 
-    assistant_enabled = settings.get("assistant_enabled", True)
+    assistant_enabled = settings.get("assistant_enabled", False)
 
     from sqlalchemy import select
     from ..services.db_service import ChatSession
@@ -210,40 +218,50 @@ async def handle_max_message(
         is_operator = res.scalar_one_or_none()
 
     if is_operator or not assistant_enabled:
-        await save_chat_message(session_id, "user", user_text)
+        await save_chat_message(session_id, "user", user_text, attachments=attachments or None)
+        from .operator_notification_service import (
+            build_incoming_message_notification,
+            notify_operators,
+        )
+        await notify_operators(
+            client_id,
+            build_incoming_message_notification(
+                source="max",
+                sender=from_user.get("name") or from_user.get("username") or str(user_id),
+                message=user_text,
+                is_operator=bool(is_operator),
+            ),
+            assistant_id=assistant_id,
+        )
 
-        autoreply_enabled = settings.get("autoreply_enabled", False)
-        autoreply_message = (settings.get("autoreply_message") or "").strip()
-
-        operator_fallback = ""
-        try:
-            client_config = await get_client_config(client_id)
-            operator_fallback = (client_config.raw.get("bot_settings", {}).get("ai_unavailable_message") or "").strip()
-        except Exception as e:
-            log.warning(f"[MAX] Failed to get ai_unavailable_message for {client_id}: {e}")
-
-        # В ручном режиме (is_operator) отвечаем только явным текстом из интеграции.
-        # Если текст не задан — ничего клиенту не отправляем.
-        if is_operator:
-            reply_text = autoreply_message if (autoreply_enabled and autoreply_message) else ""
-        else:
-            # Для выключенного ассистента (но без явного takeover) допускаем fallback из Интеллекта.
-            reply_text = autoreply_message if (autoreply_enabled and autoreply_message) else operator_fallback
-
-        if reply_text:
-            await send_max_message(bot_token, max_chat_id, reply_text)
-            await save_chat_message(session_id, "assistant", reply_text)
 
         return True
 
+    from .operator_notification_service import (
+        build_incoming_message_notification,
+        notify_operators,
+    )
+    await notify_operators(
+        client_id,
+        build_incoming_message_notification(
+            source="max",
+            sender=from_user.get("name") or from_user.get("username") or str(user_id),
+            message=user_text,
+            is_operator=bool(is_operator),
+        ),
+        assistant_id=assistant_id,
+    )
+
     data = AskData(
         client_id=client_id,
+        assistant_id=assistant_id,
         session_id=session_id,
         message=user_text,
         token=session_id,
         context=None,
         voice_output=False,
         stream=False,
+        attachments=attachments or None,
     )
 
     try:
@@ -322,7 +340,7 @@ async def validate_bot_token(bot_token: str) -> bool:
         return False
 
 
-async def poll_max_updates(client_id: str, bot_token: str):
+async def poll_max_updates(client_id: str, bot_token: str, assistant_id: str | None = None):
     """Опрос обновлений MAX (аналог Polling в Telegram) для работы на localhost."""
     await delete_webhook(bot_token)
     
@@ -374,8 +392,10 @@ async def poll_max_updates(client_id: str, bot_token: str):
                             
                             attachments = message.get("body", {}).get("attachments", [])
                             attachment_links = []
+                            stored_attachments = []
                             found_phone = None
-                            session_id = f"max-{client_id}-{max_chat_id}"
+                            resolved_assistant_id = assistant_id
+                            session_id = f"max-{client_id}-{resolved_assistant_id or 'main'}-{max_chat_id}"
 
                             for att in attachments:
                                 att_type = att.get("type")
@@ -398,21 +418,41 @@ async def poll_max_updates(client_id: str, bot_token: str):
                                     if att_type == "image":
                                         local_url = await download_and_save_file(
                                             url, client_id, session_id=session_id,
-                                            file_name="photo.jpg", category="chat_file"
+                                            file_name="photo.jpg", category="chat_file", assistant_id=resolved_assistant_id
                                         )
                                         attachment_links.append(f"🖼 Фото: {local_url or url}")
+                                        if local_url:
+                                            stored_attachments.append({"name": "photo.jpg", "content_type": "image/jpeg", "local_url": local_url})
                                     elif att_type == "video":
                                         local_url = await download_and_save_file(
                                             url, client_id, session_id=session_id,
-                                            file_name="video.mp4", category="chat_file"
+                                            file_name="video.mp4", category="chat_file", assistant_id=resolved_assistant_id
                                         )
                                         attachment_links.append(f"🎥 Видео: {local_url or url}")
+                                        if local_url:
+                                            stored_attachments.append({"name": "video.mp4", "content_type": "video/mp4", "local_url": local_url})
                                     elif att_type == "file":
                                         local_url = await download_and_save_file(
                                             url, client_id, session_id=session_id,
-                                            file_name=payload.get("file_name", "file"), category="chat_file"
+                                            file_name=payload.get("file_name", "file"), category="chat_file", assistant_id=resolved_assistant_id
                                         )
                                         attachment_links.append(f"📄 Файл: {local_url or url}")
+                                        if local_url:
+                                            stored_attachments.append({"name": payload.get("file_name", "file"), "content_type": payload.get("mime_type", "application/octet-stream"), "local_url": local_url})
+                                    elif att_type in {"audio", "voice"}:
+                                        file_name = payload.get("file_name") or ("voice.ogg" if att_type == "voice" else "audio.mp3")
+                                        content_type = payload.get("mime_type") or ("audio/ogg" if att_type == "voice" else "audio/mpeg")
+                                        local_url = await download_and_save_file(
+                                            url, client_id, session_id=session_id,
+                                            file_name=file_name, category="chat_file", assistant_id=resolved_assistant_id
+                                        )
+                                        attachment_links.append(f"🎤 Аудио: {local_url or url}")
+                                        if local_url:
+                                            stored_attachments.append({"name": file_name, "content_type": content_type, "local_url": local_url})
+                                            from .stt_service import transcribe_voice
+                                            transcript = await transcribe_voice(local_url)
+                                            if transcript:
+                                                attachment_links.append(f"📝 Расшифровка аудио: {transcript}")
                             
                             if attachment_links:
                                 extra_text = "\n".join(attachment_links)
@@ -424,7 +464,8 @@ async def poll_max_updates(client_id: str, bot_token: str):
                                     sender["phone_number"] = found_phone
                                 
                                 await handle_max_message(
-                                    client_id, bot_token, max_chat_id, user_text, sender
+                                    client_id, bot_token, max_chat_id, user_text, sender,
+                                    assistant_id=resolved_assistant_id, attachments=stored_attachments
                                 )
                 elif resp.status_code == 401:
                     log.error(f"[MAX] 401 Unauthorized. Check token.")
@@ -458,12 +499,16 @@ async def send_operator_message_to_max(
         max_chat_id = int(session_id.split("-")[-1])
     except (ValueError, IndexError):
         return False
-    settings = await get_integration_settings(client_id, "max")
+    assistant_id = None
+    parts = session_id.split("-")
+    if len(parts) >= 4:
+        assistant_id = parts[2]
+    settings = await get_integration_settings(client_id, "max", assistant_id=assistant_id)
     bot_token = settings.get("bot_token")
     if not bot_token or not settings.get("enabled"):
         return False
     
-    display_message = f"👤 *{operator_name}*: {message}" if message else ""
+    display_message = f"*{operator_name}*: {message}" if message else ""
     
     success = True
     if display_message:
@@ -492,14 +537,15 @@ async def run_max_polling():
                 client_id = c if isinstance(c, str) else (c.get("client_id") or c.get("id"))
                 if not client_id:
                     continue
-                
-                settings = await get_integration_settings(client_id, "max")
-                if settings.get("enabled") and settings.get("bot_token"):
-                    task_key = f"max_polling_task:{client_id}"
-                    if not cache_service.get(task_key):
-                        log.info(f"!!! ACTIVATING MAX POLLING FOR {client_id} !!!")
-                        asyncio.create_task(poll_max_updates(client_id, settings["bot_token"]))
-                        cache_service.set(task_key, True, expire=3600)
+
+                # У каждого ассистента аккаунта может быть свой MAX-бот.
+                for assistant_id, settings in await list_integration_settings(client_id, "max"):
+                    if settings.get("enabled") and settings.get("bot_token"):
+                        task_key = f"max_polling_task:{client_id}:{assistant_id or 'main'}"
+                        if not cache_service.get(task_key):
+                            log.info(f"!!! ACTIVATING MAX POLLING FOR {client_id}/{assistant_id} !!!")
+                            asyncio.create_task(poll_max_updates(client_id, settings["bot_token"], assistant_id))
+                            cache_service.set(task_key, True, expire=3600)
             
             await asyncio.sleep(30) 
         except Exception as e:

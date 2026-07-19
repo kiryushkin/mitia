@@ -23,14 +23,15 @@ async def vk_webhook(request: Request, client_id: Optional[str] = None):
 
         # 1. Подтверждение адреса сервера
         if type == "confirmation":
-            # Если client_id передан в URL, используем его приоритетно
-            if not client_id:
-                client_id = await find_client_by_group_id(group_id)
-            
-            log.info(f"[VK_CONFIRM] Processing confirmation for group {group_id}, client_id: {client_id}")
-            
-            if client_id:
-                settings = await get_integration_settings(client_id, "vk")
+            # Если client_id передан в URL, используем его приоритетно.
+            resolved = None if client_id else await find_client_by_group_id(group_id)
+            resolved_client_id = client_id or (resolved or {}).get("client_id")
+            assistant_id = (resolved or {}).get("assistant_id")
+
+            log.info(f"[VK_CONFIRM] Processing confirmation for group {group_id}, client_id: {resolved_client_id}, assistant_id: {assistant_id}")
+
+            if resolved_client_id:
+                settings = await get_integration_settings(resolved_client_id, "vk", assistant_id=assistant_id)
                 if isinstance(settings, str):
                     try:
                         import json
@@ -42,23 +43,24 @@ async def vk_webhook(request: Request, client_id: Optional[str] = None):
                 # Если код подтверждения совпал — сохраняем флаг confirmed
                 if code and not settings.get("confirmed"):
                     settings["confirmed"] = True
-                    await save_integration_settings(client_id, "vk", settings)
-                    log.info(f"[VK_CONFIRM] VK webhook confirmed for {client_id}")
-                
-                log.info(f"VK Confirmation request for {client_id}, returning: {code}")
+                    await save_integration_settings(resolved_client_id, "vk", settings, assistant_id=assistant_id)
+                    log.info(f"[VK_CONFIRM] VK webhook confirmed for {resolved_client_id}:{assistant_id}")
+
+                log.info(f"VK Confirmation request for {resolved_client_id}, returning: {code}")
                 return PlainTextResponse(code)
             
             log.warning(f"VK Confirmation: client not found for group_id {group_id}")
             return PlainTextResponse("ok")
 
-        # Ищем клиента и его настройки для остальных событий
-        if not client_id:
-            client_id = await find_client_by_group_id(group_id)
-            
-        if not client_id:
+        # Ищем клиента и конкретного ассистента для остальных событий.
+        resolved = None if client_id else await find_client_by_group_id(group_id)
+        resolved_client_id = client_id or (resolved or {}).get("client_id")
+        assistant_id = (resolved or {}).get("assistant_id")
+
+        if not resolved_client_id:
             return PlainTextResponse("ok")
 
-        settings = await get_integration_settings(client_id, "vk")
+        settings = await get_integration_settings(resolved_client_id, "vk", assistant_id=assistant_id)
         if not settings or not settings.get("enabled"):
             return PlainTextResponse("ok")
 
@@ -86,7 +88,10 @@ async def vk_webhook(request: Request, client_id: Optional[str] = None):
                 access_token = settings.get("access_token")
                 if access_token:
                     vk_attachments = message_obj.get("attachments", [])
-                    await handle_vk_message(client_id, access_token, vk_user_id, user_text or "", vk_attachments)
+                    await handle_vk_message(
+                        resolved_client_id, access_token, vk_user_id, user_text or "", vk_attachments,
+                        assistant_id=assistant_id
+                    )
 
         return PlainTextResponse("ok")
 
@@ -95,15 +100,17 @@ async def vk_webhook(request: Request, client_id: Optional[str] = None):
         return PlainTextResponse("ok")
 
 @router.post("/setup")
-async def setup_vk(request: Request, client_id: str = None, user_data: dict = Depends(verify_token)):
+async def setup_vk(request: Request, client_id: str = None, assistant_id: str | None = None, user_data: dict = Depends(verify_token)):
     """Настройка интеграции ВК."""
     target_client_id = client_id or user_data.get("sub")
     if not target_client_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
         
     data = await request.json()
-    access_token = data.get("access_token", "").strip()
-    group_id = data.get("group_id", "").strip()
+    settings = await get_integration_settings(target_client_id, "vk", assistant_id=assistant_id)
+    # Preserve secrets and identifiers if an unchanged card submits blank values.
+    access_token = data.get("access_token", "").strip() or settings.get("access_token", "")
+    group_id = data.get("group_id", "").strip() or settings.get("group_id", "")
     enabled = data.get("enabled", False)
 
     if enabled and access_token and group_id:
@@ -117,20 +124,20 @@ async def setup_vk(request: Request, client_id: str = None, user_data: dict = De
             # Не блокируем сохранение при ошибке сети
             pass
 
-    settings = await get_integration_settings(target_client_id, "vk")
     settings.update({
-        "access_token": data.get("access_token", "").strip(),
-        "group_id": data.get("group_id", "").strip(),
-        "confirmation_code": data.get("confirmation_code", "").strip(),
-        "secret_key": data.get("secret_key", "").strip(),
-        "assistant_enabled": bool(data.get("assistant_enabled", True)),
-        "autoreply_enabled": bool(data.get("autoreply_enabled", False)),
-        "autoreply_message": data.get("autoreply_message", ""),
+        "access_token": access_token,
+        "group_id": group_id,
+        "confirmation_code": data.get("confirmation_code", "").strip() or settings.get("confirmation_code", ""),
+        "secret_key": data.get("secret_key", "").strip() or settings.get("secret_key", ""),
+        "assistant_enabled": bool(data.get("assistant_enabled", False)),
+        "autoreply_enabled": False,
+        "autoreply_message": "",
         "enabled": data.get("enabled", False),
-        "confirmed": data.get("enabled", False)
+        # Подтверждение выставляет только VK после запроса confirmation на webhook.
+        "confirmed": False
     })
-    await save_integration_settings(target_client_id, "vk", settings)
-    
+    await save_integration_settings(target_client_id, "vk", settings, assistant_id=assistant_id)
+
     return {"status": "success"}
 
 @router.post("/check-token")

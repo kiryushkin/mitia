@@ -13,6 +13,8 @@ from .files import router as files_router
 from .config import router as config_router
 from .analytics import router as analytics_router
 from .sessions import router as sessions_router
+from .assistants import router as assistants_router
+from .notifications import router as notifications_router
 
 router = APIRouter(prefix="/api/chat/admin", tags=["admin"])
 
@@ -20,3 +22,5 @@ router.include_router(files_router)
 router.include_router(config_router)
 router.include_router(analytics_router)
 router.include_router(sessions_router)
+router.include_router(assistants_router)
+router.include_router(notifications_router)

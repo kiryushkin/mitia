@@ -6,7 +6,7 @@
     "knowledge_file_name": "",
     "personality_prompt": "",
     "negative_prompt": "",
-    "ai_unavailable_message": "Я передал ваш вопрос оператору. Пожалуйста, оставьте контакты, мы ответим вам в ближайшее время.",
+    "ai_unavailable_message": "",
     "enable_cache": false,
     "enable_site_search": true
   },

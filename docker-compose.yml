@@ -13,6 +13,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-mitia}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -20,14 +25,23 @@ services:
     restart: always
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   api:
     build: .
     container_name: mitia_api
     restart: always
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-mitia}
       REDIS_HOST: redis
@@ -36,10 +50,19 @@ services:
       YANDEX_API_KEY: ${YANDEX_API_KEY}
       YANDEX_FOLDER_ID: ${YANDEX_FOLDER_ID}
       SUPERADMIN_MASTER_TOKEN: ${SUPERADMIN_MASTER_TOKEN}
+      ADMIN_TOKEN: ${ADMIN_TOKEN}
+      SITE_URL: ${SITE_URL:-https://mitia.pro}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://mitia.pro,https://www.mitia.pro}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      # MAIL_* и остальные секреты берём из env_file (.env), без повторной подстановки ${...},
+      # чтобы спецсимволы в паролях не ломались
     volumes:
       - ./api/chat/uploads:/app/api/chat/uploads
       - ./api/chat/img:/app/api/chat/img
       - ./api/chat/logs:/app/api/chat/logs
+      - ./api/chat/templates:/app/api/chat/templates:ro
+      - whisper_models:/models/whisper
+      - ./.env:/app/.env:ro
     ports:
       - "5007:5007"
 
@@ -51,10 +74,13 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/nginx-ssl.conf:/etc/nginx/conf.d/default.conf:ro
       - ./api/chat/static:/app/api/chat/static:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
     depends_on:
       - api
 
 volumes:
   postgres_data:
+  whisper_models:

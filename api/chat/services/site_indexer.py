@@ -130,9 +130,11 @@ class SiteIndexer:
 
     def __init__(self, base_url: str, client_id: str,
                  priorities: Optional[list] = None, request_timeout: int = 15,
-                 auth_headers: Optional[dict] = None):
+                 auth_headers: Optional[dict] = None,
+                 assistant_id: Optional[str] = None):
         self.base_url = base_url.rstrip('/')
         self.client_id = client_id
+        self.assistant_id = (assistant_id or 'main').strip() or 'main'
         self.priorities = priorities or self.DEFAULT_PRIORITIES
         self.request_timeout = request_timeout
         
@@ -228,7 +230,7 @@ class SiteIndexer:
         # Очищаем векторный индекс, чтобы он пересобрался с новыми данными сайта
         try:
             from .vector_service import VectorService
-            VectorService(self.client_id).clear()
+            VectorService(f"{self.client_id}:{self.assistant_id}").clear()
         except:
             pass
             
@@ -387,7 +389,13 @@ class SiteIndexer:
             embedding = await self._get_embedding(text)
 
             async with AsyncSessionLocal() as db:
-                result = await db.execute(select(SitePage.id, SitePage.content_hash).where(SitePage.url == url, SitePage.client_id == self.client_id))
+                result = await db.execute(
+                    select(SitePage.id, SitePage.content_hash).where(
+                        SitePage.url == url,
+                        SitePage.client_id == self.client_id,
+                        SitePage.assistant_id == self.assistant_id,
+                    )
+                )
                 row = result.fetchone()
                 
                 if row and row[1] == content_hash and not force_update:
@@ -420,6 +428,7 @@ class SiteIndexer:
                 else:
                     new_page = SitePage(
                         client_id=self.client_id,
+                        assistant_id=self.assistant_id,
                         url=url,
                         title=title,
                         content=text[:8000],
@@ -507,7 +516,12 @@ class SiteIndexer:
                     'added': 0, 'updated': 0, 'skipped': 0, 'errors': 0}
 
         async with AsyncSessionLocal() as db:
-            result = await db.execute(select(SitePage.url, SitePage.updated_at).where(SitePage.client_id == self.client_id))
+            result = await db.execute(
+                select(SitePage.url, SitePage.updated_at).where(
+                    SitePage.client_id == self.client_id,
+                    SitePage.assistant_id == self.assistant_id,
+                )
+            )
             rows = result.fetchall()
             existing = {row[0]: (row[1].isoformat() if row[1] else '') for row in rows}
 
@@ -578,7 +592,11 @@ class SiteIndexer:
         try:
             async with AsyncSessionLocal() as db:
                 result = await db.execute(
-                    delete(SitePage).where(SitePage.url == url, SitePage.client_id == self.client_id)
+                    delete(SitePage).where(
+                        SitePage.url == url,
+                        SitePage.client_id == self.client_id,
+                        SitePage.assistant_id == self.assistant_id,
+                    )
                 )
                 await db.commit()
                 return result.rowcount > 0
@@ -627,8 +645,10 @@ class SiteIndexer:
 
         async with AsyncSessionLocal() as db:
             stats = await db.execute(
-                select(func.count(SitePage.id), func.avg(SitePage.doc_length))
-                .where(SitePage.client_id == self.client_id)
+                select(func.count(SitePage.id), func.avg(SitePage.doc_length)).where(
+                    SitePage.client_id == self.client_id,
+                    SitePage.assistant_id == self.assistant_id,
+                )
             )
             n_docs, avg_dl = stats.fetchone()
             if not n_docs: return []
@@ -637,9 +657,11 @@ class SiteIndexer:
             scores = defaultdict(float)
             for term in tokens:
                 df_res = await db.execute(
-                    select(func.count(SiteTerm.page_id))
-                    .join(SitePage)
-                    .where(SitePage.client_id == self.client_id, SiteTerm.term == term)
+                    select(func.count(SiteTerm.page_id)).join(SitePage).where(
+                        SitePage.client_id == self.client_id,
+                        SitePage.assistant_id == self.assistant_id,
+                        SiteTerm.term == term,
+                    )
                 )
                 df = df_res.scalar() or 0
                 if df == 0: continue
@@ -649,7 +671,11 @@ class SiteIndexer:
                 tf_res = await db.execute(
                     select(SiteTerm.page_id, SiteTerm.tf, SitePage.doc_length, SitePage.priority, SiteTerm.in_title)
                     .join(SitePage)
-                    .where(SitePage.client_id == self.client_id, SiteTerm.term == term)
+                    .where(
+                        SitePage.client_id == self.client_id,
+                        SitePage.assistant_id == self.assistant_id,
+                        SiteTerm.term == term,
+                    )
                 )
                 
                 for pid, tf, dl, priority, in_title in tf_res.all():
@@ -756,9 +782,26 @@ class SiteIndexer:
 
     async def get_stats(self) -> dict:
         async with AsyncSessionLocal() as db:
-            page_count = await db.execute(select(func.count(SitePage.id)).where(SitePage.client_id == self.client_id))
-            term_count = await db.execute(select(func.count(func.distinct(SiteTerm.term))).join(SitePage).where(SitePage.client_id == self.client_id))
-            last = await db.execute(select(func.max(SitePage.updated_at)).where(SitePage.client_id == self.client_id))
+            page_count = await db.execute(
+                select(func.count(SitePage.id)).where(
+                    SitePage.client_id == self.client_id,
+                    SitePage.assistant_id == self.assistant_id,
+                )
+            )
+            term_count = await db.execute(
+                select(func.count(func.distinct(SiteTerm.term)))
+                .join(SitePage)
+                .where(
+                    SitePage.client_id == self.client_id,
+                    SitePage.assistant_id == self.assistant_id,
+                )
+            )
+            last = await db.execute(
+                select(func.max(SitePage.updated_at)).where(
+                    SitePage.client_id == self.client_id,
+                    SitePage.assistant_id == self.assistant_id,
+                )
+            )
             
         return {
             'page_count': page_count.scalar() or 0,
@@ -777,16 +820,17 @@ def init_site_indexer(base_url: Optional[str] = None) -> SiteIndexer:
 _client_indexers: dict[str, SiteIndexer] = {}
 
 
-def get_indexer_for_client(client_id: str, site_url: str) -> SiteIndexer:
+def get_indexer_for_client(client_id: str, site_url: str, assistant_id: Optional[str] = None) -> SiteIndexer:
     """
     Возвращает индексер для конкретного клиента.
     Кешируется в памяти.
     """
-    if client_id in _client_indexers:
-        return _client_indexers[client_id]
+    cache_key = f"{client_id}:{(assistant_id or 'main').strip() or 'main'}"
+    if cache_key in _client_indexers:
+        return _client_indexers[cache_key]
 
-    indexer = SiteIndexer(site_url, client_id)
-    _client_indexers[client_id] = indexer
+    indexer = SiteIndexer(site_url, client_id, assistant_id=assistant_id)
+    _client_indexers[cache_key] = indexer
     return indexer
 
 
@@ -811,10 +855,10 @@ if __name__ == '__main__':
 import asyncio
 import concurrent.futures
 
-async def run_indexer_async(client_id: str, base_url: str):
+async def run_indexer_async(client_id: str, base_url: str, assistant_id: Optional[str] = None):
     """Асинхронная обертка для запуска индексатора в фоне."""
     try:
-        indexer = get_indexer_for_client(client_id, base_url)
+        indexer = get_indexer_for_client(client_id, base_url, assistant_id=assistant_id)
         await indexer.full_index(max_pages=100)
         log.info(f"Фоновая индексация для {client_id} завершена.")
     except Exception as e:

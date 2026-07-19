@@ -1,16 +1,11 @@
 import { renderMarkdown } from '../ui/render';
 import { applyTheme } from '../ui/theme';
+import { getWidgetStorageScope } from '../core/config';
 
 export async function loadChatHistory(config, chatToken, els, addMessage, scrollToBottom, generateFingerprint, setCookie) {
     try {
       if (!chatToken) return;
 
-      const realMessages = Array.from(els.messagesContainer.children).filter(msg => !msg.dataset.isPreview && !msg.id.startsWith('mitya-test-'));
-      const isFirstLoad = realMessages.length === 0;
-
-      if (isFirstLoad && config.welcome_msg && config.welcome_msg.trim() !== '') {
-        addMessage(config.welcome_msg, 'bot', { noScroll: true, isWelcome: true }, config, els);
-      }
 
       const isPrivacyEnabled = config.theme?.chat_privacy_enabled !== false;
 
@@ -40,7 +35,7 @@ export async function loadChatHistory(config, chatToken, els, addMessage, scroll
 
       if (res.status === 404 || res.status === 401 || res.status === 403) {
         console.log('[Chat] Session invalid or deleted (403/404). Resetting token...');
-        const tokenKey = `chat_token_${config.clientId}`;
+        const tokenKey = `chat_token_${getWidgetStorageScope(config)}`;
         localStorage.removeItem(tokenKey);
         const newToken = generateFingerprint(config.clientId);
         localStorage.setItem(tokenKey, newToken);
@@ -53,6 +48,11 @@ export async function loadChatHistory(config, chatToken, els, addMessage, scroll
 
       const data = await res.json();
       const history = data.history || [];
+      const welcomeKey = `mitya_welcome_message_${getWidgetStorageScope(config)}_${chatToken}`;
+      const canShowWelcome = history.length === 0
+        && config.welcome_msg?.trim()
+        && !sessionStorage.getItem(welcomeKey)
+        && !els.messagesContainer.querySelector('.message.is-welcome');
       
       if (window.isPrinting || window.isStreamingActive || els.window.classList.contains('active-typing')) {
           return;
@@ -65,24 +65,35 @@ export async function loadChatHistory(config, chatToken, els, addMessage, scroll
       window.lastHistoryHash = currentHash;
 
       els.messagesContainer.querySelectorAll('.message:not(.is-welcome):not([data-is-preview="true"])').forEach(m => m.remove());
+      els.messagesContainer.querySelectorAll('.date-separator').forEach(m => m.remove());
 
       history.forEach((msg, index) => {
         if (msg.content === config.welcome_msg && msg.role === 'assistant') return;
         const isLast = index === history.length - 1;
-        addMessage(msg.content, msg.role === 'assistant' ? 'bot' : 'user', { 
+        const role = msg.author_role === 'operator'
+          ? 'operator'
+          : (msg.role === 'assistant' ? 'bot' : 'user');
+        addMessage(msg.content, role, {
+          author_role: msg.author_role,
           noScroll: true,
           isHistory: true,
           isLastInHistory: isLast,
           timestamp: msg.timestamp,
           files: msg.attachments ? msg.attachments.map(att => ({
-            name: att.name,
-            type: att.content_type,
-            size: 0,
+            name: att.name || att.file_name,
+            type: att.content_type || att.type,
+            size: att.file_size || att.size || 0,
             data: att.data,
+            url: att.url || att.file_url || att.local_url || att.file_path,
             isHistory: true
           })) : []
         }, config, els);
       });
+
+      if (canShowWelcome) {
+        addMessage(config.welcome_msg, 'bot', { noScroll: true, isWelcome: true }, config, els);
+        sessionStorage.setItem(welcomeKey, 'true');
+      }
       
       if (els.window.classList.contains('is-active')) {
           setTimeout(() => {
@@ -154,6 +165,7 @@ export async function sendMessage(manualText, config, chatToken, sessionId, els,
       
       const formData = new FormData();
       formData.append('client_id', config.clientId);
+      if (config.assistantId) formData.append('assistant_id', config.assistantId);
       formData.append('token', chatToken);
       formData.append('message', text || '');
       formData.append('session_id', sessionId || '');

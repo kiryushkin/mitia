@@ -1,27 +1,25 @@
-<!-- ВИДЖЕТ -->
 <div class="bento-card" id="card-widget-design">
     <div class="card-header-flex">
-        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
-            <div class="collapse-icon"></div>
+        <div class="card-title-group">
             <h3 class="card-title">Виджет</h3>
         </div>
-        <!-- Иконки -->
         <div class="card-actions-mini">
-            <button class="icon-btn-sm" onclick="window.resetWidgetToDefault()" title="Восстановить дизайн">
+            <button class="menu-dots-btn" onclick="window.resetWidgetToDefault()" title="Восстановить дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
             </button>
-            <button class="icon-btn-sm" onclick="window.randomizeWidgetDesign()" title="Магический дизайн">
+            <button class="menu-dots-btn" onclick="window.randomizeWidgetDesign()" title="Магический дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+            <button class="icon-btn-sm widget-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
         </div>
     </div>
-    <!-- Параметры виджета -->
+    <p class="card-description">Открытие диалогового окна</p>
     <div class="settings-form">
-        <!-- СТАТУС ВИДЖЕТА-->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Статус</h3>
         </div>
-        <!-- Перемещение виджета по экрану -->
         <div class="setting-item-compact">
             <div class="flex-between">
                 <label class="subtitle-card">Перемещение по экрану</label>
@@ -31,13 +29,10 @@
                 </label>
             </div>
         </div>
-        <!-- ГЕОМЕТРИЯ ВИДЖЕТА -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Геометрия</h3>
         </div>
-        <!-- Параметры геометрии виджета-->
         <div id="widget-geometry-settings-group" class="settings-form-mini">
-            <!-- Размер виджета-->
             <div class="setting-item">
                 <label class="subtitle-card">Размер</label>
                 <div class="range-with-val">
@@ -45,7 +40,6 @@
                     <span class="range-value" id="widget-size-val"></span>
                 </div>
             </div>
-            <!-- Позиция виджета по вертикали -->
             <div class="setting-item">
                 <label class="subtitle-card">Позиция по вертикали</label>
                 <div class="range-with-val">
@@ -53,7 +47,6 @@
                     <span class="range-value" id="widget-top-val"></span>
                 </div>
             </div>
-            <!-- Позиция виджета по горизонтали -->
             <div class="setting-item">
                 <label class="subtitle-card">Позиция по горизонтали</label>
                 <div class="range-with-val">
@@ -61,7 +54,6 @@
                     <span class="range-value" id="widget-left-val"></span>
                 </div>
             </div>
-            <!-- Скругление виджета-->
             <div class="setting-item">
                 <label class="subtitle-card">Скругление</label>
                 <div class="range-with-val">
@@ -70,7 +62,6 @@
                 </div>
             </div>
         </div>
-        <!-- ИЗОБРАЖЕНИЕ ВИДЖЕТА-->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Изображение</h3>
             <label class="switch sm-switch">
@@ -78,9 +69,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры изображения виджета -->
         <div id="widget-img-settings-group" class="settings-form-mini">
-            <!-- Загрузить изображение виджета -->
             <div class="setting-item">
                 <label class="subtitle-card">Загрузить изображение</label>
                 <div class="color-input-group">
@@ -99,7 +88,6 @@
                     <input type="file" id="widget-img-upload" hidden accept=".jpg,.jpeg,.png,.svg,.gif,.webp">
                 </div>
             </div>
-            <!-- Прозрачность виджета -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -108,7 +96,6 @@
                 </div>
             </div>
         </div>
-        <!-- ФОН ВИДЖЕТА -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Фон</h3>
             <label class="switch sm-switch">
@@ -116,9 +103,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры фона виджета -->
         <div id="widget-bg-settings-group" class="settings-form-mini">
-            <!-- Цвет фона виджета -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -129,7 +114,6 @@
                     <input type="text" id="brand-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.widget_bg_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность фона виджета -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -137,7 +121,6 @@
                     <span class="range-value" id="brand-opacity-val"></span>
                 </div>
             </div>
-            <!-- Размытие фона виджета -->
             <div class="setting-item">
                 <label class="subtitle-card">Размытие</label>
                 <div class="range-with-val">
@@ -146,7 +129,6 @@
                 </div>
             </div>
         </div>
-        <!-- ОБВОДКА ВИДЖЕТА-->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Обводка</h3>
             <label class="switch sm-switch">
@@ -154,9 +136,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры обводки виджета -->
         <div id="widget-border-settings-group" class="settings-form-mini">
-            <!-- Цвет обводки виджета -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -167,7 +147,6 @@
                     <input type="text" id="brand-border-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.widget_border_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность обводки виджета -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -175,7 +154,6 @@
                     <span class="range-value" id="brand-border-opacity-val"></span>
                 </div>
             </div>
-            <!-- Тощина обводки виджета -->
             <div class="setting-item">
                 <label class="subtitle-card">Толщина</label>
                 <div class="range-with-val">
@@ -184,7 +162,6 @@
                 </div>
             </div>
         </div>
-        <!-- ТЕНЬ ВИДЖЕТА -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Тень</h3>
             <label class="switch sm-switch">
@@ -192,9 +169,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры тени виджета -->
         <div id="shadow-settings-group" class="settings-form-mini">
-            <!-- Цвет тени виджета -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -205,7 +180,6 @@
                     <input type="text" id="shadow-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.widget_shadow_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность тени виджета -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -213,7 +187,6 @@
                     <span class="range-value" id="shadow-opacity-val"></span>
                 </div>
             </div>
-            <!-- Размытие тени виджета -->
             <div class="setting-item">
                 <label class="subtitle-card">Размытие</label>
                 <div class="range-with-val">
@@ -222,7 +195,6 @@
                 </div>
             </div>
         </div>
-        <!-- ЭФФЕКТЫ ВИДЖЕТА -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold">Эффекты</h3>
             <label class="switch sm-switch">
@@ -230,9 +202,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Список эффектов виджета -->
         <div id="widget-effects-group" class="settings-form-mini">
-            <!-- ЭФФЕКТ ТОЧКИ -->
             <div class="flex-between">
                 <h3 class="subtitle-card-bold-muted">Точки</h3>
                 <label class="switch sm-switch">
@@ -240,9 +210,7 @@
                     <span class="slider round"></span>
                 </label>
             </div>
-            <!-- Параметры эффекта точки -->
             <div id="dots-settings-group" class="settings-form-mini">
-                <!-- Цвет точек -->
                 <div class="setting-item">
                     <label class="subtitle-card">Цвет</label>
                     <div class="color-input-group">
@@ -253,7 +221,6 @@
                         <input type="text" id="icon-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.widget_dots_color" placeholder="Прозрачный">
                     </div>
                 </div>
-                <!-- Прозрачность точек -->
                 <div class="setting-item">
                     <label class="subtitle-card">Прозрачность</label>
                     <div class="range-with-val">
@@ -262,7 +229,6 @@
                     </div>
                 </div>
             </div>
-            <!-- ЭФФЕКТ ПУЛЬСАЦИЯ -->
             <div class="flex-between-compact">
                 <h3 class="subtitle-card-bold-muted">Пульсация</h3>
                 <label class="switch sm-switch">
@@ -270,9 +236,7 @@
                     <span class="slider round"></span>
                 </label>
             </div>
-            <!-- Параметры эффекта пульсация -->
             <div id="pulse-settings-group" class="settings-form-mini">
-                <!-- Цвет эффекта пульсации -->
                 <div class="setting-item">
                     <label class="subtitle-card">Цвет</label>
                     <div class="color-input-group">
@@ -283,7 +247,6 @@
                         <input type="text" id="pulse-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.widget_pulse_color" placeholder="Прозрачный">
                     </div>
                 </div>
-                <!-- Прозрачностьэффекта пульсации -->
                 <div class="setting-item">
                     <label class="subtitle-card">Прозрачность</label>
                     <div class="range-with-val">
@@ -291,7 +254,6 @@
                         <span class="range-value" id="pulse-opacity-val"></span>
                     </div>
                 </div>
-                <!-- Размер эффекта пульсации -->
                 <div class="setting-item">
                     <label class="subtitle-card">Размер</label>
                     <div class="range-with-val">
@@ -299,7 +261,6 @@
                         <span class="range-value" id="pulse-size-val"></span>
                     </div>
                 </div>
-                <!-- Скорость эффекта пульсации -->
                 <div class="setting-item">
                     <label class="subtitle-card">Скорость</label>
                     <div class="range-with-val">
@@ -307,7 +268,6 @@
                         <span class="range-value" id="pulse-speed-val"></span>
                     </div>
                 </div>
-                <!-- Частота эффекта пульсации -->
                 <div class="setting-item">
                     <label class="subtitle-card">Частота</label>
                     <div class="range-with-val">
@@ -316,7 +276,6 @@
                     </div>
                 </div>
             </div>
-            <!-- ЭФФЕКТ БЛИК -->
             <div class="flex-between-compact">
                 <h3 class="subtitle-card-bold-muted">Блик</h3>
                 <label class="switch sm-switch">
@@ -324,9 +283,7 @@
                     <span class="slider round"></span>
                 </label>
             </div>
-            <!-- Параметры эффекта блик -->
             <div id="glare-settings-group" class="settings-form-mini">
-                <!-- Цвет эффекта блика -->
                 <div class="setting-item">
                     <label class="subtitle-card">Цвет</label>
                     <div class="color-input-group">
@@ -337,7 +294,6 @@
                         <input type="text" id="glare-color-hex" spellcheck="false" class="color_hex hex-input-full" data-setting="theme.widget_glare_color" placeholder="Прозрачный">
                     </div>
                 </div>
-                <!-- Прозрачность эффекта блик -->
                 <div class="setting-item">
                     <label class="subtitle-card">Прозрачность</label>
                     <div class="range-with-val">
@@ -345,7 +301,6 @@
                         <span class="range-value" id="widget-glare-opacity-val"></span>
                     </div>
                 </div>
-                <!-- Размер эффекта блик -->
                 <div class="setting-item">
                     <label class="subtitle-card">Размер</label>
                     <div class="range-with-val">
@@ -353,7 +308,6 @@
                         <span class="range-value" id="widget-glare-size-val"></span>
                     </div>
                 </div>
-                <!-- Скорость эффекта блик -->
                 <div class="setting-item">
                     <label class="subtitle-card">Скорость</label>
                     <div class="range-with-val">
@@ -361,7 +315,6 @@
                         <span class="range-value" id="widget-glare-speed-val"></span>
                     </div>
                 </div>
-                <!-- Частота эффекта блик -->
                 <div class="setting-item">
                     <label class="subtitle-card">Частота</label>
                     <div class="range-with-val">
@@ -370,7 +323,6 @@
                     </div>
                 </div>
             </div>
-            <!-- ЭФФЕКТ ДЫХАНИЕ -->
             <div class="flex-between-compact">
                 <h3 class="subtitle-card-bold-muted">Дыхание</h3>
                 <label class="switch sm-switch">
@@ -378,9 +330,7 @@
                     <span class="slider round"></span>
                 </label>
             </div>
-            <!-- Параметры эффекта дыхание -->
             <div id="breathing-settings-group" class="settings-form-mini">
-                <!-- Размер эффекта дыхания -->
                 <div class="setting-item">
                     <label class="subtitle-card">Размер</label>
                     <div class="range-with-val">
@@ -388,7 +338,6 @@
                         <span class="range-value" id="widget-breathing-scale-val"></span>
                     </div>
                 </div>
-                <!-- Скорость эффекта дыхания -->
                 <div class="setting-item">
                     <label class="subtitle-card">Скорость</label>
                     <div class="range-with-val">
@@ -396,7 +345,6 @@
                         <span class="range-value" id="widget-breathing-speed-val"></span>
                     </div>
                 </div>
-                <!-- Частота эффекта дыхания -->
                 <div class="setting-item">
                     <label class="subtitle-card">Частота</label>
                     <div class="range-with-val">

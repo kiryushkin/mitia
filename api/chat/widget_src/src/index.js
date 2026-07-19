@@ -1,4 +1,4 @@
-import { BOOTSTRAP, CONFIG, fetchGoldenStandard } from './core/config';
+import { BOOTSTRAP, CONFIG, fetchGoldenStandard, getWidgetStorageScope } from './core/config';
 import { $, formatDim, isMobile, escapeHtml, showChatAlert } from './utils/dom';
 import { getCookie, setCookie, generateFingerprint } from './core/auth';
 import { buildHTML } from './ui/html';
@@ -29,13 +29,10 @@ import { initMedia, updateMicState } from './core/media';
     await init();
   };
 
-  sessionStorage.removeItem('mitya_welcome_show_count');
-  localStorage.removeItem('mitya_welcome_last_closed');
-
   window.els = {};
   window.shadow = null;
   window.chatToken = null;
-  window.sessionId = localStorage.getItem('mitya_session_id') || null;
+  window.sessionId = null;
   window.attachedFiles = [];
   window.typingAbortController = null;
   window.isStopRequested = false;
@@ -66,7 +63,10 @@ import { initMedia, updateMicState } from './core/media';
     const defaults = await fetchGoldenStandard();
     CONFIG.theme = { ...defaults, ...CONFIG.theme };
 
-    const tokenKey = `chat_token_${CONFIG.clientId}`;
+    const storageScope = getWidgetStorageScope(CONFIG);
+    const tokenKey = `chat_token_${storageScope}`;
+    const sessionKey = `mitya_session_id_${storageScope}`;
+    window.sessionId = localStorage.getItem(sessionKey) || null;
     let chatToken = getCookie(tokenKey) || localStorage.getItem(tokenKey);
     
     if (!chatToken) {
@@ -78,7 +78,7 @@ import { initMedia, updateMicState } from './core/media';
 
     const host = document.getElementById('mitya-widget-host') || document.createElement('div');
     host.id = 'mitya-widget-host';
-    host.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; pointer-events:none;';
+    host.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:2147483647; pointer-events:none;';
     if (!host.parentElement) document.body.appendChild(host);
 
     const shadow = host.shadowRoot || host.attachShadow({ mode: 'open' });
@@ -120,10 +120,10 @@ import { initMedia, updateMicState } from './core/media';
     
     const isAdminPage = window.location.pathname.includes('/admin') || 
                         window.location.search.includes('client_id=') ||
-                        window.location.search.includes('su_token=');
+                        window.location.search.includes('superadmin_view=');
     
-    // Проверяем как настройку темы, так и общий статус активности клиента
-    const isWidgetDisabled = CONFIG.theme?.widget_enabled === false || CONFIG.is_active === false;
+    // Отображение виджета управляется только тумблером интеграции.
+    const isWidgetDisabled = CONFIG.theme?.widget_enabled === false;
 
     if (isWidgetDisabled) {
       console.log('Mitya AI: Widget is disabled by owner or administrator.');
@@ -190,16 +190,36 @@ import { initMedia, updateMicState } from './core/media';
         toggleTypingIndicator(data.is_typing, window.els, CONFIG, { author_role: data.author_role });
     });
 
+    api.on('message', async (data) => {
+        if (!data?.content || !window.els?.messagesContainer) return;
+
+        const typewriterEnabled = CONFIG.theme?.chat_typewriter_enabled === true
+          || CONFIG.theme?.chat_typewriter_enabled === 'true';
+        const role = data.author_role === 'operator' ? 'operator' : 'bot';
+
+        await addMessage(data.content, role, {
+          author_role: data.author_role,
+          files: (data.attachments || []).map(file => ({ ...file, isHistory: true })),
+          isStreaming: typewriterEnabled,
+          timestamp: data.timestamp
+        }, CONFIG, window.els);
+        scrollToBottom(window.els);
+    });
+
     api.on('config_update', (data) => {
         console.log('[WS] Config update received:', data);
         if (data.config) {
-            const oldEnabled = CONFIG.theme?.widget_enabled !== false && CONFIG.is_active !== false;
+            const oldEnabled = CONFIG.theme?.widget_enabled !== false;
             
             // Обновляем локальный конфиг
             if (data.config.theme) Object.assign(CONFIG.theme, data.config.theme);
+            if (data.config.welcome_msg !== undefined) CONFIG.welcome_msg = data.config.welcome_msg;
+            if (data.config.bot_settings) {
+              CONFIG.bot_settings = { ...(CONFIG.bot_settings || {}), ...data.config.bot_settings };
+            }
             if (data.config.is_active !== undefined) CONFIG.is_active = data.config.is_active;
             
-            const newEnabled = CONFIG.theme?.widget_enabled !== false && CONFIG.is_active !== false;
+            const newEnabled = CONFIG.theme?.widget_enabled !== false;
             
             if (oldEnabled && !newEnabled) {
                 console.log('[ChatWidget] Widget disabled via remote config. Hiding...');
@@ -220,7 +240,7 @@ import { initMedia, updateMicState } from './core/media';
             
             // Применяем остальные изменения темы (цвета и т.д.)
             if (newEnabled) {
-                applyTheme(CONFIG.theme, CONFIG, window.els, window.shadow);
+                applyTheme(CONFIG.theme, CONFIG, window.els, window.shadow, data.config);
             }
         }
     });
@@ -239,7 +259,7 @@ import { initMedia, updateMicState } from './core/media';
 
     window.Mitya = window.MityaWidget = {
       open: () => openChat(window.els, CONFIG, (c, t, e) => loadChatHistory(c, t, e, (txt, r, opt) => addMessage(txt, r, opt, CONFIG, window.els), scrollToBottom, generateFingerprint, setCookie), window.chatToken),
-      close: () => closeChat(window.els),
+      close: () => closeChat(window.els, CONFIG),
       toggle: () => toggleChat(window.els, CONFIG, (c, t, e) => loadChatHistory(c, t, e, (txt, r, opt) => addMessage(txt, r, opt, CONFIG, window.els), scrollToBottom, generateFingerprint, setCookie), window.chatToken),
       sendMessage: (text) => handleSendMessage(text),
       updateBubble: () => updateWelcomeBubblePosition(window.els),
@@ -281,12 +301,18 @@ import { initMedia, updateMicState } from './core/media';
             window.MityaWidget._closeAlertInternal();
         }
       },
-      applyTheme: (theme, data) => {
-        if (theme) {
-            Object.assign(CONFIG.theme, theme);
+      applyTheme: (theme, data = {}) => {
+        if (data.welcome_msg !== undefined) {
+          CONFIG.welcome_msg = data.welcome_msg;
+        }
+        if (data.bot_settings) {
+          CONFIG.bot_settings = { ...(CONFIG.bot_settings || {}), ...data.bot_settings };
+        }
 
-            loadGoogleFont(theme.msg_bot_font_family);
-            loadGoogleFont(theme.welcome_font_family);
+        if (theme) {
+          Object.assign(CONFIG.theme, theme);
+
+          loadGoogleFont(theme.msg_bot_font_family);            loadGoogleFont(theme.welcome_font_family);
             loadGoogleFont(theme.inline_btn_accent_font_family);
             loadGoogleFont(theme.inline_btn_neutral_font_family);
             loadGoogleFont(theme.inline_btn_info_font_family);
@@ -312,7 +338,7 @@ import { initMedia, updateMicState } from './core/media';
       }
     };
 
-    if (localStorage.getItem('mitya_chat_open') === 'true' || CONFIG.theme?.window_auto_open === true) {
+    if (localStorage.getItem(`mitya_chat_open_${getWidgetStorageScope(CONFIG)}`) === 'true' || CONFIG.theme?.window_auto_open === true) {
       window.Mitya.open();
     } else {
       loadChatHistory(CONFIG, window.chatToken, window.els, (txt, r, opt) => addMessage(txt, r, opt, CONFIG, window.els), scrollToBottom, generateFingerprint, setCookie);
@@ -327,15 +353,17 @@ import { initMedia, updateMicState } from './core/media';
 
   async function loadConfig() {
     try {
-      const res = await fetch(`${CONFIG.serverUrl}/api/chat/config?client_id=${CONFIG.clientId}&t=${Date.now()}`);
+      const assistantQuery = CONFIG.assistantId ? `&assistant_id=${encodeURIComponent(CONFIG.assistantId)}` : '';
+      const res = await fetch(`${CONFIG.serverUrl}/api/chat/config?client_id=${CONFIG.clientId}${assistantQuery}&t=${Date.now()}`);
       if (res.status === 403) return false;
       
       if (res.ok) {
         const data = await res.json();
         Object.assign(CONFIG, data);
+        CONFIG.assistantId = data.assistant_id || CONFIG.assistantId || 'main';
         if (data.session_id) {
           window.sessionId = data.session_id;
-          localStorage.setItem('mitya_session_id', window.sessionId);
+          localStorage.setItem(`mitya_session_id_${getWidgetStorageScope(CONFIG)}`, window.sessionId);
         }
         if (window.els && window.els.widget) {
           applyTheme(CONFIG.theme, CONFIG, window.els, window.shadow);
@@ -445,7 +473,11 @@ import { initMedia, updateMicState } from './core/media';
           fetch(`${serverUrl}/api/chat/stop`, { 
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ token: window.chatToken, last_text: currentTextToSave }) 
+            body: JSON.stringify({
+              token: window.chatToken,
+              client_id: CONFIG.clientId,
+              last_text: currentTextToSave
+            })
           }).catch(() => {});
         }
         window.els.window.classList.remove('active-typing', 'is-typing-stream');
@@ -505,7 +537,7 @@ import { initMedia, updateMicState } from './core/media';
         return;
       }
 
-      const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt', '.xls', '.xlsx', '.ppt', '.pptx', '.jpg', '.jpeg', '.png', '.webp', '.tiff', '.bmp', '.svg'];
+      const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt', '.xls', '.xlsx', '.ppt', '.pptx', '.jpg', '.jpeg', '.png', '.webp', '.tiff', '.bmp'];
       
       files.forEach(file => {
         const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
@@ -582,7 +614,7 @@ import { initMedia, updateMicState } from './core/media';
         e.stopPropagation();
         if (window.els.welcome) {
           window.els.welcome.classList.remove('is-visible', 'show');
-          sessionStorage.setItem('mitya_welcome_closed', 'true');
+          sessionStorage.setItem(`mitya_welcome_closed_${getWidgetStorageScope(CONFIG)}`, 'true');
           setTimeout(() => { window.els.welcome.style.display = 'none'; }, 400);
         }
       }

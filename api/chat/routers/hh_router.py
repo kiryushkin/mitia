@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 import secrets
 import urllib.parse
@@ -38,7 +39,7 @@ def _masked_state(state: str) -> str:
 
 
 @router.get("/oauth/start")
-async def hh_oauth_start(request: Request, client_id: str, token_data: dict = Depends(verify_token)):
+async def hh_oauth_start(request: Request, client_id: str, assistant_id: str | None = None, token_data: dict = Depends(verify_token)):
     if token_data["sub"] != client_id and token_data["sub"] != "admin":
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -68,6 +69,7 @@ async def hh_oauth_start(request: Request, client_id: str, token_data: dict = De
         state_key,
         {
             "client_id": client_id,
+            "assistant_id": assistant_id,
             "redirect_uri": redirect_uri,
         },
         expire=600,
@@ -111,6 +113,7 @@ async def hh_oauth_callback(request: Request, code: str = "", state: str = "", e
         return HTMLResponse(content="<html><body><p>Состояние OAuth истекло. Повторите подключение.</p></body></html>", status_code=400)
 
     client_id = state_info.get("client_id")
+    assistant_id = state_info.get("assistant_id")
     redirect_uri = state_info.get("redirect_uri")
 
     app_client_id = (HH_CONFIG.get("client_id") or "").strip()
@@ -146,35 +149,84 @@ async def hh_oauth_callback(request: Request, code: str = "", state: str = "", e
             me_data = me_resp.json() if me_resp.headers.get("content-type", "").startswith("application/json") else {}
             account_name = me_data.get("email") or me_data.get("first_name") or "hh.ru"
 
-        settings = await get_integration_settings(client_id, "hh")
+        settings = await get_integration_settings(client_id, "hh", assistant_id=assistant_id)
         settings.update(
             {
-                "enabled": True,
+                # OAuth stores authorization only. The admin confirms enabling
+                # the channel with the integrations form after returning.
+                "enabled": False,
                 "connected": True,
                 "access_token": access_token,
                 "refresh_token": refresh_token,
                 "expires_in": expires_in,
                 "account_name": account_name,
                 "redirect_uri": redirect_uri,
+                "assistant_enabled": False,
+                "autoreply_enabled": False,
+                "autoreply_message": "",
             }
         )
-        await save_integration_settings(client_id, "hh", settings)
+        await save_integration_settings(client_id, "hh", settings, assistant_id=assistant_id)
 
         if matched_key:
             cache_service.delete(matched_key.replace(cache_service.prefix, ""))
 
-        return HTMLResponse(content="<html><body><script>window.close && window.close();</script><p>HeadHunter подключен. Это окно можно закрыть.</p></body></html>")
+        params = {"client_id": str(client_id or "")}
+        if assistant_id:
+            params["assistant_id"] = str(assistant_id)
+        params["hh_authorized"] = "1"
+        target = "/admin/integrations?" + urllib.parse.urlencode(params)
+        target_json = json.dumps(target)
+        return HTMLResponse(content=(
+            "<html><body><script>"
+            f"const target = {target_json};"
+            "if (window.opener) { window.opener.location.href = target; window.close(); } "
+            "else { window.location.replace(target); }"
+            "</script><p>HeadHunter подключен. Возвращаемся в панель управления...</p></body></html>"
+        ))
     except Exception as exc:
         log.error("[HH_OAUTH] Callback error: %s", exc)
         return HTMLResponse(content="<html><body><p>Ошибка подключения HeadHunter.</p></body></html>", status_code=500)
 
 
-@router.get("/status")
-async def hh_status(client_id: str, token_data: dict = Depends(verify_token)):
+@router.post("/verify")
+async def hh_verify(client_id: str, assistant_id: str | None = None, token_data: dict = Depends(verify_token)):
+    """Проверяет, что сохранённый OAuth-токен HH ещё действителен."""
     if token_data["sub"] != client_id and token_data["sub"] != "admin":
         raise HTTPException(status_code=403, detail="Access denied")
 
-    settings = await get_integration_settings(client_id, "hh")
+    settings = await get_integration_settings(client_id, "hh", assistant_id=assistant_id)
+    access_token = str(settings.get("access_token") or "").strip()
+    if not access_token:
+        return {"status": "error", "connected": False, "error": "HeadHunter не авторизован"}
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.get(
+                f"{HH_CONFIG.get('api_url', 'https://api.hh.ru')}/me",
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                "status": "ok",
+                "connected": True,
+                "account_name": data.get("email") or data.get("first_name") or settings.get("account_name", "hh.ru"),
+            }
+        log.warning("[HH_VERIFY] Token rejected for %s: HTTP %s", client_id, response.status_code)
+    except Exception as error:
+        log.warning("[HH_VERIFY] Request failed for %s: %s", client_id, error)
+        return {"status": "error", "connected": False, "error": "Не удалось проверить доступ к hh.ru"}
+
+    return {"status": "error", "connected": False, "error": "Авторизация HeadHunter истекла. Смените аккаунт hh.ru."}
+
+
+@router.get("/status")
+async def hh_status(client_id: str, assistant_id: str | None = None, token_data: dict = Depends(verify_token)):
+    if token_data["sub"] != client_id and token_data["sub"] != "admin":
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    settings = await get_integration_settings(client_id, "hh", assistant_id=assistant_id)
     connected = bool(settings.get("connected") or settings.get("access_token"))
     return {
         "status": "ok",
@@ -186,11 +238,11 @@ async def hh_status(client_id: str, token_data: dict = Depends(verify_token)):
 
 
 @router.post("/disconnect")
-async def hh_disconnect(client_id: str, token_data: dict = Depends(verify_token)):
+async def hh_disconnect(client_id: str, assistant_id: str | None = None, token_data: dict = Depends(verify_token)):
     if token_data["sub"] != client_id and token_data["sub"] != "admin":
         raise HTTPException(status_code=403, detail="Access denied")
 
-    settings = await get_integration_settings(client_id, "hh")
+    settings = await get_integration_settings(client_id, "hh", assistant_id=assistant_id)
     settings.update(
         {
             "enabled": False,
@@ -201,5 +253,5 @@ async def hh_disconnect(client_id: str, token_data: dict = Depends(verify_token)
             "account_name": "",
         }
     )
-    await save_integration_settings(client_id, "hh", settings)
+    await save_integration_settings(client_id, "hh", settings, assistant_id=assistant_id)
     return {"status": "ok"}

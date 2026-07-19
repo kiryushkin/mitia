@@ -1,12 +1,28 @@
 export const IntegrationsModule = {
     state: {
-        integrations: {}
+        integrations: {},
+        loadedIntegrations: new Set(),
+        dirtyIntegrations: new Set()
     },
     
     async init() {
         console.log('Integrations module initialized');
         this.bindEvents();
         await this.loadData();
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('hh_authorized') === '1') {
+            const hhToggle = document.querySelector('[data-integration="hh"][data-field="enabled"]');
+            if (hhToggle) {
+                hhToggle.checked = true;
+                this.state.dirtyIntegrations.add('hh');
+                const badge = document.getElementById('hh-status');
+                if (badge) {
+                    badge.className = 'status-badge connected';
+                    badge.textContent = 'Проверено — сохраните изменения';
+                }
+            }
+            window.history.replaceState({}, '', window.location.pathname);
+        }
         this.syncInputsState();
     },
 
@@ -92,18 +108,6 @@ export const IntegrationsModule = {
 
         const emailInput = document.querySelector('[data-integration="email"][data-field="email_address"]');
         const emailPassInput = document.querySelector('[data-integration="email"][data-field="email_password"]');
-        const emailSyncCheckbox = document.getElementById('email-sync-history-checkbox');
-        
-        if (emailSyncCheckbox) {
-            emailSyncCheckbox.addEventListener('change', () => {
-                if (this._fillingData) return;
-                
-                const modeContainer = document.getElementById('email-sync-mode-container');
-                if (modeContainer) {
-                    modeContainer.style.display = emailSyncCheckbox.checked ? 'block' : 'none';
-                }
-            });
-        }
 
         document.addEventListener('click', (e) => {
             const btn = e.target.closest('.sync-mode-btn');
@@ -115,6 +119,13 @@ export const IntegrationsModule = {
                     const input = document.getElementById('email-sync-mode-input');
                     if (input) input.value = btn.dataset.mode;
                 }
+                return;
+            }
+
+            const modeButton = e.target.closest('[data-integration-mode-value]');
+            if (modeButton) {
+                const picker = modeButton.closest('[data-integration-mode]');
+                if (picker) this.setIntegrationMode(picker.dataset.integrationMode, modeButton.dataset.integrationModeValue);
             }
         });
 
@@ -141,65 +152,15 @@ export const IntegrationsModule = {
                 return;
             }
 
-            const hhConnectBtn = e.target.closest('#hh-connect-btn');
-            if (hhConnectBtn) {
-                try {
-                    const clientId = localStorage.getItem('chat_client_id') || 'mitia_assistant';
-                    const authToken = localStorage.getItem('chatadmin_auth_token');
-                    const res = await fetch(`/api/chat/hh/oauth/start?client_id=${clientId}`, {
-                        headers: { 'Authorization': `Bearer ${authToken}` }
+            const copyVkCallbackBtn = e.target.closest('#copy-vk-callback-btn');
+            if (copyVkCallbackBtn) {
+                const callbackUrl = document.getElementById('vk-callback-url')?.textContent?.trim();
+                if (callbackUrl) {
+                    navigator.clipboard.writeText(callbackUrl).then(() => {
+                        const originalText = copyVkCallbackBtn.textContent;
+                        copyVkCallbackBtn.textContent = 'Скопировано';
+                        setTimeout(() => { copyVkCallbackBtn.textContent = originalText; }, 1500);
                     });
-                    const data = await res.json();
-                    if (!res.ok || data.status !== 'ok' || !data.auth_url) {
-                        throw new Error(data.error || 'Не удалось начать авторизацию HeadHunter');
-                    }
-
-                    const popup = window.open(data.auth_url, 'hhOAuth', 'width=640,height=760,menubar=no,toolbar=no,status=no');
-                    if (!popup) {
-                        window.location.href = data.auth_url;
-                        return;
-                    }
-
-                    const pollStart = Date.now();
-                    const poll = async () => {
-                        try {
-                            const statusRes = await fetch(`/api/chat/hh/status?client_id=${clientId}`, {
-                                headers: { 'Authorization': `Bearer ${authToken}` }
-                            });
-                            if (statusRes.ok) {
-                                const statusData = await statusRes.json();
-                                if (statusData.connected) {
-                                    if (!this.state.integrations.hh) this.state.integrations.hh = {};
-                                    this.state.integrations.hh.connected = true;
-                                    this.state.integrations.hh.enabled = true;
-                                    this.state.integrations.hh.account_name = statusData.account_name || '';
-                                    const hhToggle = document.querySelector('[data-integration="hh"][data-field="enabled"]');
-                                    if (hhToggle) hhToggle.checked = true;
-                                    this.fillData();
-                                    const hhBtn = document.getElementById('hh-connect-btn');
-                                    if (hhBtn) hhBtn.textContent = 'Переподключить через hh.ru';
-                                    if (window.showAlert) {
-                                        window.showAlert('tmpl-success-alert', { title: 'Готово', text: 'HeadHunter успешно подключен.' });
-                                    }
-                                    return;
-                                }
-                            }
-                        } catch (_) {}
-
-                        const popupClosed = popup.closed;
-                        const timedOut = Date.now() - pollStart > 180000;
-                        if (!popupClosed && !timedOut) {
-                            setTimeout(poll, 1500);
-                        }
-                    };
-
-                    setTimeout(poll, 1500);
-                } catch (err) {
-                    if (window.showAlert) {
-                        window.showAlert('tmpl-error-alert', { title: 'Ошибка', text: err.message });
-                    } else {
-                        alert('Ошибка: ' + err.message);
-                    }
                 }
                 return;
             }
@@ -237,7 +198,9 @@ export const IntegrationsModule = {
                     try {
                         const clientId = localStorage.getItem('chat_client_id') || 'mitia_assistant';
                         const authToken = localStorage.getItem('chatadmin_auth_token');
-                        const res = await fetch(`/api/chat/telegram/check-token?client_id=${clientId}`, {
+                        const assistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                        const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                        const res = await fetch(`/api/chat/telegram/check-token?client_id=${clientId}${assistantQuery}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -259,15 +222,15 @@ export const IntegrationsModule = {
                         }
                     } catch (err) {
                         if (window.showAlert) {
-                            window.showAlert('tmpl-error-alert', { title: 'Ошибка', text: err.message });
+                            window.showAlert('tmpl-error-alert', { title: 'Ошибка проверки Telegram', text: err.message });
                         } else {
                             alert('Ошибка: ' + err.message);
                         }
-                        target.checked = false;
+                        // Временная ошибка proxy/API не должна стирать выбор пользователя.
                         const statusBadge = document.getElementById('telegram-status');
                         if (statusBadge) {
-                            statusBadge.className = 'status-badge disconnected';
-                            statusBadge.textContent = 'Не подключено';
+                            statusBadge.className = 'status-badge connecting';
+                            statusBadge.textContent = 'Требуется повторная проверка';
                         }
                     }
                 } else {
@@ -279,127 +242,6 @@ export const IntegrationsModule = {
                     if (!this.state.integrations.telegram) this.state.integrations.telegram = {};
                     this.state.integrations.telegram.enabled = false;
                     this.syncInputsState();
-                }
-            }
-
-            if (target.matches('[data-integration="telegram"][data-field="autoreply_enabled"]')) {
-                const assistantCheckbox = document.getElementById('tg-assistant-enabled-checkbox');
-                const assistantSettings = document.getElementById('tg-assistant-settings');
-                const autoreplySettings = document.getElementById('tg-autoreply-settings');
-
-                if (target.checked && assistantCheckbox) {
-                    assistantCheckbox.checked = false;
-                    if (assistantSettings) {
-                        assistantSettings.style.display = 'none';
-                    }
-                }
-
-                if (autoreplySettings) {
-                    autoreplySettings.style.display = target.checked ? 'block' : 'none';
-                }
-            }
-
-            if (target.matches('[data-integration="telegram"][data-field="assistant_enabled"]')) {
-                const assistantSettings = document.getElementById('tg-assistant-settings');
-                const autoreplyCheckbox = document.getElementById('tg-autoreply-enabled-checkbox');
-                const autoreplySettings = document.getElementById('tg-autoreply-settings');
-
-                if (assistantSettings) {
-                    assistantSettings.style.display = target.checked ? 'block' : 'none';
-                }
-                if (target.checked && autoreplyCheckbox) {
-                    autoreplyCheckbox.checked = false;
-                    if (autoreplySettings) {
-                        autoreplySettings.style.display = 'none';
-                    }
-                }
-            }
-
-            if (target.matches('[data-integration="email"][data-field="assistant_enabled"]')) {
-                const autoreplyCheckbox = document.getElementById('email-autoreply-enabled-checkbox');
-                const autoreplySettings = document.getElementById('email-autoreply-settings');
-                if (target.checked && autoreplyCheckbox) {
-                    autoreplyCheckbox.checked = false;
-                    if (autoreplySettings) {
-                        autoreplySettings.style.display = 'none';
-                    }
-                }
-            }
-
-            if (target.matches('[data-integration="max"][data-field="assistant_enabled"]')) {
-                const autoreplyCheckbox = document.getElementById('max-autoreply-enabled-checkbox');
-                const autoreplySettings = document.getElementById('max-autoreply-settings');
-                if (target.checked && autoreplyCheckbox) {
-                    autoreplyCheckbox.checked = false;
-                    if (autoreplySettings) {
-                        autoreplySettings.style.display = 'none';
-                    }
-                }
-            }
-
-            if (target.matches('[data-integration="vk"][data-field="assistant_enabled"]')) {
-                const autoreplyCheckbox = document.getElementById('vk-autoreply-enabled-checkbox');
-                const autoreplySettings = document.getElementById('vk-autoreply-settings');
-                if (target.checked && autoreplyCheckbox) {
-                    autoreplyCheckbox.checked = false;
-                    if (autoreplySettings) {
-                        autoreplySettings.style.display = 'none';
-                    }
-                }
-            }
-
-            if (target.matches('[data-integration="widget"][data-field="assistant_enabled"]')) {
-                const autoreplyCheckbox = document.getElementById('widget-autoreply-enabled-checkbox');
-                const autoreplySettings = document.getElementById('widget-autoreply-settings');
-                if (target.checked && autoreplyCheckbox) {
-                    autoreplyCheckbox.checked = false;
-                    if (autoreplySettings) {
-                        autoreplySettings.style.display = 'none';
-                    }
-                }
-            }
-
-            if (target.matches('[data-integration="email"][data-field="autoreply_enabled"]')) {
-                const assistantCheckbox = document.getElementById('email-assistant-enabled-checkbox');
-                const autoreplySettings = document.getElementById('email-autoreply-settings');
-                if (target.checked && assistantCheckbox) {
-                    assistantCheckbox.checked = false;
-                }
-                if (autoreplySettings) {
-                    autoreplySettings.style.display = target.checked ? 'block' : 'none';
-                }
-            }
-
-            if (target.matches('[data-integration="max"][data-field="autoreply_enabled"]')) {
-                const assistantCheckbox = document.querySelector('[data-integration="max"][data-field="assistant_enabled"]');
-                const autoreplySettings = document.getElementById('max-autoreply-settings');
-                if (target.checked && assistantCheckbox) {
-                    assistantCheckbox.checked = false;
-                }
-                if (autoreplySettings) {
-                    autoreplySettings.style.display = target.checked ? 'block' : 'none';
-                }
-            }
-
-            if (target.matches('[data-integration="vk"][data-field="autoreply_enabled"]')) {
-                const assistantCheckbox = document.getElementById('vk-assistant-enabled-checkbox');
-                const autoreplySettings = document.getElementById('vk-autoreply-settings');
-                if (target.checked && assistantCheckbox) {
-                    assistantCheckbox.checked = false;
-                }
-                if (autoreplySettings) {
-                    autoreplySettings.style.display = target.checked ? 'block' : 'none';
-                }
-            }
-
-            if (target.matches('[data-integration="widget"][data-field="autoreply_enabled"]')) {
-                const assistantCheckbox = document.getElementById('widget-assistant-enabled-checkbox');
-                const autoreplySettings = document.getElementById('widget-autoreply-settings');
-                if (target.checked && assistantCheckbox) {
-                    assistantCheckbox.checked = false;
-                }
-                if (autoreplySettings) {
-                    autoreplySettings.style.display = target.checked ? 'block' : 'none';
                 }
             }
 
@@ -433,7 +275,9 @@ export const IntegrationsModule = {
                     try {
                         const clientId = localStorage.getItem('chat_client_id') || 'mitia_assistant';
                         const authToken = localStorage.getItem('chatadmin_auth_token');
-                        const res = await fetch(`/api/chat/max/check-token?client_id=${clientId}`, {
+                        const activeAssistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                        const assistantQuery = activeAssistantId ? `&assistant_id=${encodeURIComponent(activeAssistantId)}` : '';
+                        const res = await fetch(`/api/chat/max/check-token?client_id=${clientId}${assistantQuery}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -471,6 +315,74 @@ export const IntegrationsModule = {
                 }
 
                 this.syncInputsState();
+            }
+
+            if (target.matches('[data-integration="ok"][data-field="enabled"]')) {
+                const isEnabled = target.checked;
+                const tokenInput = document.getElementById('ok-access-token-input');
+                const accessToken = tokenInput ? tokenInput.value.trim() : '';
+                const statusBadge = document.getElementById('ok-status');
+
+                if (!isEnabled) {
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge disconnected';
+                        statusBadge.textContent = 'Не подключено';
+                    }
+                    this.syncInputsState();
+                    return;
+                }
+
+                if (!accessToken) {
+                    target.checked = false;
+                    if (window.showAlert) {
+                        window.showAlert('tmpl-error-alert', { title: 'Ошибка Одноклассников', text: 'Введите ключ доступа Bot API перед включением.' });
+                    } else {
+                        alert('Введите ключ доступа Bot API перед включением.');
+                    }
+                    this.syncInputsState();
+                    return;
+                }
+
+                if (statusBadge) {
+                    statusBadge.className = 'status-badge connecting';
+                    statusBadge.textContent = 'Проверка...';
+                }
+
+                try {
+                    const clientId = localStorage.getItem('chat_client_id') || 'mitia_assistant';
+                    const authToken = localStorage.getItem('chatadmin_auth_token');
+                    const assistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                    const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                    const response = await fetch(`/api/chat/ok/check-token?client_id=${clientId}${assistantQuery}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`
+                        },
+                        body: JSON.stringify({ access_token: accessToken })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || data.status !== 'ok') {
+                        throw new Error(data.error || 'Ключ Bot API не прошёл проверку.');
+                    }
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge connected';
+                        statusBadge.textContent = 'Проверено — сохраните изменения';
+                    }
+                    this.syncInputsState();
+                } catch (err) {
+                    target.checked = false;
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge disconnected';
+                        statusBadge.textContent = 'Не подключено';
+                    }
+                    if (window.showAlert) {
+                        window.showAlert('tmpl-error-alert', { title: 'Ошибка Одноклассников', text: err.message });
+                    } else {
+                        alert('Ошибка: ' + err.message);
+                    }
+                    this.syncInputsState();
+                }
             }
 
             if (target.matches('[data-integration="vk"][data-field="enabled"]')) {
@@ -570,7 +482,9 @@ export const IntegrationsModule = {
                     try {
                         const clientId = localStorage.getItem('chat_client_id') || 'mitia_assistant';
                         const authToken = localStorage.getItem('chatadmin_auth_token');
-                        const res = await fetch(`/api/chat/widget/verify?client_id=${clientId}`, {
+                        const activeAssistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                        const assistantQuery = activeAssistantId ? `&assistant_id=${encodeURIComponent(activeAssistantId)}` : '';
+                        const res = await fetch(`/api/chat/widget/verify?client_id=${clientId}${assistantQuery}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -634,37 +548,63 @@ export const IntegrationsModule = {
                 const statusBadge = document.getElementById('hh-status');
 
                 if (isEnabled && !isConnected) {
-                    if (window.showAlert) {
-                        window.showAlert('tmpl-error-alert', { title: 'Ошибка', text: 'Сначала выполните подключение через кнопку «Подключить через hh.ru».' });
-                    } else {
-                        alert('Сначала подключите HeadHunter через OAuth.');
-                    }
-                    target.checked = false;
-                }
-
-                if (!isEnabled) {
                     try {
+                        if (statusBadge) {
+                            statusBadge.className = 'status-badge connecting';
+                            statusBadge.textContent = 'Авторизация...';
+                        }
                         const clientId = localStorage.getItem('chat_client_id') || 'mitia_assistant';
                         const authToken = localStorage.getItem('chatadmin_auth_token');
-                        await fetch(`/api/chat/hh/disconnect?client_id=${clientId}`, {
-                            method: 'POST',
+                        const assistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                        const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                        const response = await fetch(`/api/chat/hh/oauth/start?client_id=${clientId}${assistantQuery}`, {
                             headers: { 'Authorization': `Bearer ${authToken}` }
                         });
-                        if (!this.state.integrations.hh) this.state.integrations.hh = {};
-                        this.state.integrations.hh.connected = false;
-                        this.state.integrations.hh.enabled = false;
-                        this.state.integrations.hh.account_name = '';
-                        this.state.integrations.hh.access_token = '';
-                        this.state.integrations.hh.refresh_token = '';
-                    } catch (err) {
-                        console.error('HH disconnect error:', err);
+                        const data = await response.json();
+                        if (!response.ok || data.status !== 'ok' || !data.auth_url) {
+                            throw new Error(data.error || 'Не удалось начать авторизацию HeadHunter.');
+                        }
+                        window.location.href = data.auth_url;
+                        return;
+                    } catch (error) {
+                        target.checked = false;
+                        if (statusBadge) {
+                            statusBadge.className = 'status-badge disconnected';
+                            statusBadge.textContent = 'Не подключено';
+                        }
+                        if (window.showAlert) window.showAlert('tmpl-error-alert', { title: 'Ошибка HeadHunter', text: error.message });
+                    }
+                } else if (isEnabled) {
+                    try {
+                        if (statusBadge) {
+                            statusBadge.className = 'status-badge connecting';
+                            statusBadge.textContent = 'Проверка...';
+                        }
+                        const clientId = localStorage.getItem('chat_client_id') || 'mitia_assistant';
+                        const authToken = localStorage.getItem('chatadmin_auth_token');
+                        const assistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                        const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                        const response = await fetch(`/api/chat/hh/verify?client_id=${clientId}${assistantQuery}`, {
+                            method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` },
+                        });
+                        const result = await response.json();
+                        if (!response.ok || result.status !== 'ok' || !result.connected) throw new Error(result.error || 'Авторизация HeadHunter истекла.');
+                        this.state.integrations.hh.connected = true;
+                        this.state.integrations.hh.account_name = result.account_name || this.state.integrations.hh.account_name;
+                    } catch (error) {
+                        target.checked = false;
+                        if (statusBadge) {
+                            statusBadge.className = 'status-badge disconnected';
+                            statusBadge.textContent = 'Требуется подключение';
+                        }
+                        if (window.showAlert) window.showAlert('tmpl-error-alert', { title: 'HeadHunter недоступен', text: error.message });
                     }
                 }
 
-                const connected = !!(target.checked && isConnected);
+                const connected = !!(target.checked && (this.state.integrations.hh?.connected || this.state.integrations.hh?.access_token));
                 if (statusBadge) {
                     statusBadge.className = `status-badge ${connected ? 'connected' : 'disconnected'}`;
-                    statusBadge.textContent = connected ? 'Подключено' : 'Не подключено';
+                    statusBadge.textContent = connected ? 'Проверено — сохраните изменения' : 'Не подключено';
                 }
                 this.syncInputsState();
             }
@@ -794,24 +734,27 @@ export const IntegrationsModule = {
                         const data = await res.json();
 
                         if (res.ok && data.status === 'ok') {
+                            if (!this.state.integrations.email) this.state.integrations.email = {};
+                            this.state.integrations.email.enabled = true;
+                            this.state.integrations.email.connection_verified = true;
+                            this.state.dirtyIntegrations.add('email');
                             if (statusBadge) {
                                 statusBadge.className = 'status-badge connected';
                                 statusBadge.textContent = 'Подключено';
                             }
                             this.syncInputsState();
-                            
-                            const cId = localStorage.getItem('chat_client_id') || 'mitia_assistant';
-                            if (this.startEmailSyncPolling) {
-                                this.startEmailSyncPolling(cId);
-                            }
                         } else {
-                            throw new Error(data.error || 'Ошибка авторизации почты');
+                            throw new Error(data.error || data.detail || 'Не удалось подключиться к почте. Проверьте адрес, пароль приложения и настройки IMAP/SMTP.');
                         }
                     } catch (err) {
+                        if (!this.state.integrations.email) this.state.integrations.email = {};
+                        this.state.integrations.email.enabled = false;
+                        this.state.integrations.email.connection_verified = false;
+                        this.state.dirtyIntegrations.add('email');
                         if (window.showAlert) {
-                            window.showAlert('tmpl-error-alert', { title: 'Ошибка', text: err.message });
+                            window.showAlert('tmpl-error-alert', { title: 'Ошибка Email', text: err.message || 'Не удалось подключиться к почте. Проверьте адрес, пароль приложения и настройки IMAP/SMTP.' });
                         } else {
-                            alert('Ошибка: ' + err.message);
+                            alert(err.message || 'Не удалось подключиться к почте. Проверьте адрес, пароль приложения и настройки IMAP/SMTP.');
                         }
                         target.checked = false;
                         if (statusBadge) {
@@ -971,23 +914,31 @@ export const IntegrationsModule = {
         try {
             const clientId = localStorage.getItem('chat_client_id') || 'mitia_assistant';
             const token = localStorage.getItem('chatadmin_auth_token');
+            const assistantId = window.AdminApp?.getActiveAssistantId?.();
+            const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
             const [integrationsRes, configRes] = await Promise.all([
-                fetch(`/api/chat/admin/integrations?client_id=${clientId}`, {
+                fetch(`/api/chat/admin/integrations?client_id=${clientId}${assistantQuery}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch(`/api/chat/admin/config?client_id=${clientId}`, {
+                fetch(`/api/chat/admin/config?client_id=${clientId}${assistantQuery}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);
             if (integrationsRes.ok) {
                 const data = await integrationsRes.json();
-                this.state.integrations = data.integrations || {};
-                if (!this.state.integrations.hh) this.state.integrations.hh = {};
-                const hhBtn = document.getElementById('hh-connect-btn');
-                if (hhBtn) {
-                    const hhConnected = !!(this.state.integrations.hh.connected || this.state.integrations.hh.access_token);
-                    hhBtn.textContent = hhConnected ? 'Переподключить через hh.ru' : 'Подключить через hh.ru';
+                const receivedIntegrations = data.integrations;
+                if (!receivedIntegrations || typeof receivedIntegrations !== 'object' || Array.isArray(receivedIntegrations)) {
+                    throw new Error('Сервер вернул неполные настройки интеграций');
                 }
+
+                // Не затираем уже загруженную карточку пустым/частичным ответом API.
+                // Это особенно важно после перехода между разделами и обновления страницы.
+                this.state.integrations = {
+                    ...this.state.integrations,
+                    ...receivedIntegrations
+                };
+                Object.keys(receivedIntegrations).forEach((name) => this.state.loadedIntegrations.add(name));
+                if (!this.state.integrations.hh) this.state.integrations.hh = {};
 
                 if (!this.state.integrations.notifications) {
                     const legacyAdminIds = this.state.integrations.telegram?.admin_id || '';
@@ -1067,10 +1018,28 @@ export const IntegrationsModule = {
 
             if (copyBtn) copyBtn.disabled = false;
 
-            const protocol = window.location.protocol;
-            const host = window.location.host;
-            const scriptUrl = `${protocol}//${host}/api/chat/chat-widget.js?client_id=${clientId}`;
-            const scriptTag = `<script src="${scriptUrl}" defer><\/script>`;
+            // Всегда абсолютный URL Mitia (не URL сайта клиента).
+            // На https-страницах клиентов http-скрипт блокируется браузером.
+            const serverOrigin = (window.location.protocol === 'https:' || window.location.hostname === 'mitia.pro' || window.location.hostname.endsWith('.mitia.pro'))
+                ? `${window.location.protocol}//${window.location.host}`
+                : 'https://mitia.pro';
+            const safeClientId = String(clientId || '').trim();
+            const safeAssistantId = String(window.AdminApp?.getActiveAssistantId?.() || '').trim();
+            const assistantQuery = safeAssistantId ? `&assistant_id=${encodeURIComponent(safeAssistantId)}` : '';
+            const scriptUrl = `${serverOrigin}/api/chat/chat-widget.js?client_id=${encodeURIComponent(safeClientId)}${assistantQuery}`;
+
+            // data-client + MITYA_CONFIG — чтобы client_id не терялся на Tilda/WordPress/конструкторах с defer/async.
+            const scriptTag = [
+                `<script>`,
+                `  window.MITYA_CONFIG = {`,
+                `    clientId: '${safeClientId}',`,
+                ...(safeAssistantId ? [`    assistantId: '${safeAssistantId}',`] : []),
+                `    serverUrl: '${serverOrigin}'`,
+                `  };`,
+                `<\/script>`,
+                `<script src="${scriptUrl}" data-client="${safeClientId}"${safeAssistantId ? ` data-assistant-id="${safeAssistantId}"` : ''} defer><\/script>`
+            ].join('\n');
+
             codeEl.textContent = scriptTag;
         }
     },
@@ -1098,6 +1067,16 @@ export const IntegrationsModule = {
     fillData() {
         this._fillingData = true;
 
+        ['widget', 'email', 'telegram', 'max', 'vk', 'ok', 'avito', 'hh'].forEach((name) => {
+            if (!this.state.integrations[name]) this.state.integrations[name] = {};
+            const settings = this.state.integrations[name];
+            // Modes are mutually exclusive. A partial response must not turn an
+            // explicitly enabled assistant into the operator mode on reload.
+            if (settings.assistant_enabled === undefined) settings.assistant_enabled = false;
+            settings.autoreply_enabled = false;
+            settings.autoreply_message = '';
+        });
+
         Object.keys(this.state.integrations).forEach(intId => {
             const data = this.state.integrations[intId];
             if (typeof data !== 'object') return;
@@ -1117,7 +1096,9 @@ export const IntegrationsModule = {
                 const inputs = document.querySelectorAll(`[data-integration="${intId}"][data-field="${fieldId}"]`);
                 inputs.forEach(input => {
                     if (input.type === 'checkbox') {
-                        input.checked = !!data[fieldId];
+                        if (fieldId in data) {
+                            input.checked = !!data[fieldId];
+                        }
                     } else {
                         if (document.activeElement !== input) {
                             if (input.id === 'widget-origin-field') return;
@@ -1140,55 +1121,10 @@ export const IntegrationsModule = {
                     }
                 }
 
-                if (intId === 'email' && fieldId === 'sync_history') {
-                    const modeContainer = document.getElementById('email-sync-mode-container');
-                    if (modeContainer) {
-                        modeContainer.style.display = data[fieldId] ? 'block' : 'none';
-                    }
-                }
 
-                if (intId === 'telegram') {
-                    if (fieldId === 'autoreply_enabled') {
-                        const autoreplySettings = document.getElementById('tg-autoreply-settings');
-                        if (autoreplySettings) {
-                            autoreplySettings.style.display = data[fieldId] ? 'block' : 'none';
-                        }
-                    }
-                    if (fieldId === 'assistant_enabled') {
-                        const assistantSettings = document.getElementById('tg-assistant-settings');
-                        if (assistantSettings) {
-                            assistantSettings.style.display = data[fieldId] ? 'block' : 'none';
-                        }
-                    }
-                }
 
-                if (intId === 'email' && fieldId === 'autoreply_enabled') {
-                    const autoreplySettings = document.getElementById('email-autoreply-settings');
-                    if (autoreplySettings) {
-                        autoreplySettings.style.display = data[fieldId] ? 'block' : 'none';
-                    }
-                }
 
-                if (intId === 'max' && fieldId === 'autoreply_enabled') {
-                    const autoreplySettings = document.getElementById('max-autoreply-settings');
-                    if (autoreplySettings) {
-                        autoreplySettings.style.display = data[fieldId] ? 'block' : 'none';
-                    }
-                }
 
-                if (intId === 'vk' && fieldId === 'autoreply_enabled') {
-                    const autoreplySettings = document.getElementById('vk-autoreply-settings');
-                    if (autoreplySettings) {
-                        autoreplySettings.style.display = data[fieldId] ? 'block' : 'none';
-                    }
-                }
-
-                if (intId === 'widget' && fieldId === 'autoreply_enabled') {
-                    const autoreplySettings = document.getElementById('widget-autoreply-settings');
-                    if (autoreplySettings) {
-                        autoreplySettings.style.display = data[fieldId] ? 'block' : 'none';
-                    }
-                }
 
                 if (intId === 'email' && fieldId === 'sync_mode') {
                     const mode = data[fieldId] || 'sync_only';
@@ -1219,11 +1155,7 @@ export const IntegrationsModule = {
                     } else if (intId === 'widget') {
                         isConnected = !!data.enabled;
                     } else if (intId === 'email') {
-                        isConnected = !!(data.enabled && data.email_address && data.email_password);
-                        if (isConnected) {
-                            const cId = localStorage.getItem('chat_client_id') || 'mitia_assistant';
-                            this.startEmailSyncPolling(cId);
-                        }
+                        isConnected = !!(data.enabled && data.connection_verified);
                     } else {
                         isConnected = !!data.enabled;
                     }
@@ -1232,6 +1164,11 @@ export const IntegrationsModule = {
                     statusBadge.textContent = isConnected ? 'Подключено' : 'Не подключено';
                 }
             });
+        });
+
+        ['widget', 'email', 'telegram', 'max', 'vk', 'ok', 'avito', 'hh'].forEach((name) => {
+            const settings = this.state.integrations[name] || {};
+            this.setIntegrationMode(name, settings.assistant_enabled ? 'assistant' : 'operator', { markDirty: false });
         });
 
         this._fillingData = false;
@@ -1243,6 +1180,23 @@ export const IntegrationsModule = {
         }, 100);
     },
 
+    setIntegrationMode(name, mode, { markDirty = true } = {}) {
+        const isAssistant = mode === 'assistant';
+        const picker = document.querySelector(`[data-integration-mode="${name}"]`);
+        const assistantInput = document.querySelector(`[data-integration="${name}"][data-field="assistant_enabled"]`);
+        if (assistantInput) assistantInput.checked = isAssistant;
+        picker?.querySelectorAll('[data-integration-mode-value]').forEach((button) => {
+            button.classList.toggle('active', button.dataset.integrationModeValue === mode);
+        });
+        if (markDirty) {
+            if (!this.state.integrations[name]) this.state.integrations[name] = {};
+            this.state.integrations[name].assistant_enabled = isAssistant;
+            this.state.integrations[name].autoreply_enabled = false;
+            this.state.integrations[name].autoreply_message = '';
+            this.state.dirtyIntegrations.add(name);
+        }
+    },
+
     updateStateFromUI() {
         if (!this.state.integrations) this.state.integrations = {};
 
@@ -1250,15 +1204,13 @@ export const IntegrationsModule = {
         inputs.forEach(input => {
             const intId = input.dataset.integration;
             const fieldId = input.dataset.field || input.dataset.setting;
-            
             if (!fieldId) return;
             if (!this.state.integrations[intId]) this.state.integrations[intId] = {};
 
-            if (input.type === 'checkbox') {
-                this.state.integrations[intId][fieldId] = input.checked;
-            } else {
-                this.state.integrations[intId][fieldId] = input.value.trim();
-            }
+            const previousValue = this.state.integrations[intId][fieldId];
+            const nextValue = input.type === 'checkbox' ? input.checked : input.value.trim();
+            if (previousValue !== nextValue) this.state.dirtyIntegrations.add(intId);
+            this.state.integrations[intId][fieldId] = nextValue;
         });
 
         console.log('[Integrations] State updated from UI:', this.state.integrations);
@@ -1280,6 +1232,8 @@ export const IntegrationsModule = {
             if (!email || !pass) {
                 emailToggle.checked = false;
                 if (emailBadge) { emailBadge.className = 'status-badge disconnected'; emailBadge.textContent = 'Не подключено'; }
+                if (window.showAlert) window.showAlert('tmpl-error-alert', { title: 'Ошибка Email', text: 'Укажите email и пароль приложения.' });
+                return;
             } else {
                 try {
                     if (emailBadge) { emailBadge.className = 'status-badge connecting'; emailBadge.textContent = 'Проверка...'; }
@@ -1290,12 +1244,40 @@ export const IntegrationsModule = {
                     const vData = await vRes.json();
                     if (!vRes.ok || vData.status !== 'ok') {
                         emailToggle.checked = false;
+                        if (!this.state.integrations.email) this.state.integrations.email = {};
+                        this.state.integrations.email.enabled = false;
+                        this.state.integrations.email.connection_verified = false;
+                        this.state.dirtyIntegrations.add('email');
                         if (emailBadge) { emailBadge.className = 'status-badge disconnected'; emailBadge.textContent = 'Не подключено'; }
-                        if (window.showAlert) window.showAlert('tmpl-error-alert', { title: 'Ошибка Email', text: vData.error || 'Не удалось подключиться к почте' });
+                        console.error('Email pre-save check failed:', vData.error);
+                        const errorText = vData.error || vData.detail || 'Не удалось подключиться к почте. Проверьте адрес, пароль приложения и настройки IMAP/SMTP.';
+                        if (window.showAlert) window.showAlert('tmpl-error-alert', { title: 'Ошибка Email', text: errorText });
+                        return;
                     }
-                } catch (e) { console.error('Email pre-save check error', e); }
+                    if (!this.state.integrations.email) this.state.integrations.email = {};
+                    this.state.integrations.email.connection_verified = true;
+                    this.state.dirtyIntegrations.add('email');
+                } catch (e) {
+                    console.error('Email pre-save check error', e);
+                    if (emailBadge) { emailBadge.className = 'status-badge disconnected'; emailBadge.textContent = 'Не подключено'; }
+                    if (window.showAlert) window.showAlert('tmpl-error-alert', { title: 'Ошибка Email', text: 'Не удалось проверить подключение к почте.' });
+                    return;
+                }
             }
         }
+
+        const telegramToggle = document.querySelector('[data-integration="telegram"][data-field="enabled"]');
+        const telegramBadge = document.getElementById('telegram-status');
+        if (telegramToggle && telegramToggle.checked) {
+            const telegramToken = document.querySelector('[data-integration="telegram"][data-field="bot_token"]')?.value.trim();
+            if (!telegramToken) {
+                telegramToggle.checked = false;
+                if (telegramBadge) { telegramBadge.className = 'status-badge disconnected'; telegramBadge.textContent = 'Не подключено'; }
+                if (window.showAlert) window.showAlert('tmpl-error-alert', { title: 'Ошибка Telegram', text: 'Укажите токен Telegram-бота.' });
+                return;
+            }
+        }
+
 
         const maxToggle = document.querySelector('[data-integration="max"][data-field="enabled"]');
         const maxBadge = document.getElementById('max-status');
@@ -1306,10 +1288,14 @@ export const IntegrationsModule = {
             if (!maxToken) {
                 maxToggle.checked = false;
                 if (maxBadge) { maxBadge.className = 'status-badge disconnected'; maxBadge.textContent = 'Не подключено'; }
+                if (window.showAlert) window.showAlert('tmpl-error-alert', { title: 'Ошибка MAX', text: 'Укажите токен MAX-бота.' });
+                return;
             } else {
                 try {
                     if (maxBadge) { maxBadge.className = 'status-badge connecting'; maxBadge.textContent = 'Проверка...'; }
-                    const vRes = await fetch(`/api/chat/max/check-token?client_id=${clientId}`, {
+                    const activeAssistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                    const assistantQuery = activeAssistantId ? `&assistant_id=${encodeURIComponent(activeAssistantId)}` : '';
+                    const vRes = await fetch(`/api/chat/max/check-token?client_id=${clientId}${assistantQuery}`, {
                         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                         body: JSON.stringify({ bot_token: maxToken })
                     });
@@ -1318,17 +1304,59 @@ export const IntegrationsModule = {
                         maxToggle.checked = false;
                         if (maxBadge) { maxBadge.className = 'status-badge disconnected'; maxBadge.textContent = 'Не подключено'; }
                         if (window.showAlert) window.showAlert('tmpl-error-alert', { title: 'Ошибка MAX', text: vData.error || 'Неверный токен MAX' });
+                        return;
                     }
-                } catch (e) { console.error('Max pre-save check error', e); }
+                } catch (e) {
+                    console.error('Max pre-save check error', e);
+                    if (maxBadge) { maxBadge.className = 'status-badge disconnected'; maxBadge.textContent = 'Не подключено'; }
+                    if (window.showAlert) window.showAlert('tmpl-error-alert', { title: 'Ошибка MAX', text: 'Не удалось проверить токен MAX.' });
+                    return;
+                }
             }
         }
 
         const hhToggle = document.querySelector('[data-integration="hh"][data-field="enabled"]');
         const hhData = this.state.integrations.hh || {};
-        if (hhToggle && hhToggle.checked && !(hhData.connected || hhData.access_token)) {
-            hhToggle.checked = false;
-            if (window.showAlert) {
-                window.showAlert('tmpl-error-alert', { title: 'Ошибка HeadHunter', text: 'HeadHunter не авторизован. Нажмите «Подключить через hh.ru».' });
+        if (hhToggle && !hhToggle.checked && this.state.dirtyIntegrations.has('hh')) {
+            try {
+                const assistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                const response = await fetch(`/api/chat/hh/disconnect?client_id=${clientId}${assistantQuery}`, {
+                    method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
+                });
+                if (!response.ok) {
+                    const result = await response.json().catch(() => ({}));
+                    throw new Error(result.error || result.detail || 'Не удалось отключить HeadHunter.');
+                }
+                Object.assign(hhData, {
+                    enabled: false, connected: false, access_token: '', refresh_token: '',
+                    account_name: '', expires_in: 0,
+                });
+            } catch (error) {
+                hhToggle.checked = true;
+                if (window.showAlert) window.showAlert('tmpl-error-alert', { title: 'Ошибка HeadHunter', text: error.message });
+                return;
+            }
+        }
+        if (hhToggle?.checked) {
+            try {
+                const assistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                const response = await fetch(`/api/chat/hh/verify?client_id=${clientId}${assistantQuery}`, {
+                    method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
+                });
+                const result = await response.json();
+                if (!response.ok || result.status !== 'ok' || !result.connected) {
+                    throw new Error(result.error || 'Авторизация HeadHunter истекла.');
+                }
+                hhData.connected = true;
+                hhData.account_name = result.account_name || hhData.account_name;
+            } catch (error) {
+                hhToggle.checked = false;
+                const badge = document.getElementById('hh-status');
+                if (badge) { badge.className = 'status-badge disconnected'; badge.textContent = 'Требуется подключение'; }
+                if (window.showAlert) window.showAlert('tmpl-error-alert', { title: 'Ошибка HeadHunter', text: error.message });
+                return;
             }
         }
 
@@ -1355,26 +1383,40 @@ export const IntegrationsModule = {
             presentIntegrations.add(el.dataset.integration);
         });
 
-        try {
-            for (const name of presentIntegrations) {
-                const data = this.state.integrations[name];
-                if (!data) continue;
-                
-                if (Object.keys(data).length === 0) continue;
+        const saveErrors = [];
 
-                console.log(`[SAVE] Sending ${name}:`, data);
+        for (const name of presentIntegrations) {
+            const data = this.state.integrations[name];
+            if (!data || !this.state.dirtyIntegrations.has(name)) continue;
 
-                let endpoint;
-                if (name === 'telegram') {
-                    endpoint = `/api/chat/telegram/setup?client_id=${clientId}`;
-                } else if (name === 'max') {
-                    endpoint = `/api/chat/max/setup?client_id=${clientId}`;
-                } else if (name === 'vk') {
-                    endpoint = `/api/chat/vk/setup?client_id=${clientId}`;
-                } else {
-                    endpoint = `/api/chat/admin/integrations/${name}?client_id=${clientId}`;
-                }
+            if (Object.keys(data).length === 0) continue;
 
+            console.log(`[SAVE] Sending ${name}:`, data);
+
+            let endpoint;
+            if (name === 'telegram') {
+                const assistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                endpoint = `/api/chat/telegram/setup?client_id=${clientId}${assistantQuery}`;
+            } else if (name === 'max') {
+                const assistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                endpoint = `/api/chat/max/setup?client_id=${clientId}${assistantQuery}`;
+            } else if (name === 'vk') {
+                const assistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                endpoint = `/api/chat/vk/setup?client_id=${clientId}${assistantQuery}`;
+            } else if (name === 'ok') {
+                const assistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                endpoint = `/api/chat/ok/setup?client_id=${clientId}${assistantQuery}`;
+            } else {
+                const assistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                endpoint = `/api/chat/admin/integrations/${name}?client_id=${clientId}${assistantQuery}`;
+            }
+
+            try {
                 const res = await fetch(endpoint, {
                     method: 'POST',
                     headers: {
@@ -1385,19 +1427,38 @@ export const IntegrationsModule = {
                 });
 
                 if (!res.ok) {
-                    const errData = await res.json();
-                    throw new Error(errData.error || `Ошибка при сохранении ${name}`);
+                    let message = `Ошибка при сохранении ${name}`;
+                    try {
+                        const errData = await res.json();
+                        message = errData.error || errData.detail || message;
+                    } catch (_) {
+                        try {
+                            const raw = await res.text();
+                            if (raw) message = raw;
+                        } catch (_) {}
+                    }
+                    throw new Error(message);
                 }
+            } catch (e) {
+                const isNetworkError = e instanceof TypeError;
+                const details = isNetworkError
+                    ? `Сетевая ошибка при сохранении ${name} (${endpoint}). Проверьте доступность сервера.`
+                    : `${name}: ${e.message}`;
+
+                console.error(`[SAVE] Failed for ${name} (${endpoint}):`, e);
+                saveErrors.push(details);
             }
-        } catch (e) {
-            console.error('Save error:', e);
+        }
+
+        if (saveErrors.length) {
+            const message = saveErrors.slice(0, 3).join('\n');
             if (window.showAlert) {
                 window.showAlert('tmpl-error-alert', {
                     title: 'Ошибка сохранения',
-                    text: e.message
+                    text: message
                 });
             } else {
-                alert('Ошибка сохранения: ' + e.message);
+                alert('Ошибка сохранения: ' + message);
             }
             return;
         }
@@ -1424,7 +1485,9 @@ export const IntegrationsModule = {
                 try {
                     const badge = document.getElementById('widget-status');
                     if (badge) { badge.className = 'status-badge connecting'; badge.textContent = 'Проверка...'; }
-                    const vRes = await fetch(`/api/chat/widget/verify?client_id=${clientId}`, {
+                    const activeAssistantId = window.AdminApp?.getActiveAssistantId?.() || '';
+                    const assistantQuery = activeAssistantId ? `&assistant_id=${encodeURIComponent(activeAssistantId)}` : '';
+                    const vRes = await fetch(`/api/chat/widget/verify?client_id=${clientId}${assistantQuery}`, {
                         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                         body: JSON.stringify({ domain: siteDomain })
                     });
@@ -1454,7 +1517,9 @@ export const IntegrationsModule = {
                     }
                 };
 
-                const res = await fetch(`/api/chat/admin/config?client_id=${clientId}`, {
+                const assistantId = window.AdminApp?.getActiveAssistantId?.();
+                const assistantQuery = assistantId ? `&assistant_id=${encodeURIComponent(assistantId)}` : '';
+                const res = await fetch(`/api/chat/admin/config?client_id=${clientId}${assistantQuery}`, {
                     method: 'POST', 
                     headers: {
                         'Content-Type': 'application/json',
@@ -1471,106 +1536,8 @@ export const IntegrationsModule = {
             }
         }
 
-        const syncHistoryCheckbox = document.getElementById('email-sync-history-checkbox');
-        if (syncHistoryCheckbox && syncHistoryCheckbox.checked) {
-            const syncMode = document.getElementById('email-sync-mode-input')?.value || 'sync_only';
-            try {
-                await fetch('/api/chat/email/sync', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        client_id: clientId,
-                        mode: syncMode,
-                        force: true
-                    })
-                });
-                this.startEmailSyncPolling(clientId);
-                syncHistoryCheckbox.checked = false;
-            } catch (e) {
-                console.error('Failed to start email sync:', e);
-            }
-        }
-        
+        this.state.dirtyIntegrations.clear();
         await this.loadData();
     },
 
-    async startEmailSyncPolling(clientId) {
-        if (this._emailSyncPolling) return;
-        this._emailSyncPolling = true;
-
-        const progressContainer = document.getElementById('email-sync-progress-container');
-        const progressBar = document.getElementById('email-sync-bar');
-        const progressPercent = document.getElementById('email-sync-percent');
-        const progressStatus = document.getElementById('email-sync-status-text');
-
-        const poll = async () => {
-            try {
-                const token = localStorage.getItem('chatadmin_auth_token');
-                const res = await fetch(`/api/chat/email/status/${clientId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!res.ok) return;
-                
-                const data = await res.json();
-                const statusBadge = document.getElementById('email-status');
-                
-                if (data.status === 'syncing') {
-                    if (statusBadge) {
-                        statusBadge.className = 'status-badge connecting';
-                        statusBadge.textContent = 'Синхронизация...';
-                    }
-                    
-                    if (progressContainer) progressContainer.style.display = 'block';
-                    
-                    if (data.progress) {
-                        const current = data.progress.current || 0;
-                        const total = data.progress.total || 0;
-                        const percent = total > 0 ? Math.round((current / total) * 100) : 0;
-                        
-                        if (progressBar) progressBar.style.width = `${percent}%`;
-                        if (progressPercent) progressPercent.textContent = `${percent}%`;
-                        if (progressStatus) progressStatus.textContent = `Обработано ${current} из ${total} писем`;
-                    }
-                    
-                    setTimeout(poll, 2000);
-                } else {
-                    if (statusBadge) {
-                        const isConnected = !!(this.state.integrations.email?.enabled && this.state.integrations.email?.email_address);
-                        statusBadge.className = `status-badge ${isConnected ? 'connected' : 'disconnected'}`;
-                        statusBadge.textContent = isConnected ? 'Подключено' : 'Не подключено';
-                    }
-                    
-                    if (data.status === 'completed') {
-                        if (progressStatus) progressStatus.textContent = 'Синхронизация завершена!';
-                        if (progressBar) progressBar.style.width = '100%';
-                        if (progressPercent) progressPercent.textContent = '100%';
-                        setTimeout(() => {
-                            if (progressContainer) progressContainer.style.display = 'none';
-                        }, 5000);
-                    } else if (data.status === 'error') {
-                        let errorMsg = data.progress.error || 'неизвестно';
-                        if (errorMsg.includes('Application-specific password required')) {
-                            errorMsg = 'Требуется пароль приложения Google';
-                        }
-                        if (progressStatus) {
-                            progressStatus.textContent = 'Ошибка: ' + errorMsg;
-                            progressStatus.style.color = '#ff4d4f';
-                        }
-                    } else {
-                        if (progressContainer) progressContainer.style.display = 'none';
-                    }
-                    
-                    this._emailSyncPolling = false;
-                }
-            } catch (e) {
-                console.error('Email sync poll error:', e);
-                this._emailSyncPolling = false;
-            }
-        };
-
-        poll();
-    }
 };

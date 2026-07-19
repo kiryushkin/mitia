@@ -20,6 +20,9 @@ sys.modules['redis'] = MagicMock()
 sys.modules['pgvector'] = MagicMock()
 sys.modules['pgvector.sqlalchemy'] = MagicMock()
 
+# Мокаем faiss
+sys.modules['faiss'] = MagicMock()
+
 # Мокаем Silero/TTS
 sys.modules['torch'] = MagicMock()
 sys.modules['torchaudio'] = MagicMock()
@@ -77,18 +80,32 @@ _mock_db.init_db = AsyncMock()
 _mock_db.get_db = MagicMock()
 sys.modules['api.chat.services.db_service'] = _mock_db
 
-# Мокаем sqlalchemy.update/select/delete/insert — они используются
-# в chat_service.py и admin_router.py с реальными ORM-классами
+# Мокаем часть sqlalchemy, но не ломаем dialect-specific импорты
+# для сценариев и других модулей, которым нужны реальные классы PostgreSQL.
 import sqlalchemy as _sa
 _sa.update = MagicMock(return_value=MagicMock())
 _sa.select = MagicMock(return_value=MagicMock())
 _sa.delete = MagicMock(return_value=MagicMock())
-_sa.insert = MagicMock(return_value=MagicMock())
 _sa.func = MagicMock()
 _sa.text = MagicMock(return_value=MagicMock())
 _sa.and_ = MagicMock(return_value=MagicMock())
 _sa.or_ = MagicMock(return_value=MagicMock())
 _sa.desc = MagicMock(return_value=MagicMock())
+
+# Лёгкий stub для sqlalchemy.dialects.postgresql.insert(...).on_conflict_do_update(...)
+class _FakePgInsert:
+    def values(self, *args, **kwargs):
+        return self
+
+    def on_conflict_do_update(self, *args, **kwargs):
+        return self
+
+
+def _fake_pg_insert(*args, **kwargs):
+    return _FakePgInsert()
+
+import sqlalchemy.dialects.postgresql as _pg
+_pg.insert = _fake_pg_insert
 
 
 @pytest.fixture(autouse=True)
@@ -116,25 +133,30 @@ def mock_send_email():
 @pytest.fixture(autouse=True)
 def mock_gigachat():
     """Мокаем GigaChat API."""
-    mock = AsyncMock(return_value="Тестовый ответ от ИИ")
+    mock = AsyncMock(return_value="Тестовый ответ от ассистента")
     with patch("api.chat.services.gigachat_service.handle_gigachat_request", mock):
         with patch("api.chat.services.gigachat_service.get_gigachat_token", AsyncMock(return_value="test-token")):
             yield mock
 
 
-@pytest.fixture(autouse=True)
-def mock_init_db():
-    """Мокаем инициализацию БД при старте."""
-    with patch("api.chat.main_async.init_db", AsyncMock()):
-        yield
+@pytest.fixture
+def test_app():
+    """Облегчённое FastAPI-приложение для app-level тестов без полного bootstrap main_async."""
+    from fastapi import FastAPI
+    from api.chat.routers import chat_router, auth_router, admin_router
+
+    app = FastAPI(title="Mitya AI Test App")
+    app.include_router(chat_router.router)
+    app.include_router(auth_router.router)
+    app.include_router(admin_router.router)
+    return app
 
 
 @pytest_asyncio.fixture
-async def client():
+async def client(test_app):
     """Асинхронный тестовый клиент FastAPI."""
     from httpx import ASGITransport, AsyncClient
-    from api.chat.main_async import app
 
-    transport = ASGITransport(app=app)
+    transport = ASGITransport(app=test_app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

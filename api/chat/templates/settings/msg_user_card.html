@@ -1,23 +1,22 @@
-<!-- ПОЛЬЗОВАТЕЛЬ -->
 <div class="bento-card" id="card-msg-user-design">
     <div class="card-header-flex">
-        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
-            <div class="collapse-icon"></div>
+        <div class="card-title-group">
             <h3 class="card-title">Пользователь</h3>
         </div>
-        <!-- Иконки -->
         <div class="card-actions-mini">
-            <button class="icon-btn-sm" onclick="window.resetMsgUserToDefault()" title="Восстановить дизайн">
+            <button class="menu-dots-btn" onclick="window.resetMsgUserToDefault()" title="Восстановить дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
             </button>
-            <button class="icon-btn-sm" onclick="window.randomizeMessagesDesign('user')" title="Магический дизайн">
+            <button class="menu-dots-btn" onclick="window.randomizeMessagesDesign('user')" title="Магический дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+            <button class="icon-btn-sm msg-user-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
         </div>
     </div>
-    <!-- Параметры сообщения пользователя -->
+    <p class="card-description">Сообщения и аватар пользователя</p>
     <div class="settings-form">
-        <!-- СТАТУС ПРЕДПРОСМОТРА СООБЩЕНИЯ ПОЛЬЗОВАТЕЛЯ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Статус</h3>
         </div>
@@ -30,7 +29,6 @@
                 </label>
             </div>
         </div>
-        <!-- ИЗОБРАЖЕНИЕ ПОЛЬЗОВАТЕЛЯ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Изображение</h3>
             <label class="switch sm-switch">
@@ -38,9 +36,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры изображения пользователя -->
         <div id="msg-user-avatar-group" class="settings-form-mini">
-            <!-- Загрузить изображение пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Загрузить изображение</label>
                 <div class="color-input-group">
@@ -53,10 +49,12 @@
                             </svg>
                         </button>
                     </div>
+                    <div class="upload-info">
+                        <span class="upload-hint">JPG, PNG, SVG, GIF, WEBP. Макс. вес: 500 KB</span>
+                    </div>
                     <input type="file" id="msg-user-avatar-upload" hidden accept=".jpg,.jpeg,.png,.svg,.gif,.webp">
                 </div>
             </div>
-            <!-- Прозрачность изображения пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -64,7 +62,6 @@
                     <span class="range-value" id="msg-user-avatar-opacity-val"></span>
                 </div>
             </div>
-            <!-- Скругление изображения пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Скругление</label>
                 <div class="range-with-val">
@@ -73,13 +70,10 @@
                 </div>
             </div>
         </div>
-        <!-- ТЕКСТ СООБЩЕНИЯ ПОЛЬЗОВАТЕЛЯ-->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Текст</h3>
         </div>
-        <!-- Параметры текста сообщения пользователя -->
         <div class="settings-form-mini">
-            <!-- Шрифт текста сообщения пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Шрифт</label>
                 <div class="custom-select" id="msg-user-font-family-select-container">
@@ -88,12 +82,10 @@
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </div>
                     <div class="select-options">
-                        <!-- Заполняется динамически через FontManager -->
                     </div>
                 </div>
                 <input type="hidden" id="msg-user-font-family-select" data-setting="theme.msg_user_font_family">
             </div>
-            <!-- Цвет текста сообщения пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -104,7 +96,6 @@
                     <input type="text" id="msg-user-text-hex" class="color_hex hex-input-full" data-setting="theme.msg_user_text_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность текста сообщения пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -112,7 +103,6 @@
                     <span class="range-value" id="msg-user-text-opacity-val"></span>
                 </div>
             </div>
-            <!-- Размер текста сообщения пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Размер</label>
                 <div class="range-with-val">
@@ -120,7 +110,6 @@
                     <span class="range-value" id="msg-user-font-size-val"></span>
                 </div>
             </div>
-            <!-- Толщина текста сообщения пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Толщина</label>
                 <div class="range-with-val">
@@ -129,14 +118,10 @@
                 </div>
             </div>
         </div>
-
-        <!-- ССЫЛКИ В СООБЩЕНИИ ПОЛЬЗОВАТЕЛЯ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Ссылки</h3>
         </div>
-        <!-- Параметры ссылок пользователя -->
         <div class="settings-form-mini">
-            <!-- Цвет ссылки пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -147,7 +132,6 @@
                     <input type="text" id="msg-user-link-color-hex" class="color_hex hex-input-full" data-setting="theme.msg_user_link_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность ссылки пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -156,8 +140,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- ССЫЛКИ ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Ссылки при наведении</h3>
             <label class="switch sm-switch">
@@ -165,9 +147,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры ссылок пользователя при наведении -->
         <div id="msg-user-link-h-group" class="settings-form-mini">
-            <!-- Цвет ссылки пользователя при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -178,7 +158,6 @@
                     <input type="text" id="msg-user-link-h-color-hex" class="color_hex hex-input-full" data-setting="theme.msg_user_link_color_h" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность ссылки пользователя при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -187,8 +166,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- ФОН СООБЩЕНИЯ ПОЛЬЗОВАТЕЛЯ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Фон</h3>
             <label class="switch sm-switch">
@@ -196,9 +173,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры фона сообщения пользователя -->
         <div id="msg-user-bg-group" class="settings-form-mini">
-            <!-- Цвет фона сообщения пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -209,7 +184,6 @@
                     <input type="text" id="msg-user-bg-hex" class="color_hex hex-input-full" data-setting="theme.msg_user_bg_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность фона сообщения пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -218,7 +192,6 @@
                 </div>
             </div>
         </div>
-        <!-- ОБВОДКА СООБЩЕНИЯ ПОЛЬЗОВАТЕЛЯ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Обводка</h3>
             <label class="switch sm-switch">
@@ -226,9 +199,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры обводки сообщения пользователя -->
         <div id="msg-user-border-group" class="settings-form-mini">
-            <!-- Цвет обводки сообщения пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -239,7 +210,6 @@
                     <input type="text" id="msg-user-border-hex" class="color_hex hex-input-full" data-setting="theme.msg_user_border_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность обводки сообщения пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -247,7 +217,6 @@
                     <span class="range-value" id="msg-user-border-opacity-val"></span>
                 </div>
             </div>
-            <!-- Толщина обводки сообщения пользователя -->
             <div class="setting-item">
                 <label class="subtitle-card">Толщина</label>
                 <div class="range-with-val">

@@ -66,7 +66,6 @@ class EmailService:
     def __init__(self):
         self.running = False
         self._task = None
-        self.sync_progress = {}
 
     def _guess_imap(self, email_addr: str) -> str:
         return _guess_imap(email_addr)
@@ -104,8 +103,8 @@ class EmailService:
             return await get_integration_settings(client_id, "email")
 
         async def _process_client(client_id: str, settings: dict):
-            if settings.get("email_address") and settings.get("email_password"):
-                await self.process_client_emails(client_id, settings)
+            if settings.get("enabled") and settings.get("email_address") and settings.get("email_password"):
+                await self.process_client_emails(client_id, settings, assistant_id=settings.get("assistant_id"))
 
         await base_polling_service.run_manager_loop(
             service_name="EMAIL_SERVICE",
@@ -116,7 +115,7 @@ class EmailService:
             error_sleep_seconds=10,
         )
 
-    async def process_client_emails(self, client_id: str, settings: Dict):
+    async def process_client_emails(self, client_id: str, settings: Dict, assistant_id: str | None = None):
         email_addr = settings.get("email_address")
         password = settings.get("email_password")
         imap_server = settings.get("imap_server") or self._guess_imap(email_addr)
@@ -128,192 +127,73 @@ class EmailService:
             from .cache_service import cache_service
             
             new_emails = await asyncio.to_thread(
-                self._check_imap, 
-                client_id, 
-                email_addr, 
-                password, 
-                imap_server, 
-                settings, 
+                self._check_imap,
+                client_id,
+                email_addr,
+                password,
+                imap_server,
+                settings,
                 limit=20
             )
-            
+            mailbox_key = hashlib.sha256(email_addr.strip().lower().encode()).hexdigest()[:16]
+            monitor_key = f"email_monitor_initialized:{client_id}:{assistant_id or 'main'}:{mailbox_key}"
+            is_first_check = not cache_service.get(monitor_key)
+            if is_first_check:
+                # Письма, уже лежавшие в ящике при подключении, не являются новыми диалогами.
+                cache_service.set(monitor_key, "1", expire=86400 * 365)
+                log.info(f"[EMAIL_SERVICE] Baseline established for {client_id}:{assistant_id or 'main'}")
+                return
+
             for mail_data in new_emails:
                 msg_id = mail_data.get("message_id")
                 if msg_id:
-                    cache_key = f"email_processed:{client_id}:{hashlib.md5(msg_id.encode()).hexdigest()}"
+                    cache_key = f"email_processed:{client_id}:{assistant_id or 'main'}:{hashlib.md5(msg_id.encode()).hexdigest()}"
                     if cache_service.get(cache_key):
                         continue
                     cache_service.set(cache_key, "1", expire=86400 * 30)
 
                 await self.handle_incoming_email(
-                    client_id, 
-                    mail_data["sender"], 
-                    mail_data["subject"], 
-                    mail_data["body"], 
+                    client_id,
+                    mail_data["sender"],
+                    mail_data["subject"],
+                    mail_data["body"],
                     settings,
                     is_historical=False,
                     is_html=mail_data.get("is_html", False),
                     attachments=mail_data.get("attachments", []),
-                    message_id=mail_data.get("message_id")
+                    message_id=mail_data.get("message_id"),
+                    assistant_id=assistant_id,
                 )
 
         except Exception as e:
             log.error(f"[EMAIL_SERVICE] Error processing {email_addr}: {e}")
 
-    async def sync_historical_emails(self, client_id: str, settings: Dict, mode: str = "sync_only", force: bool = False):
-        """Запускает фоновую синхронизацию исторических писем."""
-        email_addr = settings.get("email_address")
-        password = settings.get("email_password")
-        imap_server = settings.get("imap_server") or self._guess_imap(email_addr)
-        
-        if not imap_server:
-            return
-
-        if client_id in self.sync_progress and self.sync_progress[client_id]["status"] == "syncing":
-            log.info(f"[EMAIL_SERVICE] Sync already in progress for {client_id}")
-            return
-
-        self.sync_progress[client_id] = {"total": 0, "current": 0, "status": "syncing"}
-        
-        async def _sync_task():
-            try:
-                from .cache_service import cache_service
-                log.info(f"[EMAIL_SERVICE] Starting historical sync for {client_id} (Mode: {mode}, Force: {force})")
-                
-                if force:
-                    cache_service.delete(f"email_sync_done:{client_id}")
-                    cache_service.clear_pattern(f"email_processed:{client_id}:*")
-                    log.info(f"[EMAIL_SERVICE] Cache cleared for forced sync of {client_id}")
-                
-                all_folders = await asyncio.to_thread(self._list_folders, email_addr, password, imap_server)
-                log.info(f"[EMAIL_SERVICE] Found folders: {all_folders}")
-                
-                emails = await asyncio.to_thread(
-                    self._check_imap,
-                    client_id,
-                    email_addr,
-                    password,
-                    imap_server,
-                    settings,
-                    since_days=None,
-                    update_progress=True,
-                    folders=all_folders
-                )
-                
-                total = len(emails)
-                self.sync_progress[client_id]["total"] = total
-                
-                for i, mail_data in enumerate(emails):
-                    self.sync_progress[client_id]["current"] = i + 1
-                    
-                    msg_id = mail_data.get("message_id")
-                    if msg_id:
-                        cache_key = f"email_processed:{client_id}:{hashlib.md5(msg_id.encode()).hexdigest()}"
-                        if cache_service.get(cache_key):
-                            continue
-                        cache_service.set(cache_key, "1", expire=86400 * 30)
-
-                    await self.handle_incoming_email(
-                        client_id, 
-                        mail_data["sender"], 
-                        mail_data["subject"], 
-                        mail_data["body"], 
-                        settings,
-                        is_historical=(mode == "sync_only"),
-                        is_html=mail_data.get("is_html", False),
-                        attachments=mail_data.get("attachments", []),
-                        message_id=mail_data.get("message_id")
-                    )
-                
-                self.sync_progress[client_id]["status"] = "completed"
-                log.info(f"[EMAIL_SERVICE] Historical sync completed for {client_id}")
-                
-                cache_service.set(f"email_sync_done:{client_id}", "1")
-                
-            except Exception as e:
-                log.error(f"[EMAIL_SERVICE] Historical sync error for {client_id}: {e}")
-                self.sync_progress[client_id]["status"] = "error"
-                self.sync_progress[client_id]["error"] = str(e)
-
-        asyncio.create_task(_sync_task())
-
-    def _list_folders(self, email_addr: str, password: str, imap_server: str) -> list:
-        """Возвращает список всех папок в ящике (кроме служебных)."""
-        try:
-            mail = imaplib.IMAP4_SSL(imap_server, timeout=15)
-            mail.login(email_addr, password)
-            status, folder_list = mail.list()
-            mail.logout()
-            
-            if status != 'OK':
-                return ["inbox"]
-            
-            folders = []
-            for folder_info in folder_list:
-                if isinstance(folder_info, bytes):
-                    parts = folder_info.decode('utf-8', errors='ignore').split('"')
-                    if len(parts) >= 2:
-                        folder_name = parts[-2] if len(parts) % 2 == 0 else parts[-1]
-                        if folder_name:
-                            folders.append(folder_name)
-            
-            return folders if folders else ["inbox"]
-        except Exception as e:
-            log.error(f"[EMAIL_SERVICE] Failed to list folders: {e}")
-            return ["inbox"]
-
-    def _check_imap(self, client_id: str, email_addr: str, password: str, imap_server: str, settings: Dict, limit: int = 50, since_days: int = None, update_progress: bool = False, folders: list = None):
+    def _check_imap(self, client_id: str, email_addr: str, password: str, imap_server: str, settings: Dict, limit: int = 50):
         new_emails = []
         try:
             mail = imaplib.IMAP4_SSL(imap_server, timeout=30)
             mail.login(email_addr, password)
             
-            if folders:
-                target_folders = folders
-            else:
-                target_folders = ["inbox"]
-            
-            skip_folders = {'trash', 'spam', 'junk', 'drafts', 'deleted items', 'deleted messages',
-                           'корзина', 'спам', 'черновики', 'удаленные', 'удалённые',
-                           '[gmail]/trash', '[gmail]/spam', '[gmail]/drafts', '[gmail]/all mail'}
-            
-            for folder_name in target_folders:
-                folder_lower = folder_name.lower().strip('"')
-                if folder_lower in skip_folders:
-                    continue
-                    
+            for folder_name in ["inbox"]:
                 try:
-                    status, _ = mail.select(f'"{folder_name}"', readonly=True)
+                    status, _ = mail.select(f'"{folder_name}"', readonly=False)
                     if status != 'OK':
                         continue
                     
                     log.info(f"[EMAIL_SERVICE] Scanning folder: {folder_name}")
                     
-                    if since_days:
-                        import datetime
-                        date = (datetime.date.today() - datetime.timedelta(days=since_days)).strftime("%d-%b-%Y")
-                        status, messages = mail.search(None, f'(SINCE "{date}")')
-                    else:
-                        status, messages = mail.search(None, 'ALL')
+                    # Мониторинг забирает только новые непрочитанные письма из входящих.
+                    status, messages = mail.search(None, 'UNSEEN')
 
                     if status != 'OK':
                         continue
                         
                     msg_ids = messages[0].split()
                     
-                    if not since_days and not update_progress:
-                        msg_ids = msg_ids[-limit:]
-                    
-                    total_msgs = len(msg_ids)
-                    if update_progress and client_id in self.sync_progress:
-                        current_total = self.sync_progress[client_id].get("total", 0)
-                        self.sync_progress[client_id]["total"] = current_total + total_msgs
+                    msg_ids = msg_ids[-limit:]
 
-                    for i, num in enumerate(msg_ids):
+                    for num in msg_ids:
                         try:
-                            if update_progress and client_id in self.sync_progress:
-                                self.sync_progress[client_id]["current"] = self.sync_progress[client_id].get("current", 0) + 1
-                                
                             status, data = mail.fetch(num, '(RFC822)')
                             if status != 'OK':
                                 continue
@@ -384,8 +264,7 @@ class EmailService:
                                     "attachments": attachments
                                 })
                             
-                            if not since_days:
-                                mail.store(num, '+FLAGS', '\\Seen')
+                            mail.store(num, '+FLAGS', '\\Seen')
                                 
                         except Exception as e:
                             log.error(f"[EMAIL_SERVICE] Error fetching message {num}: {e}")
@@ -410,7 +289,7 @@ class EmailService:
                 result += part
         return result
 
-    async def handle_incoming_email(self, client_id: str, sender: str, subject: str, body: str, settings: Dict, is_historical: bool = False, is_html: bool = False, attachments: List = None, message_id: str = None):
+    async def handle_incoming_email(self, client_id: str, sender: str, subject: str, body: str, settings: Dict, is_historical: bool = False, is_html: bool = False, attachments: List = None, message_id: str = None, assistant_id: str | None = None):
         log.info(f"[EMAIL_SERVICE] Processing email from {sender} for {client_id} (Historical: {is_historical}, HTML: {is_html})")
         
         email_match = re.search(r'([\w\.-]+@[\w\.-]+)', sender)
@@ -421,7 +300,7 @@ class EmailService:
             log.info(f"[EMAIL_SERVICE] Skipping email from self: {sender_email}")
             return
 
-        session_id = f"email_{hashlib.md5(sender_email.encode()).hexdigest()}"
+        session_id = f"email_{assistant_id or 'main'}_{hashlib.md5(sender_email.encode()).hexdigest()}"
         
         # Создаем/обновляем сессию
         user_info = {
@@ -432,7 +311,7 @@ class EmailService:
             "platform": "email"
         }
         async with AsyncSessionLocal() as db:
-            await get_or_create_session(session_id, client_id, metadata=user_info)
+            await get_or_create_session(session_id, client_id, metadata=user_info, assistant_id=assistant_id)
 
         header_html = f"""
         <div class='email-message-container'>
@@ -463,6 +342,7 @@ class EmailService:
 
         ask_data = AskData(
             client_id=client_id,
+            assistant_id=assistant_id,
             session_id=session_id,
             message=header_html,
             source="email",
@@ -485,22 +365,26 @@ class EmailService:
 
         is_operator = await is_operator_mode(session_id)
         assistant_enabled = settings.get("assistant_enabled", False)
-        autoreply_enabled = settings.get("autoreply_enabled", False)
-        autoreply_message = (settings.get("autoreply_message") or "").strip()
-
-        log.info(
-            f"[EMAIL_SERVICE] Flags for {client_id}: "
-            f"assistant={assistant_enabled}, autoreply={autoreply_enabled}, operator={is_operator}"
-        )
+        log.info(f"[EMAIL_SERVICE] Flags for {client_id}: assistant={assistant_enabled}, operator={is_operator}")
 
         if is_operator or not assistant_enabled:
             log.info(f"[EMAIL_SERVICE] Saving message without AI for {session_id}")
             await chat_service.process_ask(ask_data, stream=False, is_admin=True, skip_ai=True)
+            from .operator_notification_service import (
+                build_incoming_message_notification,
+                notify_operators,
+            )
+            await notify_operators(
+                client_id,
+                build_incoming_message_notification(
+                    source="email",
+                    sender=sender,
+                    message=f"{subject}: {body}",
+                    is_operator=bool(is_operator),
+                ),
+                assistant_id=assistant_id,
+            )
 
-            if is_operator and autoreply_enabled and autoreply_message:
-                log.info(f"[EMAIL_SERVICE] Sending operator autoreply for {session_id}")
-                await self.send_reply(client_id, sender_email, f"Re: {subject}", autoreply_message, settings)
-                await save_chat_message(session_id, client_id, autoreply_message, is_ai=False, is_admin=True)
             return
 
         log.info(f"[EMAIL_SERVICE] AI Assistant is enabled for {client_id}, processing with AI")

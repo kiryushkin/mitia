@@ -9,6 +9,7 @@ import {
     markSessionRead,
     toggleOperatorMode,
     deleteSession,
+    deleteSessionMessage,
     updateSessionStatus,
     archiveSession,
     fetchCloseReasons,
@@ -29,6 +30,58 @@ import {
 } from '../websocket.js';
 import { slugify, escapeHtml, formatTime } from '../helpers.js?v=1';
 
+function getDialogSaveButtons() {
+    return [
+        document.getElementById('global-save-btn'),
+        document.getElementById('dialog-sidebar-save-btn')
+    ].filter(Boolean);
+}
+
+function setDialogSaveActive(active = true) {
+    const buttons = getDialogSaveButtons();
+    buttons.forEach((btn) => {
+        btn.classList.toggle('pulse-active', !!active);
+        // Сохранение идёт через AdminApp.handleSidebarSave / DialogsModule.saveData.
+        // onclick не вешаем, чтобы не дублировать сохранение.
+        if (!active) btn.onclick = null;
+    });
+}
+
+function setDialogSidebarMode(enabled) {
+    if (window.AdminApp?.setSidebarMode) {
+        window.AdminApp.setSidebarMode(enabled ? 'dialog' : null);
+        return;
+    }
+    const sidebar = document.querySelector('.admin-sidebar');
+    if (!sidebar) return;
+    sidebar.classList.toggle('dialog-mode', !!enabled);
+}
+
+function isCompactDialogLayout() {
+    return window.matchMedia('(max-width: 1024px)').matches;
+}
+
+function renderSidebarClientAvatar() {
+    const button = document.getElementById('dialog-sidebar-client-avatar');
+    if (!button) return;
+
+    const profileAvatar = document.querySelector('#client-profile-card-container .dialog-sidebar-avatar');
+    const profileImage = profileAvatar?.querySelector('img');
+    const initials = profileAvatar?.textContent?.trim() || '?';
+    button.classList.toggle('initials', !profileImage);
+    button.innerHTML = profileImage
+        ? `<img src="${escapeHtml(profileImage.src)}" alt="${escapeHtml(profileImage.alt || 'Клиент')}">`
+        : escapeHtml(initials);
+    button.onclick = () => {
+        if (!isCompactDialogLayout() || !state.activeSessionId) return;
+        document.querySelector('.appearance-grid')?.classList.add('is-dialog-profile');
+    };
+}
+
+function showCompactDialogChat() {
+    document.querySelector('.appearance-grid')?.classList.remove('is-dialog-profile');
+}
+
 /**
  * Форматирование контакта в виде ссылки
  */
@@ -39,6 +92,11 @@ function formatContactAsLink(label, value, platform) {
     let text = cleanValue;
 
     const l = label.toLowerCase();
+
+    // ID внешнего канала — служебный идентификатор, а не публичная ссылка.
+    if (/\bid\b/i.test(label) || l.includes('chat id')) {
+        return escapeHtml(text);
+    }
 
     if (l.includes('email')) {
         href = `mailto:${cleanValue}`;
@@ -52,7 +110,7 @@ function formatContactAsLink(label, value, platform) {
             href = `https://t.me/${val}`;
         }
     } else if (l.includes('vk') || l.includes('вконтакте') || platform === 'vk') {
-        const val = cleanValue.replace('id', '').split('/').pop();
+        const val = cleanValue.replace('@', '').replace('id', '').split('/').pop();
         href = `https://vk.com/${/^\d+$/.test(val) ? 'id' + val : val}`;
     } else if (l.includes('avito') || l.includes('авито') || platform === 'avito') {
         // Для Avito: формируем ссылку на профиль
@@ -69,9 +127,10 @@ function formatContactAsLink(label, value, platform) {
         } else if (cleanValue.includes('avito.ru')) {
             href = cleanValue.startsWith('http') ? cleanValue : `https://${cleanValue}`;
         }
-    } else if (l.includes('max') || platform === 'max') {
-        const val = cleanValue.split('/').pop();
-        href = `https://max.ru/user/${val}`;
+    } else if (l.includes('max')) {
+        // MAX не предоставляет универсальный публичный URL по numeric user_id.
+        // Ссылкой считаем только явно переданный URL.
+        if (cleanValue.startsWith('http')) href = cleanValue;
     } else if (cleanValue.startsWith('http') || cleanValue.includes('.')) {
         href = cleanValue.startsWith('http') ? cleanValue : `https://${cleanValue}`;
     }
@@ -269,15 +328,7 @@ export async function addContactField() {
     row.querySelector('.btn-remove-field').onclick = () => {
         row.remove();
         // Активируем сохранение при удалении поля
-        const saveBtn = document.getElementById('global-save-btn');
-        if (saveBtn) {
-            saveBtn.classList.add('pulse-active');
-            saveBtn.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                saveClientProfile();
-            };
-        }
+        setDialogSaveActive(true);
     };
 
     // Новый контакт добавляется в режиме просмотра (по ТЗ), но он будет сохранен только при нажатии на дискету
@@ -288,15 +339,7 @@ export async function addContactField() {
     container.appendChild(row);
 
     // Активируем глобальную кнопку сохранения сразу после добавления поля
-    const globalSaveBtn = document.getElementById('global-save-btn');
-    if (globalSaveBtn) {
-        globalSaveBtn.classList.add('pulse-active');
-        globalSaveBtn.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            saveClientProfile();
-        };
-    }
+    setDialogSaveActive(true);
 }
 
 /**
@@ -307,15 +350,7 @@ export function removeContactField(btn) {
     if (row) {
         row.remove();
         // Активируем сохранение при удалении поля
-        const saveBtn = document.getElementById('global-save-btn');
-        if (saveBtn) {
-            saveBtn.classList.add('pulse-active');
-            saveBtn.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                saveClientProfile();
-            };
-        }
+        setDialogSaveActive(true);
     }
 }
 
@@ -378,8 +413,10 @@ export async function saveClientProfile() {
     // 1. Сохраняем метаданные
     const okMeta = await updateSessionMetadata(state.activeSessionId, finalMeta);
     
-    // 2. Сохраняем режим оператора
-    const okMode = await toggleOperatorMode(state.activeSessionId, isOperatorMode);
+    // 2. Сохраняем режим оператора только при фактическом изменении.
+    // Иначе API создаёт лишнее системное сообщение о подключении/выходе оператора.
+    const operatorModeChanged = Boolean(dialogData) && dialogData.is_operator_mode !== isOperatorMode;
+    const okMode = !operatorModeChanged || await toggleOperatorMode(state.activeSessionId, isOperatorMode);
 
     if (okMeta && okMode) {
         // Моментально обновляем локальный стейт в state.dialogs
@@ -389,22 +426,8 @@ export async function saveClientProfile() {
             state.dialogs[dialogIdx].is_operator_mode = isOperatorMode;
         }
 
-        // Визуальный фидбек на кнопке сохранения
-        const globalSaveBtn = document.getElementById('global-save-btn');
-        if (globalSaveBtn) {
-            const DISKETTE_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
-            const CHECK_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e1fd71" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-            
-            globalSaveBtn.innerHTML = CHECK_SVG;
-            globalSaveBtn.classList.remove('pulse-active');
-            globalSaveBtn.onclick = null;
-
-            setTimeout(() => {
-                // Возвращаем дискету только если кнопка все еще существует в DOM
-                const btn = document.getElementById('global-save-btn');
-                if (btn) btn.innerHTML = DISKETTE_SVG;
-            }, 2000);
-        }
+        // Сбрасываем акцент на кнопках сохранения (анимацию success даёт AdminApp.handleSidebarSave)
+        setDialogSaveActive(false);
 
         console.log('[Profile] All changes saved successfully');
         
@@ -419,6 +442,7 @@ export async function saveClientProfile() {
         if (onDialogsChanged) onDialogsChanged();
     } else {
         alert('Ошибка при сохранении данных на сервере');
+        throw new Error('Failed to save client profile');
     }
 }
 
@@ -461,6 +485,7 @@ export function renderDialogSidebar(sessionId) {
             const sid = sessionId.toLowerCase();
             if (sid.includes('tg-') || sid.includes('telegram')) platform = 'telegram';
             else if (sid.includes('vk-')) platform = 'vk';
+            else if (sid.includes('ok-')) platform = 'ok';
             else if (sid.includes('max-')) platform = 'max';
             else if (sid.includes('email_')) platform = 'email';
             else if (sid.includes('avito-')) platform = 'avito';
@@ -547,6 +572,7 @@ export function renderDialogSidebar(sessionId) {
         const platformNames = {
             'telegram': 'Telegram',
             'vk': 'Вконтакте',
+            'ok': 'Одноклассники',
             'avito': 'Avito',
             'max': 'Max',
             'email': 'Email',
@@ -579,7 +605,6 @@ export function renderDialogSidebar(sessionId) {
             { label: `${currentPlatformName} ID`.trim(), key: 'avito_id', targetKey: 'other_links', ph: 'ID...' },
             { label: 'Chat ID', key: 'chat_id', targetKey: 'other_links', ph: 'ID...' },
             { label: 'Telegram ID', key: 'tg_id', targetKey: 'tg_links', ph: 'ID...' },
-            { label: 'VK ID', key: 'vk_id', targetKey: 'vk_links', ph: 'ID...' },
             { label: 'Max ID', key: 'max_id', targetKey: 'max_links', ph: 'ID...' }
         ];
 
@@ -615,15 +640,7 @@ export function renderDialogSidebar(sessionId) {
                         input.dataset.label = f.label;
                         row.querySelector('.btn-remove-field').onclick = () => {
                             row.remove();
-                            const saveBtn = document.getElementById('global-save-btn');
-                            if (saveBtn) {
-                                saveBtn.classList.add('pulse-active');
-                                saveBtn.onclick = (e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    saveClientProfile();
-                                };
-                            }
+                            setDialogSaveActive(true);
                         };
                         contactsContainer.appendChild(fieldClone);
                     }
@@ -641,7 +658,6 @@ export function renderDialogSidebar(sessionId) {
     const btnCancel = document.getElementById('btn-cancel-profile');
     const btnAdd = document.getElementById('btn-add-any-contact');
     const avatarImg = document.querySelector('.dialog-sidebar-avatar img');
-    const globalSaveBtn = document.getElementById('global-save-btn');
     const menuBtn = document.getElementById('chat-menu-btn');
 
     const toggleEditMode = (edit) => {
@@ -683,14 +699,7 @@ export function renderDialogSidebar(sessionId) {
                     e.stopPropagation();
                     avatarImg.src = '/api/chat/img/icon_mitia_white.jpg';
                     avatarImg.dataset.customSrc = 'none';
-                    if (globalSaveBtn) {
-                        globalSaveBtn.classList.add('pulse-active');
-                        globalSaveBtn.onclick = (ev) => {
-                            ev.preventDefault();
-                            ev.stopPropagation();
-                            saveClientProfile();
-                        };
-                    }
+                    setDialogSaveActive(true);
                 };
                 if (container) container.appendChild(newBtn);
             }
@@ -703,34 +712,21 @@ export function renderDialogSidebar(sessionId) {
             modeToggle.disabled = false;
             modeToggle.closest('.mitya-switch').style.opacity = '1';
             modeToggle.closest('.mitya-switch').style.cursor = 'pointer';
-            
+
             // При переключении тумблера активируем кнопку сохранения, если мы еще не в режиме редактирования
             modeToggle.onchange = () => {
-                if (globalSaveBtn && !globalSaveBtn.classList.contains('pulse-active')) {
-                    globalSaveBtn.classList.add('pulse-active');
-                    globalSaveBtn.onclick = (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        saveClientProfile();
-                    };
-                }
+                const saveButtons = getDialogSaveButtons();
+                const alreadyActive = saveButtons.some((btn) => btn.classList.contains('pulse-active'));
+                if (!alreadyActive) setDialogSaveActive(true);
             };
         }
 
+        // В режиме редактирования можно безвозвратно очистить отдельные сообщения и их вложения.
+        const messagesContainer = document.getElementById('modal-messages-container');
+        if (messagesContainer) messagesContainer.classList.toggle('is-editing-messages', !!edit);
+
         // Управление глобальной кнопкой сохранения
-        if (globalSaveBtn) {
-            if (edit) {
-                globalSaveBtn.classList.add('pulse-active'); // Визуальный акцент
-                globalSaveBtn.onclick = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    saveClientProfile();
-                };
-            } else {
-                globalSaveBtn.classList.remove('pulse-active');
-                globalSaveBtn.onclick = null; // Возвращаем стандартное поведение
-            }
-        }
+        setDialogSaveActive(!!edit);
     };
 
     if (btnEdit) {
@@ -743,11 +739,7 @@ export function renderDialogSidebar(sessionId) {
     if (btnCancel) btnCancel.onclick = () => {
         toggleEditMode(false);
         // Сбрасываем кнопку сохранения
-        const globalSaveBtn = document.getElementById('global-save-btn');
-        if (globalSaveBtn) {
-            globalSaveBtn.classList.remove('pulse-active');
-            globalSaveBtn.onclick = null;
-        }
+        setDialogSaveActive(false);
     };
     if (btnAdd) btnAdd.onclick = () => addContactField();
 
@@ -774,20 +766,40 @@ export function renderDialogSidebar(sessionId) {
         // По умолчанию показываем строку тумблера
         const modeRow = modeToggle.closest('.sidebar-mode-toggle-row');
         if (modeRow) modeRow.style.display = 'flex';
-        
+
         modeToggle.onchange = () => {
-            if (globalSaveBtn) {
-                globalSaveBtn.classList.add('pulse-active');
-                globalSaveBtn.onclick = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    saveClientProfile();
-                };
-            }
+            setDialogSaveActive(true);
         };
     }
 
     if (btnAdd) btnAdd.style.display = 'flex'; // По умолчанию показываем кнопку плюс
+
+    const messagesContainer = document.getElementById('modal-messages-container');
+    if (messagesContainer) {
+        messagesContainer.onclick = async (event) => {
+            const button = event.target.closest('.message-delete-button');
+            if (!button || !messagesContainer.classList.contains('is-editing-messages')) return;
+            const messageId = Number(button.dataset.messageId);
+            if (!Number.isInteger(messageId)) return;
+
+            const helpers = await import('../helpers.js?v=1');
+            const confirmed = await helpers.showConfirmAlert({
+                title: 'Удалить сообщение?',
+                text: 'Сообщение и все его файлы будут удалены без возможности восстановления.',
+                confirmText: 'Удалить'
+            });
+            if (!confirmed) return;
+
+            button.disabled = true;
+            if (await deleteSessionMessage(sessionId, messageId)) {
+                state.lastHistoryContent = '';
+                await loadChatHistory(sessionId);
+            } else {
+                button.disabled = false;
+                alert('Не удалось удалить сообщение');
+            }
+        };
+    }
 
     const dropdown = document.getElementById('chat-dropdown-menu');
     if (menuBtn && dropdown) {
@@ -888,7 +900,10 @@ export async function openDialog(sessionId) {
     if (dialogCol) dialogCol.style.display = 'flex';
 
     document.body.classList.add('dialog-open');
+    setDialogSidebarMode(true);
+    showCompactDialogChat();
     renderDialogSidebar(sessionId);
+    renderSidebarClientAvatar();
     loadChatHistory(sessionId);
     startHistoryUpdate(sessionId);
 
@@ -897,8 +912,15 @@ export async function openDialog(sessionId) {
         if (!data || typeof data !== 'object') return;
 
         if (data.type === 'typing') {
-            const isUserTyping = !!data.is_typing && data.author_role !== 'operator';
-            updateTypingStatus(isUserTyping);
+            const isTyping = !!data.is_typing;
+            const role = data.author_role || 'user';
+            // Показываем статус, если печатает КТО-УГОДНО, кроме текущего оператора
+            if (role !== 'operator') {
+                updateTypingStatus(isTyping, role);
+            } else {
+                // Если пришло событие от оператора (например, из другой вкладки), скрываем статус
+                updateTypingStatus(false);
+            }
             return;
         }
 
@@ -933,6 +955,15 @@ export async function openDialog(sessionId) {
         });
     }
 
+    window.handleDialogBack = () => {
+        const grid = document.querySelector('.appearance-grid');
+        if (isCompactDialogLayout() && grid?.classList.contains('is-dialog-profile')) {
+            showCompactDialogChat();
+            return;
+        }
+        window.closeActiveDialog?.();
+    };
+
     window.closeActiveDialog = async () => {
         stopHistoryUpdate();
         disconnectWebSocket();
@@ -946,12 +977,20 @@ export async function openDialog(sessionId) {
         const listCol = document.getElementById('dialogs-list-column');
         if (listCol) listCol.classList.remove('dialogs-list-blocked');
 
-        const globalSaveBtn = document.getElementById('global-save-btn');
-        if (globalSaveBtn) {
-            globalSaveBtn.classList.remove('pulse-active');
-            globalSaveBtn.onclick = null;
-            globalSaveBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
+        const DISKETTE_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>`;
+        getDialogSaveButtons().forEach((btn) => {
+            btn.classList.remove('pulse-active');
+            btn.onclick = null;
+            btn.innerHTML = DISKETTE_SVG;
+        });
+        setDialogSidebarMode(false);
+        showCompactDialogChat();
+        const clientAvatarButton = document.getElementById('dialog-sidebar-client-avatar');
+        if (clientAvatarButton) {
+            clientAvatarButton.innerHTML = '';
+            clientAvatarButton.onclick = null;
         }
+        window.handleDialogBack = null;
 
         // Сначала мгновенно перерисовываем список, чтобы убрать обводку
         const { renderDialogs: renderList } = await import('./list.js');
@@ -981,11 +1020,148 @@ export async function openDialog(sessionId) {
 }
 
 /**
+ * Эффект печатающейся машинки
+ */
+async function typeTextEffect(element, htmlContent, speed = 15) {
+    element.innerHTML = '';
+    // Для простоты эффекта в админке печатаем по словам, чтобы не ломать HTML-теги
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    const text = tempDiv.innerText;
+    const words = text.split(' ');
+    
+    let currentText = '';
+    for (const word of words) {
+        currentText += word + ' ';
+        element.textContent = currentText;
+        await new Promise(resolve => setTimeout(resolve, speed));
+        const container = document.getElementById('modal-messages-container');
+        if (container) container.scrollTop = container.scrollHeight;
+    }
+    // В конце заменяем на полный HTML, чтобы работали ссылки и форматирование
+    element.innerHTML = htmlContent;
+}
+
+/**
  * Рендер контента сообщения (с поддержкой HTML для Email)
  */
+function attachmentUrl(attachment) {
+    if (!attachment || typeof attachment !== 'object') return '';
+    const directUrl = attachment.url || attachment.file_url || attachment.local_url || attachment.path;
+    if (directUrl) return String(directUrl);
+    if (attachment.data && attachment.content_type) {
+        return `data:${attachment.content_type};base64,${attachment.data}`;
+    }
+    return '';
+}
+
+function renderMessageAttachments(attachments, { hideInline = false } = {}) {
+    if (!Array.isArray(attachments) || !attachments.length) return '';
+    const items = attachments
+        .filter((attachment) => !hideInline || attachment?.disposition !== 'inline')
+        .map((attachment) => {
+            const url = attachmentUrl(attachment);
+            const name = String(attachment?.name || attachment?.file_name || 'Файл');
+            const contentType = String(attachment?.content_type || attachment?.type || '');
+            const isImage = contentType.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(name);
+            const isAudio = contentType.startsWith('audio/') || /\.(mp3|m4a|ogg|opus|wav|weba)$/i.test(name);
+            if (!url) return `<div class="operator-message-file">📎 ${escapeHtml(name)}</div>`;
+            if (isAudio) {
+                return `<div class="operator-message-audio"><span class="operator-message-audio-name">${escapeHtml(name)}</span><audio controls preload="metadata" src="${escapeHtml(url)}">Ваш браузер не поддерживает воспроизведение аудио.</audio></div>`;
+            }
+            if (isImage) {
+                return `<button type="button" class="operator-message-image-link" data-dialog-image-url="${escapeHtml(url)}" aria-label="Открыть изображение ${escapeHtml(name)}"><img src="${escapeHtml(url)}" alt="${escapeHtml(name)}" class="operator-message-image"></button>`;
+            }
+            return `<a class="operator-message-file" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">📎 ${escapeHtml(name)}</a>`;
+        }).join('');
+    return items ? `<div class="operator-message-attachments">${items}</div>` : '';
+}
+
+function openDialogImageGallery(container, imageUrl) {
+    const images = Array.from(container.querySelectorAll('[data-dialog-image-url]'));
+    let currentIndex = images.findIndex((image) => image.dataset.dialogImageUrl === imageUrl);
+    if (currentIndex < 0) currentIndex = 0;
+
+    const panel = container.closest('.dialog-full-view-card');
+    if (!panel || !images.length) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-image-gallery';
+    const close = () => overlay.remove();
+    const render = () => {
+        const image = images[currentIndex];
+        const src = image.dataset.dialogImageUrl || '';
+        const fileName = src.split('/').pop().split('?')[0] || 'image';
+        overlay.innerHTML = `
+            <div class="dialog-image-gallery-actions">
+                <a href="${escapeHtml(src)}" download="${escapeHtml(fileName)}" class="dialog-image-gallery-action" title="Скачать" aria-label="Скачать изображение"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg></a>
+                <button type="button" class="dialog-image-gallery-action" data-gallery-close title="Закрыть" aria-label="Закрыть галерею"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+            </div>
+            ${images.length > 1 ? '<button type="button" class="dialog-image-gallery-nav is-prev" data-gallery-prev aria-label="Предыдущее изображение"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg></button><button type="button" class="dialog-image-gallery-nav is-next" data-gallery-next aria-label="Следующее изображение"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></button>' : ''}
+            <img src="${escapeHtml(src)}" alt="Изображение из диалога" class="dialog-image-gallery-image">
+            <span class="dialog-image-gallery-counter">${currentIndex + 1} / ${images.length}</span>`;
+        overlay.querySelector('[data-gallery-close]')?.addEventListener('click', close);
+        overlay.querySelector('[data-gallery-prev]')?.addEventListener('click', () => {
+            currentIndex = (currentIndex - 1 + images.length) % images.length;
+            render();
+        });
+        overlay.querySelector('[data-gallery-next]')?.addEventListener('click', () => {
+            currentIndex = (currentIndex + 1) % images.length;
+            render();
+        });
+    };
+
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) close();
+    });
+    render();
+    panel.appendChild(overlay);
+}
+
+function bindDialogImageGallery(container) {
+    if (container.dataset.dialogImageGalleryBound === 'true') return;
+    container.dataset.dialogImageGalleryBound = 'true';
+    container.addEventListener('click', (event) => {
+        const imageButton = event.target.closest('[data-dialog-image-url]');
+        if (!imageButton) return;
+        event.preventDefault();
+        openDialogImageGallery(container, imageButton.dataset.dialogImageUrl || '');
+    });
+}
+
+function resolveCidLinks(html, attachments) {
+    if (!html || !Array.isArray(attachments)) return html;
+    return attachments.reduce((resolvedHtml, attachment) => {
+        const cid = String(attachment?.cid || '').trim().replace(/^<|>$/g, '');
+        const url = attachmentUrl(attachment);
+        if (!cid || !url) return resolvedHtml;
+        return resolvedHtml.split(`cid:${cid}`).join(url);
+    }, html);
+}
+
+function formatMessageDate(timestamp) {
+    const date = timestamp ? new Date(timestamp) : new Date();
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function formatMessageTime(timestamp) {
+    const date = timestamp ? new Date(timestamp) : new Date();
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderOperatorAvatar() {
+    const theme = state.widgetConfig?.theme || {};
+    const avatarUrl = theme.msg_operator_avatar || theme.operator_avatar;
+    if (!avatarUrl || theme.msg_operator_avatar_enabled === false) return '';
+    return `<img class="operator-message-avatar" src="${escapeHtml(avatarUrl)}" alt="Оператор">`;
+}
+
 function renderMessageContent(msg, sessionId) {
     let content = msg.content || msg.text || '';
     const isEmail = sessionId && sessionId.startsWith('email_');
+    if (isEmail) content = resolveCidLinks(content, msg.attachments);
     
     if (isEmail && (content.includes('<html') || content.includes('<div') || content.includes('<body') || content.includes('<table'))) {
         // 1. Извлекаем тему
@@ -1003,13 +1179,17 @@ function renderMessageContent(msg, sessionId) {
         
         const shadowId = `email-shadow-${Math.random().toString(36).substr(2, 9)}`;
         
+        const attachmentsHtml = renderMessageAttachments(msg.attachments, { hideInline: true });
         return `
             <div class="email-wrapper collapsed">
-                <div class="email-header" onclick="DialogsModule.toggleEmail(this)">
+                <div class="email-header" onclick="DialogsProfileHelpers.toggleEmail(this)">
                     <div class="email-subject"><span>${escapeHtml(subject)}</span></div>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="collapse-chevron"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </div>
-                <div class="email-shadow-container" id="${shadowId}" data-content="${encodeURIComponent(content)}"></div>
+                <div class="email-expanded-content">
+                    <div class="email-shadow-container" id="${shadowId}" data-content="${encodeURIComponent(content)}"></div>
+                    ${attachmentsHtml}
+                </div>
             </div>`;
     }
     
@@ -1036,8 +1216,8 @@ function initEmailShadowDOM() {
             style.textContent = `
                 :host {
                     display: block;
-                    background: #ffffff;
-                    color: #000000;
+                    background: #ffffff !important;
+                    color: #000000 !important;
                     font-family: sans-serif;
                     width: 100%;
                     overflow: hidden;
@@ -1045,10 +1225,16 @@ function initEmailShadowDOM() {
                 div, p, body, html {
                     margin: 0;
                     padding: 0;
+                    background: #ffffff !important;
+                    color: #000000 !important;
                 }
                 * {
                     max-width: 100% !important;
                     box-sizing: border-box !important;
+                }
+                .email-body-content {
+                    padding: 16px !important;
+                    overflow-wrap: anywhere;
                 }
             `;
             
@@ -1072,6 +1258,10 @@ function initChatControls(sessionId) {
     const input = document.getElementById('operator-input');
     const sendBtn = document.getElementById('send-operator-msg');
     const micBtn = document.getElementById('operator-mic-btn');
+    const attachBtn = document.getElementById('operator-attach-btn');
+    const fileInput = document.getElementById('operator-file-input');
+    const attachedFilesBox = document.getElementById('operator-attached-files');
+    const attachedFiles = [];
 
     if (!input || !sendBtn) return;
 
@@ -1082,9 +1272,25 @@ function initChatControls(sessionId) {
     const newSendBtn = sendBtn.cloneNode(true);
     sendBtn.parentNode.replaceChild(newSendBtn, sendBtn);
 
+    const renderAttachedFiles = () => {
+        if (!attachedFilesBox) return;
+        attachedFilesBox.innerHTML = attachedFiles.map((file, index) => `
+            <div class="operator-attached-file" title="${escapeHtml(file.name)}">
+                <span>${escapeHtml(file.name)}</span>
+                <button type="button" data-file-index="${index}" aria-label="Удалить файл">×</button>
+            </div>
+        `).join('');
+        attachedFilesBox.querySelectorAll('button[data-file-index]').forEach((button) => {
+            button.onclick = () => {
+                attachedFiles.splice(Number(button.dataset.fileIndex), 1);
+                renderAttachedFiles();
+            };
+        });
+    };
+
     const handleSend = async () => {
         const text = newInput.value.trim();
-        if (!text) return;
+        if (!text && !attachedFiles.length) return;
 
         sendTypingStatus(false);
         if (state.typingTimeout) {
@@ -1097,9 +1303,13 @@ function initChatControls(sessionId) {
         if (micBtn) micBtn.style.display = 'flex';
 
         try {
-            const ok = await sendOperatorMessage(sessionId, text);
-            if (ok) {
+            const response = await sendOperatorMessage(sessionId, text, attachedFiles);
+            if (response.ok) {
+                attachedFiles.splice(0, attachedFiles.length);
+                renderAttachedFiles();
                 await loadChatHistory(sessionId, true);
+            } else {
+                console.error('[Chat] Operator message rejected:', await response.text());
             }
         } catch (e) {
             console.error('[Chat] Send error:', e);
@@ -1137,35 +1347,123 @@ function initChatControls(sessionId) {
             state.typingTimeout = null;
         }
     };
+
+    if (attachBtn && fileInput) {
+        attachBtn.onclick = () => fileInput.click();
+        fileInput.onchange = () => {
+            const files = Array.from(fileInput.files || []);
+            attachedFiles.push(...files);
+            fileInput.value = '';
+            renderAttachedFiles();
+        };
+    }
+
+    if (micBtn) {
+        micBtn.onclick = () => {
+            const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!Recognition) {
+                alert('Голосовой ввод не поддерживается этим браузером.');
+                return;
+            }
+
+            const recognition = new Recognition();
+            recognition.lang = 'ru-RU';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+            micBtn.classList.add('is-recording');
+            recognition.onresult = (event) => {
+                const transcript = event.results?.[0]?.[0]?.transcript || '';
+                newInput.value = `${newInput.value}${newInput.value ? ' ' : ''}${transcript}`;
+                newInput.dispatchEvent(new Event('input'));
+                newInput.focus();
+            };
+            recognition.onerror = (event) => console.warn('[Operator STT] Recognition error:', event.error);
+            recognition.onend = () => micBtn.classList.remove('is-recording');
+            try {
+                recognition.start();
+            } catch (error) {
+                micBtn.classList.remove('is-recording');
+                console.warn('[Operator STT] Start error:', error);
+            }
+        };
+    }
 }
 
 export async function loadChatHistory(sessionId, isSilent = false) {
     const container = document.getElementById('modal-messages-container');
     if (!container) return;
     try {
-        // Проверяем, находится ли пользователь внизу (с допуском 50px)
         const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
-
         const history = await fetchHistory(sessionId, state.activeClientId);
         let messages = Array.isArray(history) ? history : (history.history || []);
+        bindDialogImageGallery(container);
 
-        // Сравниваем с предыдущим контентом, чтобы избежать лишних обновлений и прыжков скролла
         const historyString = JSON.stringify(messages);
         if (isSilent && state.lastHistoryContent === historyString) {
             return;
         }
-        state.lastHistoryContent = historyString;
 
-        let finalHtml = messages.map(msg => {
-            const roleClass = msg.role === 'assistant' ? 'assistant' : 'user';
-            const contentHtml = renderMessageContent(msg, sessionId);
-            return `<div class="modal-msg ${roleClass}"><div class="msg-bubble"><div class="msg-text-content">${contentHtml}</div></div></div>`;
-        }).join('');
-        container.innerHTML = finalHtml || '<div class="empty-state">История пуста</div>';
+        // Если это не фоновое обновление или контейнер пуст, рендерим всё
+        if (!isSilent || !container.querySelector('.modal-msg')) {
+            state.lastHistoryContent = historyString;
+            let previousDate = '';
+            let finalHtml = messages.map(msg => {
+                const roleClass = msg.author_role === 'operator' ? 'operator' : (msg.role === 'assistant' ? 'assistant' : 'user');
+                const messageDate = formatMessageDate(msg.timestamp);
+                const dateSeparator = messageDate && messageDate !== previousDate
+                    ? `<div class="date-separator"><span>${escapeHtml(messageDate)}</span></div>`
+                    : '';
+                previousDate = messageDate || previousDate;
+                const contentHtml = renderMessageContent(msg, sessionId);
+                const isEmail = sessionId && sessionId.startsWith('email_');
+                const attachmentsHtml = isEmail ? '' : renderMessageAttachments(msg.attachments);
+                const timeHtml = `<span class="operator-message-time">${escapeHtml(formatMessageTime(msg.timestamp))}</span>`;
+                const avatarHtml = roleClass === 'operator' ? renderOperatorAvatar() : '';
+                const deleteButton = Number.isInteger(msg.id) ? `<button type="button" class="message-delete-button action-btn-circle sm btn-danger" data-message-id="${msg.id}" aria-label="Удалить сообщение" title="Удалить сообщение"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>` : '';
+                return `${dateSeparator}<div class="modal-msg ${roleClass}${isEmail ? ' email-message' : ''}">${deleteButton}<div class="operator-message-row"><div class="msg-bubble"><div class="msg-text-content">${contentHtml}</div>${attachmentsHtml}${timeHtml}</div>${avatarHtml}</div></div>`;
+            }).join('');
+            container.innerHTML = finalHtml || '<div class="empty-state">История пуста</div>';
+        } else {
+            // Инкрементальное обновление для фоновых запросов
+            const currentMsgCount = container.querySelectorAll('.modal-msg').length;
+            if (messages.length > currentMsgCount) {
+                const newMessages = messages.slice(currentMsgCount);
+                for (const msg of newMessages) {
+                    const roleClass = msg.author_role === 'operator' ? 'operator' : (msg.role === 'assistant' ? 'assistant' : 'user');
+                    const contentHtml = renderMessageContent(msg, sessionId);
+                    const isEmail = sessionId && sessionId.startsWith('email_');
+                    const attachmentsHtml = isEmail ? '' : renderMessageAttachments(msg.attachments);
+                    const messageDate = formatMessageDate(msg.timestamp);
+                    const lastSeparator = container.querySelector('.date-separator:last-of-type span')?.textContent;
+                    if (messageDate && messageDate !== lastSeparator) {
+                        const separator = document.createElement('div');
+                        separator.className = 'date-separator';
+                        separator.innerHTML = `<span>${escapeHtml(messageDate)}</span>`;
+                        container.appendChild(separator);
+                    }
+
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = `modal-msg ${roleClass}${isEmail ? ' email-message' : ''}`;
+                    const avatarHtml = roleClass === 'operator' ? renderOperatorAvatar() : '';
+                    const deleteButton = Number.isInteger(msg.id) ? `<button type="button" class="message-delete-button action-btn-circle sm btn-danger" data-message-id="${msg.id}" aria-label="Удалить сообщение" title="Удалить сообщение"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>` : '';
+                    msgDiv.innerHTML = `${deleteButton}<div class="operator-message-row"><div class="msg-bubble"><div class="msg-text-content"></div>${attachmentsHtml}<span class="operator-message-time">${escapeHtml(formatMessageTime(msg.timestamp))}</span></div>${avatarHtml}</div>`;
+                    container.appendChild(msgDiv);
+
+                    const textContent = msgDiv.querySelector('.msg-text-content');
+                    const isTypingEffect = state.widgetConfig?.theme?.msg_typing_effect === 'typewriter';
+
+                    if (msg.role === 'assistant' && isTypingEffect) {
+                        await typeTextEffect(textContent, contentHtml);
+                    } else {
+                        textContent.innerHTML = contentHtml;
+                    }
+                }
+            }
+            state.lastHistoryContent = historyString;
+        }
         
         initEmailShadowDOM();
 
-        // Скроллим вниз только если пользователь был внизу или это не фоновое обновление
         if (isAtBottom || !isSilent) {
             container.scrollTop = container.scrollHeight;
         }
@@ -1194,5 +1492,3 @@ window.DialogsProfileHelpers = {
         wrapper.classList.toggle('collapsed');
     }
 };
-
-function resolveCidLinks(html, attachments) { return html; }

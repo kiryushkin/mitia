@@ -67,7 +67,7 @@ export function buildHTML(config) {
             <div class="chat-input-container">
               <button class="chat-attach-btn" id="chat-attach-btn" title="Прикрепить файл">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-                <input type="file" id="chat-file-input" style="display:none" accept=".pdf,.doc,.docx,.txt,.rtf,.odt,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp,.tiff,.bmp,.svg">
+                <input type="file" id="chat-file-input" style="display:none" accept=".pdf,.doc,.docx,.txt,.rtf,.odt,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.webp,.tiff,.bmp">
               </button>
               <textarea class="chat-input" id="chat-input" placeholder="Сообщение..." maxlength="2000" rows="1" autocomplete="off"></textarea>
               <div class="chat-send-container">

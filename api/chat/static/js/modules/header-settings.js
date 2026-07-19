@@ -167,7 +167,7 @@ export function initHeaderSettings(context) {
         toggles.forEach(t => {
             const el = document.getElementById(t.id);
             if (el) {
-                el.checked = context.state.theme[context.getHeaderBtnKey(t.key)] !== false;
+                el.checked = context.state.theme[context.getHeaderBtnKey(t.key)] === true;
                 el.dispatchEvent(new Event('change'));
             }
         });

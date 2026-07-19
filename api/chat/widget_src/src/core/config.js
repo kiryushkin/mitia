@@ -58,11 +58,43 @@
   const userCfg = window.MITYA_CONFIG || {};
   const dataset = (scriptEl && scriptEl.dataset) || {};
 
+  function readClientIdFromScript(el) {
+    if (!el || !el.src) return '';
+    try {
+      const fromQuery = new URL(el.src, window.location.href).searchParams.get('client_id');
+      if (fromQuery) return fromQuery.trim();
+    } catch (_) {}
+    return '';
+  }
+
+  function readClientIdFromPage() {
+    try {
+      return new URLSearchParams(window.location.search).get('client_id') || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function readAssistantIdFromScript(el) {
+    if (!el || !el.src) return '';
+    try {
+      return new URL(el.src, window.location.href).searchParams.get('assistant_id') || '';
+    } catch (_) {}
+    return '';
+  }
+
+  const resolvedClientId = (
+    userCfg.clientId
+    || dataset.client
+    || dataset.clientId
+    || readClientIdFromScript(scriptEl)
+    || readClientIdFromPage()
+    || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'mitia_assistant' : '')
+  ).trim();
+
   export const BOOTSTRAP = {
-    clientId: userCfg.clientId 
-      || (location.search.includes('client_id=') ? new URLSearchParams(location.search).get('client_id') : '') 
-      || dataset.client 
-      || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'mitia_assistant' : 'default'),
+    clientId: resolvedClientId || 'default',
+    assistantId: userCfg.assistantId || dataset.assistantId || readAssistantIdFromScript(scriptEl),
     serverUrl: userCfg.serverUrl || dataset.server ||
       ((location.port === '5007')
         ? `http://${location.hostname}:5007`
@@ -85,8 +117,15 @@
     return {};
   }
 
+  export function getWidgetStorageScope(config = CONFIG) {
+    const clientId = String(config.clientId || 'default').trim() || 'default';
+    const assistantId = String(config.assistantId || 'main').trim() || 'main';
+    return `${clientId}_${assistantId}`;
+  }
+
   export let CONFIG = {
     clientId: BOOTSTRAP.clientId,
+    assistantId: BOOTSTRAP.assistantId || '',
     serverUrl: BOOTSTRAP.serverUrl,
     botName: 'Ассистент',
     avatar: '',

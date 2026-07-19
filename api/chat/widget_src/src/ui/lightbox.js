@@ -1,22 +1,3 @@
-import { $ } from '../utils/dom';
-
-let lockCount = 0;
-let originalStyle = '';
-
-export const lockBodyScroll = () => {
-  if (lockCount === 0) {
-    originalStyle = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-  }
-  lockCount++;
-};
-
-export const unlockBodyScroll = () => {
-  lockCount = Math.max(0, lockCount - 1);
-  if (lockCount === 0) {
-    document.body.style.overflow = originalStyle;
-  }
-};
 
 export const openImageLightbox = (src, messagesContainer) => {
   const allImages = Array.from(messagesContainer.querySelectorAll('.chat-inline-image, .message-image-preview'));
@@ -26,8 +7,8 @@ export const openImageLightbox = (src, messagesContainer) => {
   const overlay = document.createElement('div');
   overlay.className = 'chat-lightbox-overlay';
   overlay.style.cssText = `
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: rgba(0,0,0,0.95); z-index: 9999;
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.95); z-index: 20;
     display: flex; align-items: center; justify-content: center;
     animation: chatFadeIn 0.3s ease-out;
     backdrop-filter: blur(15px);
@@ -88,26 +69,26 @@ export const openImageLightbox = (src, messagesContainer) => {
     updateImage(currentIndex);
   };
 
-  const close = () => {
-    overlay.style.opacity = '0';
-    overlay.style.transition = 'opacity 0.3s ease';
-    setTimeout(() => {
-      overlay.remove();
-      unlockBodyScroll();
-    }, 300);
-  };
-
-  overlay.onclick = (e) => { if (e.target.tagName !== 'IMG' && e.target.tagName !== 'SVG') close(); };
-  
+  let isClosed = false;
   const keyHandler = (e) => {
     if (e.key === 'Escape') close();
     if (e.key === 'ArrowLeft') navigate(-1);
     if (e.key === 'ArrowRight') navigate(1);
   };
+  const close = () => {
+    if (isClosed) return;
+    isClosed = true;
+    window.removeEventListener('keydown', keyHandler);
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'opacity 0.3s ease';
+    setTimeout(() => overlay.remove(), 300);
+  };
 
-  window.addEventListener('keydown', keyHandler); 
+  overlay.onclick = (e) => { if (e.target.tagName !== 'IMG' && e.target.tagName !== 'SVG') close(); };
+  window.addEventListener('keydown', keyHandler);
 
   updateImage(currentIndex);
-  document.body.appendChild(overlay);
-  lockBodyScroll();
+  const overlayHost = messagesContainer?.closest?.('.chat-window') || messagesContainer?.getRootNode?.();
+  if (!overlayHost || typeof overlayHost.appendChild !== 'function') return;
+  overlayHost.appendChild(overlay);
 };

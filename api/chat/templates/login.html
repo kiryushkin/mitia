@@ -54,46 +54,52 @@
   <link rel="stylesheet" href="/api/chat/static/css/login.css">
 
   <!-- Scripts -->
+  <script>
+    window.MITYA_CONFIG = {
+    clientId: 'usr_138d227f7f19',
+    assistantId: 'main',
+    serverUrl: 'https://mitia.pro'
+    };
+    </script>
+    <script src="https://mitia.pro/api/chat/chat-widget.js?client_id=usr_138d227f7f19&assistant_id=main" data-client="usr_138d227f7f19" data-assistant-id="main" defer></script>
   <script type="module" src="/api/chat/static/js/login.js" defer></script>
-  <script src="http://127.0.0.1:5007/api/chat/chat-widget.js?client_id=mitia_assistant" defer></script>
 </head>
 
 <body class="loading" 
   data-auth-mode="{{ auth_mode or '' }}"
   data-verify-success="{{ 'true' if verify_success == 'true' else 'false' }}"
-  data-verify-error="{{ 'true' if verify_error == 'true' else 'false' }}">
+  data-verify-error="{{ 'true' if verify_error == 'true' else 'false' }}"
+  data-registration-lock-enabled="{{ 'true' if registration_lock_enabled else 'false' }}"
+  data-registration-lock-title="{{ registration_lock_title or '' }}"
+  data-registration-lock-message="{{ registration_lock_message or '' }}">
   <nav class="nav">
     <a href="/" class="logo" aria-label="MITIA">
         <img src="/api/chat/img/logo_mitia.svg" alt="MITIA" height="20">
     </a>
   </nav>
   <div id="app"></div>
-  <footer class="auth-global-footer">
-    <p class="auth-support-note">
-      <a href="#" id="open-support-chat" class="auth-support-link">Техподдержка</a>
-    </p>
-  </footer>
-   <template id="tmpl-confirm">
-    <div class="welcome-msg welcome-msg--col">
-      <h2 class="welcome-msg__title">Проверьте почту</h2>
-      <p class="welcome-msg__text"><span class="welcome-msg__email"></span><br>Посмотрите в папке «Спам» — на всякий случай.</p>
-      <button id="confirm-ok" class="auth-submit auth-submit--auto">Хорошо</button>
+  <template id="tmpl-confirm">    <div class="auth-screen">
+      <div class="auth-form-container">
+        <h2 class="auth-card-title auth-card-title--center">Проверьте почту</h2>
+        <p class="auth-legal-note auth-legal-note--center"><span class="welcome-msg__email"></span><br>Посмотрите в папке «Спам» — на всякий случай.</p>
+        <button id="confirm-ok" class="auth-submit auth-submit--success">Хорошо</button>
+      </div>
     </div>
   </template>
   <template id="tmpl-message">
-    <div class="welcome-msg welcome-msg--col">
+    <div class="welcome-msg">
       <h2 class="welcome-msg__title"></h2>
     </div>
   </template>
   <template id="tmpl-login">
     <div class="auth-screen">
       <div class="auth-form-container">
+        <h2 class="auth-card-title">Вход</h2>
         <p class="auth-legal-note">
-          Регистрируясь или входя в систему, вы соглашаетесь с
-          <a href="#" class="auth-legal-link" data-doc-placeholder="terms">Условиями использования</a>
+          Регистрируясь или входя в систему, вы соглашаетесь с&nbsp;<a href="/offer" class="auth-legal-link" target="_blank" rel="noopener noreferrer">Условиями использования</a>
           и
-          <a href="#" class="auth-legal-link" data-doc-placeholder="privacy">Политикой конфиденциальности</a>
-          от MITIA
+          <a href="/privacy" class="auth-legal-link" target="_blank" rel="noopener noreferrer">Политикой конфиденциальности</a>
+          от MITIA.
         </p>
         <div class="auth-form"><input type="email" id="login-email" class="auth-input" placeholder="Email" readonly onfocus="this.removeAttribute('readonly');" /></div>
         <div class="auth-form password-input-wrapper">
@@ -121,11 +127,11 @@
   <template id="tmpl-signup">
     <div class="auth-screen">
       <div class="auth-form-container">
+        <h2 class="auth-card-title">Регистрация</h2>
         <p class="auth-legal-note">
-          Регистрируясь или входя в систему, вы соглашаетесь с
-          <a href="#" class="auth-legal-link" data-doc-placeholder="terms">Условиями использования</a>
+          Регистрируясь или входя в систему, вы соглашаетесь с&nbsp;<a href="/offer" class="auth-legal-link" target="_blank" rel="noopener noreferrer">Условиями использования</a>
           и
-          <a href="#" class="auth-legal-link" data-doc-placeholder="privacy">Политикой конфиденциальности</a>
+          <a href="/privacy" class="auth-legal-link" target="_blank" rel="noopener noreferrer">Политикой конфиденциальности</a>
           от MITIA
         </p>
         <div class="auth-form"><input type="email" id="signup-email" class="auth-input" placeholder="Введите ваш Email" readonly onfocus="this.removeAttribute('readonly');" /></div>
@@ -154,14 +160,14 @@
   <template id="tmpl-reset">
     <div class="auth-screen">
       <div class="auth-form-container">
+        <h2 class="auth-card-title">Восстановить доступ</h2>
         <p class="auth-legal-note">
-          Регистрируясь или входя в систему, вы соглашаетесь с
-          <a href="#" class="auth-legal-link" data-doc-placeholder="terms">Условиями использования</a>
+          Регистрируясь или входя в систему, вы соглашаетесь с&nbsp;<a href="/offer" class="auth-legal-link" target="_blank" rel="noopener noreferrer">Условиями использования</a>
           и
-          <a href="#" class="auth-legal-link" data-doc-placeholder="privacy">Политикой конфиденциальности</a>
+          <a href="/privacy" class="auth-legal-link" target="_blank" rel="noopener noreferrer">Политикой конфиденциальности</a>
           от MITIA
         </p>
-        <div class="auth-form"><input type="email" id="reset-email" class="auth-input" placeholder="Email для восстановления" readonly onfocus="this.removeAttribute('readonly');" /></div>
+        <div class="auth-form"><input type="email" id="reset-email" class="auth-input" placeholder="Email" readonly onfocus="this.removeAttribute('readonly');" /></div>
         <button id="reset-submit" class="auth-submit">Восстановить</button>
       </div>
       <div class="auth-mode-switcher">
@@ -172,11 +178,12 @@
   <template id="tmpl-set-new-password">
     <div class="auth-screen">
       <div class="auth-form-container">
+        <h2 class="auth-card-title">Новый пароль</h2>
         <p class="auth-legal-note">
           Регистрируясь или входя в систему, вы соглашаетесь с
-          <a href="#" class="auth-legal-link" data-doc-placeholder="terms">Условиями использования</a>
+          <a href="/offer" class="auth-legal-link" target="_blank" rel="noopener noreferrer">Условиями использования</a>
           и
-          <a href="#" class="auth-legal-link" data-doc-placeholder="privacy">Политикой конфиденциальности</a>
+          <a href="/privacy" class="auth-legal-link" target="_blank" rel="noopener noreferrer">Политикой конфиденциальности</a>
           от MITIA
         </p>
         <div class="auth-form"><input type="password" id="new-password" class="auth-input" placeholder="Новый пароль" /></div>
@@ -184,6 +191,19 @@
         <button id="set-password-submit" class="auth-submit">Установить пароль</button>
       </div>
       <div class="auth-mode-switcher"><a href="#" id="switch-to-login">Вернуться ко входу</a></div>
+    </div>
+  </template>
+  <template id="tmpl-registration-locked">
+    <div class="auth-screen">
+      <div class="auth-form-container">
+        <div class="welcome-msg welcome-msg--col welcome-msg--embedded">
+          <h2 class="welcome-msg__title welcome-msg__title--upper" id="registration-lock-title"></h2>
+          <p class="welcome-msg__text" id="registration-lock-message"></p>
+        </div>
+      </div>
+      <div class="auth-mode-switcher">
+        <a href="#" id="switch-to-login">Войти</a> или <a href="#" id="switch-to-reset">Восстановить доступ</a>
+      </div>
     </div>
   </template>
   <template id="tmpl-lock">

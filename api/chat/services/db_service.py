@@ -5,13 +5,14 @@ import os
 import time
 import asyncio
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from urllib.parse import unquote
+from datetime import datetime, timedelta
 
 import httpx
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import String, Text, Float, Integer, BigInteger, DateTime, Boolean, ForeignKey, select, update, delete, func, Column, case, or_
+from sqlalchemy import String, Text, Float, Integer, BigInteger, DateTime, Boolean, ForeignKey, select, update, delete, func, Column, case, or_, Index
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 try:
     from pgvector.sqlalchemy import Vector
@@ -21,6 +22,32 @@ except ImportError:
     from sqlalchemy import Float as Vector
 
 from ..core.config import DATABASE_URL, log
+
+def build_assistant_filter_conditions(column, assistant_filter: Optional[str]):
+    raw_value = str(assistant_filter or '').strip()
+    if not raw_value or raw_value == 'all':
+        return []
+
+    parts = []
+    for part in raw_value.split(','):
+        normalized = str(part or '').strip()
+        if normalized and normalized not in parts:
+            parts.append(normalized)
+    if not parts or 'all' in parts:
+        return []
+
+    include_main = 'main' in parts
+    assistant_ids = [part for part in parts if part != 'main']
+    if include_main and 'main' not in assistant_ids:
+        assistant_ids.append('main')
+
+    conditions = []
+    if assistant_ids:
+        conditions.append(column.in_(assistant_ids))
+    if include_main:
+        conditions.append(column.is_(None))
+    return conditions
+
 
 engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
@@ -35,13 +62,28 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     balance: Mapped[float] = mapped_column(Float, default=0.0)
-    tariff_name: Mapped[str] = mapped_column(String(50), default="Старт")
+    tariff_name: Mapped[str] = mapped_column(String(50), default="start")
+    is_personal_tariff: Mapped[bool] = mapped_column(Boolean, default=False)
     messages_consumed: Mapped[int] = mapped_column(Integer, default=0)
+    start_trial_messages_used: Mapped[int] = mapped_column(Integer, default=0)
+    extra_messages_purchased: Mapped[int] = mapped_column(Integer, default=0)
+    extra_messages_used: Mapped[int] = mapped_column(Integer, default=0)
+    extra_assistants_purchased: Mapped[int] = mapped_column(Integer, default=0)
+    extra_storage_purchased_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    storage_plan_pack_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    extra_messages_limit: Mapped[int] = mapped_column(Integer, default=0)
+    extra_storage_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    extra_context_limit: Mapped[int] = mapped_column(Integer, default=0)
+
+    extra_index_pages: Mapped[int] = mapped_column(Integer, default=0)
+    extra_assistants_hard_cap: Mapped[int] = mapped_column(Integer, default=0)
+    messages_period_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     verification_token: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     verification_token_created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     tariff_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    tariff_billing_period: Mapped[str] = mapped_column(String(16), default="month")
     auto_renew: Mapped[bool] = mapped_column(Boolean, default=False)
     messages_reset_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     used_storage: Mapped[int] = mapped_column(BigInteger, default=0) # в байтах
@@ -59,6 +101,46 @@ class BalanceTransaction(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
 
 
+class ClientCustomCondition(Base):
+    __tablename__ = "client_custom_conditions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[str] = mapped_column(String(100), index=True)
+    extra_messages: Mapped[int] = mapped_column(Integer, default=0)
+    extra_assistants: Mapped[int] = mapped_column(Integer, default=0)
+    extra_messages_limit: Mapped[int] = mapped_column(Integer, default=0)
+    extra_storage_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    extra_context_limit: Mapped[int] = mapped_column(Integer, default=0)
+    extra_index_pages: Mapped[int] = mapped_column(Integer, default=0)
+    extra_assistants_hard_cap: Mapped[int] = mapped_column(Integer, default=0)
+    extend_days: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at_override: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    reason_comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_by: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[Optional[str]] = mapped_column(String(100), index=True, nullable=True)
+    category: Mapped[str] = mapped_column(String(50), default="system", index=True)
+    type: Mapped[str] = mapped_column(String(100), default="system", index=True)
+    severity: Mapped[str] = mapped_column(String(20), default="info", index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    body: Mapped[str] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(50), default="system", index=True)
+    channel_scope: Mapped[str] = mapped_column(String(20), default="in_app")
+    action_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    action_label: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    dedupe_key: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), index=True)
+
+
 class ClientConfig(Base):
     __tablename__ = "client_configs"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -66,11 +148,43 @@ class ClientConfig(Base):
     config_json: Mapped[dict] = mapped_column(JSONB, default=dict)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
 
+
+class Assistant(Base):
+    __tablename__ = "assistants"
+    __table_args__ = (
+        Index("ix_assistants_client_assistant", "client_id", "assistant_id", unique=True),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[str] = mapped_column(String(100), ForeignKey("users.client_id"), index=True)
+    assistant_id: Mapped[str] = mapped_column(String(100), index=True)
+    name: Mapped[str] = mapped_column(String(255), default="Митя")
+    role: Mapped[str] = mapped_column(String(255), default="ИИ-ассистент")
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+
+
+class AssistantConfig(Base):
+    __tablename__ = "assistant_configs"
+    __table_args__ = (
+        Index("ix_assistant_configs_client_assistant", "client_id", "assistant_id", unique=True),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    assistant_id: Mapped[str] = mapped_column(String(100), index=True)
+    client_id: Mapped[str] = mapped_column(String(100), ForeignKey("users.client_id"), index=True)
+    config_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+
+
 class ChatSession(Base):
     __tablename__ = "chat_sessions"
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     client_id: Mapped[str] = mapped_column(String(100), index=True)
+    assistant_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
     start_time: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     last_time: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     status: Mapped[str] = mapped_column(String(50), default="new")
@@ -85,6 +199,7 @@ class SessionCase(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[str] = mapped_column(String(100), index=True)
     client_id: Mapped[str] = mapped_column(String(100), index=True)
+    assistant_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
     case_number: Mapped[int] = mapped_column(Integer, default=1)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     open_reason: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -116,6 +231,7 @@ class Lead(Base):
     __tablename__ = "leads"
     id: Mapped[int] = mapped_column(primary_key=True)
     client_id: Mapped[str] = mapped_column(String(100), index=True)
+    assistant_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
     name: Mapped[Optional[str]] = mapped_column(String(255))
     contact: Mapped[Optional[str]] = mapped_column(String(255))
     message: Mapped[Optional[str]] = mapped_column(Text)
@@ -159,6 +275,7 @@ class SitePage(Base):
     __tablename__ = "site_pages"
     id: Mapped[int] = mapped_column(primary_key=True)
     client_id: Mapped[str] = mapped_column(String(100), index=True)
+    assistant_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
     url: Mapped[str] = mapped_column(Text, index=True)
     title: Mapped[Optional[str]] = mapped_column(String(255))
     content: Mapped[str] = mapped_column(Text)
@@ -183,6 +300,7 @@ class StorageItem(Base):
     __tablename__ = "storage_items"
     id: Mapped[int] = mapped_column(primary_key=True)
     client_id: Mapped[str] = mapped_column(String(100), ForeignKey("users.client_id"), index=True)
+    assistant_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
     category: Mapped[str] = mapped_column(String(50), index=True)
     file_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default=None, index=True)
     file_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -197,6 +315,7 @@ class AICache(Base):
     __tablename__ = "ai_cache"
     id: Mapped[int] = mapped_column(primary_key=True)
     client_id: Mapped[str] = mapped_column(String(100), index=True)
+    assistant_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
     cache_key: Mapped[str] = mapped_column(String(255), index=True, nullable=True)
     question_hash: Mapped[str] = mapped_column(String(64), index=True, nullable=True, default="")
     answer: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
@@ -219,10 +338,90 @@ async def save_ai_cache(client_id: str, cache_key: str, content: str, question_h
         session.add(new_cache)
         await session.commit()
 
+async def _apply_startup_schema_migrations():
+    """Минимальные встроенные миграции для существующих PostgreSQL баз.
+    Нужны, чтобы старые инсталляции переживали добавление assistant-aware колонок.
+    """
+    from sqlalchemy import text
+
+    migration_sql = [
+        "ALTER TABLE assistants ADD COLUMN IF NOT EXISTS assistant_id VARCHAR(100)",
+        "ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS assistant_id VARCHAR(100)",
+        "ALTER TABLE session_cases ADD COLUMN IF NOT EXISTS assistant_id VARCHAR(100)",
+        "ALTER TABLE leads ADD COLUMN IF NOT EXISTS assistant_id VARCHAR(100)",
+        "ALTER TABLE site_pages ADD COLUMN IF NOT EXISTS assistant_id VARCHAR(100)",
+        "ALTER TABLE storage_items ADD COLUMN IF NOT EXISTS assistant_id VARCHAR(100)",
+        "ALTER TABLE ai_cache ADD COLUMN IF NOT EXISTS assistant_id VARCHAR(100)",
+        "ALTER TABLE assistant_configs ADD COLUMN IF NOT EXISTS client_id VARCHAR(100)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_personal_tariff BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS start_trial_messages_used INTEGER DEFAULT 0",
+        "UPDATE users SET start_trial_messages_used = messages_consumed WHERE tariff_name = 'start' AND start_trial_messages_used = 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_messages_purchased INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_messages_used INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_assistants_purchased INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_storage_purchased_bytes BIGINT DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS storage_plan_pack_id VARCHAR(64)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_messages_limit INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_storage_bytes BIGINT DEFAULT 0",
+
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_context_limit INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_index_pages INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_assistants_hard_cap INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS messages_period_started_at TIMESTAMP",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS tariff_billing_period VARCHAR(16) DEFAULT 'month'",
+        "CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, client_id VARCHAR(100), category VARCHAR(50) DEFAULT 'system', type VARCHAR(100) DEFAULT 'system', severity VARCHAR(20) DEFAULT 'info', title VARCHAR(255) NOT NULL, body TEXT NOT NULL, source VARCHAR(50) DEFAULT 'system', channel_scope VARCHAR(20) DEFAULT 'in_app', action_url VARCHAR(255), action_label VARCHAR(100), dedupe_key VARCHAR(255), is_read BOOLEAN DEFAULT FALSE, is_archived BOOLEAN DEFAULT FALSE, expires_at TIMESTAMP NULL, created_at TIMESTAMP DEFAULT NOW())",
+        "CREATE INDEX IF NOT EXISTS ix_notifications_client_id ON notifications (client_id)",
+        "CREATE INDEX IF NOT EXISTS ix_notifications_type ON notifications (type)",
+        "CREATE INDEX IF NOT EXISTS ix_notifications_created_at ON notifications (created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_notifications_dedupe_key ON notifications (dedupe_key)",
+        "UPDATE assistant_configs ac SET client_id = a.client_id FROM assistants a WHERE ac.client_id IS NULL AND ac.assistant_id = a.assistant_id",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_assistant_configs_client_assistant ON assistant_configs (client_id, assistant_id)",
+        "ALTER TABLE assistant_configs DROP CONSTRAINT IF EXISTS assistant_configs_assistant_id_fkey",
+        "DROP INDEX IF EXISTS ix_assistant_configs_assistant_id",
+        "DROP INDEX IF EXISTS ix_assistants_assistant_id",
+        "DROP INDEX IF EXISTS ix_assistants_assistant_id_unique",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_assistants_client_assistant ON assistants (client_id, assistant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_chat_sessions_assistant_id ON chat_sessions (assistant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_session_cases_assistant_id ON session_cases (assistant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_leads_assistant_id ON leads (assistant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_site_pages_assistant_id ON site_pages (assistant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_storage_items_assistant_id ON storage_items (assistant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_ai_cache_assistant_id ON ai_cache (assistant_id)",
+        "CREATE TABLE IF NOT EXISTS client_custom_conditions (id SERIAL PRIMARY KEY, client_id VARCHAR(100), extra_messages INTEGER DEFAULT 0, extra_assistants INTEGER DEFAULT 0, extra_messages_limit INTEGER DEFAULT 0, extra_storage_bytes BIGINT DEFAULT 0, extra_context_limit INTEGER DEFAULT 0, extra_index_pages INTEGER DEFAULT 0, extra_assistants_hard_cap INTEGER DEFAULT 0, extend_days INTEGER DEFAULT 0, expires_at_override TIMESTAMP NULL, reason_comment TEXT NULL, created_by VARCHAR(255) NULL, is_active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())",
+        "ALTER TABLE client_custom_conditions ADD COLUMN IF NOT EXISTS extra_messages_limit INTEGER DEFAULT 0",
+        "ALTER TABLE client_custom_conditions ADD COLUMN IF NOT EXISTS extra_storage_bytes BIGINT DEFAULT 0",
+        "ALTER TABLE client_custom_conditions ADD COLUMN IF NOT EXISTS extra_context_limit INTEGER DEFAULT 0",
+        "ALTER TABLE client_custom_conditions ADD COLUMN IF NOT EXISTS extra_index_pages INTEGER DEFAULT 0",
+        "ALTER TABLE client_custom_conditions ADD COLUMN IF NOT EXISTS extra_assistants_hard_cap INTEGER DEFAULT 0",
+        "CREATE INDEX IF NOT EXISTS ix_client_custom_conditions_client_id ON client_custom_conditions (client_id)",
+        "CREATE INDEX IF NOT EXISTS ix_client_custom_conditions_active ON client_custom_conditions (is_active)",
+        "ALTER TABLE balance_transactions ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()",
+        "CREATE INDEX IF NOT EXISTS ix_balance_transactions_created_at ON balance_transactions (created_at)"
+    ]
+
+    for sql in migration_sql:
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text(sql))
+        except Exception as e:
+            log.warning(f"Startup migration skipped for SQL '{sql}': {e}")
+
+
 async def init_db():
     """Инициализация таблиц в базе данных."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    last_error = None
+    for attempt in range(1, 6):
+        try:
+            await _apply_startup_schema_migrations()
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            log.info("Database schema is ready")
+            return
+        except Exception as e:
+            last_error = e
+            log.warning(f"init_db attempt {attempt}/5 failed: {e}")
+            await asyncio.sleep(2 * attempt)
+    raise RuntimeError(f"Failed to initialize database after retries: {last_error}")
 
 async def get_db():
     """Генератор сессий для FastAPI Depends."""
@@ -246,6 +445,115 @@ async def update_user_balance(client_id: str, amount: float, consumed_increment:
             )
         )
         await session.commit()
+
+
+async def ensure_messages_period(
+    user: User,
+    session: AsyncSession,
+    reset_days: int = 30,
+    commit_changes: bool = True,
+) -> User:
+    now = datetime.now()
+    changed = False
+    period_days = max(int(reset_days or 0), 0)
+
+    # On the free Start plan the 30 AI messages are a one-time trial,
+    # so there is no recurring reset date.
+    if period_days == 0:
+        if user.messages_reset_at is not None:
+            user.messages_reset_at = None
+            changed = True
+        if changed:
+            session.add(user)
+            if commit_changes:
+                await session.commit()
+                await session.refresh(user)
+        return user
+
+    if user.messages_period_started_at is None:
+        user.messages_period_started_at = now
+        changed = True
+    if user.messages_reset_at is None:
+        user.messages_reset_at = user.messages_period_started_at + timedelta(days=period_days)
+        changed = True
+
+    while user.messages_reset_at and user.messages_reset_at <= now:
+        user.messages_period_started_at = user.messages_reset_at
+        user.messages_reset_at = user.messages_period_started_at + timedelta(days=period_days)
+        user.messages_consumed = 0
+        # Purchased message packs are not a monthly allowance and remain
+        # available until they are actually used.
+        changed = True
+
+    if changed:
+        session.add(user)
+        if commit_changes:
+            await session.commit()
+            await session.refresh(user)
+    return user
+
+
+def get_message_quota_state(user: User, base_limit: int) -> dict:
+    base_limit = max(int(base_limit or 0), 0)
+    if str(getattr(user, 'tariff_name', 'start') or 'start').lower() == 'start':
+        used_base = max(int(getattr(user, 'start_trial_messages_used', user.messages_consumed) or 0), 0)
+    else:
+        used_base = max(int(user.messages_consumed or 0), 0)
+    extra_purchased = max(int(user.extra_messages_purchased or 0), 0)
+    extra_used = max(int(user.extra_messages_used or 0), 0)
+    base_remaining = max(base_limit - used_base, 0)
+    extra_remaining = max(extra_purchased - extra_used, 0)
+    total_remaining = base_remaining + extra_remaining
+    quota_state = 'ok'
+    if base_remaining <= 0 and extra_remaining > 0:
+        quota_state = 'using_extra'
+    elif total_remaining <= 0:
+        quota_state = 'operator_mode_only'
+    return {
+        'base_limit': base_limit,
+        'base_used': used_base,
+        'base_remaining': base_remaining,
+        'extra_purchased': extra_purchased,
+        'extra_used': extra_used,
+        'extra_remaining': extra_remaining,
+        'total_remaining': total_remaining,
+        'quota_state': quota_state,
+    }
+
+
+async def consume_message_quota(client_id: str, base_limit: int, reset_days: int = 30) -> dict:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(User).where(User.client_id == client_id).with_for_update()
+        )
+        user = result.scalar_one_or_none()
+        if not user:
+            raise ValueError('Пользователь не найден')
+
+        user = await ensure_messages_period(
+            user,
+            session,
+            reset_days=reset_days,
+            commit_changes=False,
+        )
+        quota = get_message_quota_state(user, base_limit)
+        if quota['base_remaining'] > 0:
+            user.messages_consumed = int(user.messages_consumed or 0) + 1
+            if reset_days == 0:
+                user.start_trial_messages_used = int(
+                    getattr(user, 'start_trial_messages_used', 0) or 0
+                ) + 1
+        elif quota['extra_remaining'] > 0:
+            user.extra_messages_used = int(user.extra_messages_used or 0) + 1
+        else:
+            session.add(user)
+            await session.commit()
+            return quota
+
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return get_message_quota_state(user, base_limit)
 
 
 async def add_balance_transaction(
@@ -279,6 +587,44 @@ async def add_balance_transaction(
         return True
 
 
+async def credit_balance_once(
+    client_id: str,
+    amount: float,
+    source: str,
+    external_id: str,
+    description: Optional[str] = None,
+) -> bool:
+    """Атомарно зачисляет баланс один раз для уникального внешнего платежа."""
+    async with AsyncSessionLocal() as session:
+        user_result = await session.execute(
+            select(User).where(User.client_id == client_id).with_for_update()
+        )
+        user = user_result.scalar_one_or_none()
+        if not user:
+            raise ValueError('Пользователь не найден')
+
+        existing = await session.execute(
+            select(BalanceTransaction.id).where(
+                BalanceTransaction.client_id == client_id,
+                BalanceTransaction.source == source,
+                BalanceTransaction.external_id == external_id,
+            )
+        )
+        if existing.scalar_one_or_none() is not None:
+            return False
+
+        user.balance = float(user.balance or 0) + float(amount)
+        session.add(BalanceTransaction(
+            client_id=client_id,
+            amount=amount,
+            source=source,
+            description=description,
+            external_id=external_id,
+        ))
+        await session.commit()
+        return True
+
+
 async def get_balance_transactions(client_id: str, limit: int = 50) -> List[BalanceTransaction]:
     async with AsyncSessionLocal() as session:
         result = await session.execute(
@@ -293,7 +639,7 @@ async def get_balance_transactions(client_id: str, limit: int = 50) -> List[Bala
         return result.scalars().all()
 
 
-async def get_or_create_session(session_id: str, client_id: str, metadata: Optional[dict] = None):
+async def get_or_create_session(session_id: str, client_id: str, metadata: Optional[dict] = None, assistant_id: Optional[str] = None):
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(ChatSession).where(ChatSession.session_id == session_id))
         sess = result.scalar_one_or_none()
@@ -301,6 +647,8 @@ async def get_or_create_session(session_id: str, client_id: str, metadata: Optio
         if sess:
             sess.last_time = func.now()
             sess.is_deleted = False
+            if assistant_id and not sess.assistant_id:
+                sess.assistant_id = assistant_id
             if metadata:
                 if not sess.metadata_json:
                     sess.metadata_json = metadata
@@ -309,11 +657,12 @@ async def get_or_create_session(session_id: str, client_id: str, metadata: Optio
                     new_meta.update(metadata)
                     sess.metadata_json = new_meta
         else:
-            new_sess = ChatSession(session_id=session_id, client_id=client_id, metadata_json=metadata)
+            new_sess = ChatSession(session_id=session_id, client_id=client_id, assistant_id=assistant_id, metadata_json=metadata)
             session.add(new_sess)
             session.add(SessionCase(
                 session_id=session_id,
                 client_id=client_id,
+                assistant_id=assistant_id,
                 case_number=1,
                 is_active=True,
                 open_reason="new_session"
@@ -323,9 +672,8 @@ async def get_or_create_session(session_id: str, client_id: str, metadata: Optio
 async def save_chat_message(session_id: str, role: str, content: str, attachments: Optional[List[Dict]] = None, author_role: Optional[str] = None, **kwargs):
     async with AsyncSessionLocal() as session:
         timestamp = kwargs.get('timestamp')
-        is_sync = kwargs.get('is_sync', False)  # флаг фоновой синхронизации — не сбрасывать is_read
+        is_sync = kwargs.get('is_sync', False)
 
-        # Проверяем дубликат: если сообщение с таким session_id, role, content и timestamp уже есть — не вставляем
         if timestamp:
             dup_check = await session.execute(
                 select(ChatMessage.id)
@@ -336,7 +684,6 @@ async def save_chat_message(session_id: str, role: str, content: str, attachment
                 .limit(1)
             )
             if dup_check.scalar_one_or_none() is not None:
-                # Сообщение уже существует — обновляем только last_time сессии
                 last_time = timestamp if timestamp else func.now()
                 await session.execute(
                     update(ChatSession)
@@ -359,7 +706,6 @@ async def save_chat_message(session_id: str, role: str, content: str, attachment
         last_time = timestamp if timestamp else func.now()
 
         if role == 'user' and not is_sync:
-            # Проверяем, пришло ли сообщение в архивный кейс
             sess_row = await session.execute(
                 select(ChatSession.is_archived, ChatSession.status, ChatSession.client_id)
                 .where(ChatSession.session_id == session_id)
@@ -392,7 +738,6 @@ async def save_chat_message(session_id: str, role: str, content: str, attachment
                 )
             )
 
-            # Реактивация: закрываем прошлый кейс и открываем новый
             if was_archived and cid:
                 active_case = await session.execute(
                     select(SessionCase)
@@ -436,26 +781,36 @@ async def get_chat_history(session_id: str, limit: int = 20):
             return []
 
         result = await session.execute(
-            select(ChatMessage.content, ChatMessage.role, ChatMessage.timestamp, ChatMessage.attachments, ChatMessage.author_role)
+            select(ChatMessage.id, ChatMessage.content, ChatMessage.role, ChatMessage.timestamp, ChatMessage.attachments, ChatMessage.author_role)
             .where(ChatMessage.session_id == session_id)
             .order_by(ChatMessage.id.desc())
             .limit(limit)
         )
         rows = result.all()
-        return [{"content": r.content, "role": r.role, "timestamp": r.timestamp, "attachments": r.attachments, "author_role": r.author_role} for r in reversed(rows)]
+        return [{"id": r.id, "content": r.content, "role": r.role, "timestamp": r.timestamp, "attachments": r.attachments, "author_role": r.author_role} for r in reversed(rows)]
 
-async def get_metrics_summary(client_id: str):
+async def get_metrics_summary(client_id: str, assistant_id: Optional[str] = None):
     async with AsyncSessionLocal() as session:
+        dialogs_conditions = [ChatSession.client_id == client_id, ChatSession.is_deleted == False]
+        leads_conditions = [Lead.client_id == client_id]
+
+        dialogs_assistant_conditions = build_assistant_filter_conditions(ChatSession.assistant_id, assistant_id)
+        leads_assistant_conditions = build_assistant_filter_conditions(Lead.assistant_id, assistant_id)
+        if dialogs_assistant_conditions:
+            dialogs_conditions.append(or_(*dialogs_assistant_conditions))
+        if leads_assistant_conditions:
+            leads_conditions.append(or_(*leads_assistant_conditions))
+
         res_dialogs = await session.execute(
-            select(func.count()).select_from(ChatSession).where(ChatSession.client_id == client_id, ChatSession.is_deleted == False)
+            select(func.count()).select_from(ChatSession).where(*dialogs_conditions)
         )
         total_dialogs = res_dialogs.scalar() or 0
-        
+
         res_leads = await session.execute(
-            select(func.count()).select_from(Lead).where(Lead.client_id == client_id)
+            select(func.count()).select_from(Lead).where(*leads_conditions)
         )
         total_leads = res_leads.scalar() or 0
-            
+
         return {
             "total_dialogs": total_dialogs,
             "total_leads": total_leads
@@ -465,6 +820,7 @@ async def save_lead(payload: dict):
     async with AsyncSessionLocal() as session:
         new_lead = Lead(
             client_id=payload.get('client_id'),
+            assistant_id=payload.get('assistant_id'),
             name=payload.get('name'),
             contact=payload.get('contact'),
             message=payload.get('message'),
@@ -540,7 +896,8 @@ async def save_storage_item(
     file_name: Optional[str] = None,
     session_id: Optional[str] = None,
     message_id: Optional[int] = None,
-    file_type: Optional[str] = None
+    file_type: Optional[str] = None,
+    assistant_id: Optional[str] = None
 ):
     """Создаёт запись в StorageItem.
 
@@ -553,6 +910,7 @@ async def save_storage_item(
     async with AsyncSessionLocal() as db:
         item = StorageItem(
             client_id=client_id,
+            assistant_id=assistant_id,
             category=category,
             file_type=file_type or detect_file_type(file_name or ""),
             file_path=file_path,
@@ -563,7 +921,6 @@ async def save_storage_item(
         )
         db.add(item)
 
-        # Обновляем used_storage только для реально сохранённых файлов
         if is_physical_file:
             user = (await db.execute(select(User).where(User.client_id == client_id))).scalar_one_or_none()
             if user:
@@ -665,7 +1022,6 @@ async def get_storage_usage(client_id: str) -> Dict[str, Any]:
     async with AsyncSessionLocal() as db:
         file_conditions = _storage_file_conditions(client_id)
 
-        # 1. Files: суммарно по категориям
         result = await db.execute(
             select(
                 StorageItem.category,
@@ -681,7 +1037,6 @@ async def get_storage_usage(client_id: str) -> Dict[str, Any]:
             for r in rows
         ]
 
-        # 2. Files: детализация по file_type
         result = await db.execute(
             select(
                 StorageItem.file_type,
@@ -703,7 +1058,6 @@ async def get_storage_usage(client_id: str) -> Dict[str, Any]:
         )
         files_total = int(result.scalar() or 0)
 
-        # 3. Text Data (не файлы)
         text_breakdown = await _collect_text_breakdown(db, client_id)
         text_total = int(sum(text_breakdown.values()))
 
@@ -717,33 +1071,142 @@ async def get_storage_usage(client_id: str) -> Dict[str, Any]:
         }
 
 
+def _best_name_from_path(file_path: Optional[str]) -> Optional[str]:
+    raw = str(file_path or "").strip()
+    if not raw:
+        return None
+
+    normalized = unquote(raw).replace("\\", "/")
+    candidate = normalized.rsplit("/", 1)[-1].split("?", 1)[0].split("#", 1)[0].strip()
+    if not candidate:
+        return None
+
+    lower = candidate.lower()
+    if lower.startswith(("file_", "temp_", "downloaded_")) and "." in candidate:
+        ext = candidate.rsplit(".", 1)[-1]
+        if ext:
+            return f"file.{ext}"
+
+    return candidate
+
+
+def _storage_display_name(
+    file_name: Optional[str],
+    file_path: Optional[str],
+    category: Optional[str] = None,
+    knowledge_file_name: Optional[str] = None,
+) -> str:
+    raw = (file_name or file_path or "").strip()
+    if not raw:
+        return "file"
+
+    normalized = raw.replace("\\", "/")
+    base_name = normalized.rsplit("/", 1)[-1]
+    if not base_name:
+        return "file"
+
+    field_labels = {
+        "knowledge_file_url": "База знаний",
+        "widget_img": "Изображение виджета",
+        "window_bg_img": "Фон окна",
+        "chat_window_bg_img": "Фон чата",
+        "header_logo": "Логотип",
+        "welcome_img": "Изображение приветствия",
+        "profile_avatar": "Аватар профиля",
+        "msg_bot_avatar": "Аватар бота",
+        "msg_user_avatar": "Аватар пользователя",
+        "msg_operator_avatar": "Аватар оператора",
+        "inline_btn_accent_img": "Иконка акцентной кнопки",
+        "inline_btn_neutral_img": "Иконка нейтральной кнопки",
+        "inline_btn_info_img": "Иконка инфо-кнопки",
+        "bot_avatar": "Аватар бота",
+        "user_avatar": "Аватар пользователя",
+        "operator_avatar": "Аватар оператора",
+    }
+
+    technical_name = base_name.lower()
+    ext = ""
+    if "." in base_name:
+        ext = "." + base_name.rsplit(".", 1)[-1]
+
+    if technical_name.startswith("file_") or technical_name.startswith("temp_"):
+        stem = technical_name.rsplit(".", 1)[0]
+
+        if "_knowledge_file_url" in stem and knowledge_file_name:
+            k_raw = str(knowledge_file_name).strip().replace("\\", "/")
+            k_name = k_raw.rsplit("/", 1)[-1].strip()
+            if k_name:
+                return k_name
+
+        for field_id, label in field_labels.items():
+            marker = f"_{field_id}"
+            if stem.endswith(marker) or marker in stem:
+                path_name = _best_name_from_path(file_path)
+                if path_name and not path_name.lower().startswith(("file_", "temp_", "downloaded_")):
+                    return path_name
+                return f"{label}{ext}"
+
+    return base_name
+
+
+async def _get_knowledge_file_name_for_client(db: AsyncSession, client_id: str) -> Optional[str]:
+    cfg = (await db.execute(select(ClientConfig).where(ClientConfig.client_id == client_id))).scalar_one_or_none()
+    if not cfg:
+        return None
+
+    bot_settings = (cfg.config_json or {}).get("bot_settings") or {}
+    value = bot_settings.get("knowledge_file_name")
+    return str(value).strip() if value else None
+
+
+async def _serialize_storage_items(
+    db: AsyncSession,
+    client_id: str,
+    items: List[StorageItem],
+    include_download_url: bool,
+) -> List[Dict[str, Any]]:
+    knowledge_file_name = await _get_knowledge_file_name_for_client(db, client_id)
+
+    return [
+        {
+            "id": i.id,
+            "object_kind": "file",
+            "category": i.category,
+            "file_type": i.file_type,
+            "file_name": _storage_display_name(i.file_name, i.file_path, i.category, knowledge_file_name),
+            "file_path": i.file_path,
+            "download_url": f"/api/chat/admin/storage-file/{i.id}/download?client_id={client_id}" if include_download_url else None,
+            "file_size": int(i.file_size or 0),
+            "session_id": i.session_id,
+            "created_at": i.created_at.isoformat() if i.created_at else None,
+            "can_open": bool(i.file_path)
+        }
+        for i in items
+    ]
+
 async def get_storage_items(
     client_id: str,
     category: Optional[str] = None,
     limit: int = 50,
-    offset: int = 0
+    offset: int = 0,
+    include_download_url: bool = False
 ) -> List[Dict[str, Any]]:
     """Возвращает список физически сохранённых файлов (Files only)."""
     async with AsyncSessionLocal() as db:
         items = await _collect_storage_files(db, client_id, category=category, limit=limit, offset=offset)
-        return [
-            {
-                "id": i.id,
-                "object_kind": "file",
-                "category": i.category,
-                "file_type": i.file_type,
-                "file_name": i.file_name,
-                "file_path": i.file_path,
-                "file_size": int(i.file_size or 0),
-                "session_id": i.session_id,
-                "created_at": i.created_at.isoformat() if i.created_at else None,
-                "can_open": bool(i.file_path)
-            }
-            for i in items
-        ]
+        return await _serialize_storage_items(db, client_id, items, include_download_url)
 
+
+async def get_storage_file_by_id(client_id: str, item_id: int) -> Optional[StorageItem]:
+    """Возвращает физический файл StorageItem по id в рамках tenant."""
+    async with AsyncSessionLocal() as db:
+        conditions = _storage_file_conditions(client_id)
+        conditions.append(StorageItem.id == item_id)
+        result = await db.execute(select(StorageItem).where(*conditions).limit(1))
+        return result.scalar_one_or_none()
 
 async def get_storage_objects(
+
     client_id: str,
     category: Optional[str] = None,
     limit: int = 50,
@@ -755,12 +1218,12 @@ async def get_storage_objects(
     text_items = usage.get("text_items", []) if category in (None, "text_data") else []
     return files + text_items
 
-
 async def mark_storage_items_deleted(
     client_id: Optional[str] = None,
     session_id: Optional[str] = None,
     message_id: Optional[int] = None,
-    file_path: Optional[str] = None
+    file_path: Optional[str] = None,
+    assistant_id: Optional[str] = None
 ):
     """Помечает StorageItem как удалённые по фильтру.
     Возвращает сумму освобождённых байт."""
@@ -774,15 +1237,15 @@ async def mark_storage_items_deleted(
             conditions.append(StorageItem.message_id == message_id)
         if file_path:
             conditions.append(StorageItem.file_path == file_path)
+        if assistant_id:
+            conditions.append(StorageItem.assistant_id == assistant_id)
 
-        # Сначала считаем сумму
         result = await db.execute(
             select(func.coalesce(func.sum(StorageItem.file_size), 0))
             .where(*conditions)
         )
         total = result.scalar() or 0
 
-        # Помечаем удалёнными
         await db.execute(
             update(StorageItem)
             .where(*conditions)
@@ -797,7 +1260,8 @@ async def download_and_save_file(
     session_id: Optional[str] = None,
     file_name: Optional[str] = None,
     category: str = "chat_file",
-    max_size: int = 50 * 1024 * 1024
+    max_size: int = 50 * 1024 * 1024,
+    assistant_id: Optional[str] = None
 ) -> Optional[str]:
     """Скачивает файл по URL, сохраняет на диск и записывает в StorageItem.
     Возвращает локальный URL для подстановки в текст сообщения.
@@ -807,31 +1271,28 @@ async def download_and_save_file(
     if not file_name:
         file_name = url.split("/")[-1].split("?")[0] or "file"
 
-    # Проверка расширения (безопасность)
     ext = file_name.split('.')[-1].lower() if '.' in file_name else ''
     forbidden = {'json', 'exe', 'php', 'py', 'sh', 'bat', 'js', 'html', 'htm'}
     if ext in forbidden:
         log.warning(f"[DOWNLOAD] Blocked forbidden file type: {file_name}")
         return None
 
-    # Безопасное имя файла
     safe_name = "".join(c for c in file_name if c.isalnum() or c in "._- ")[:100]
     if not safe_name:
         safe_name = f"file_{int(time.time())}"
 
-    # Директория для сохранения
     dest_dir = os.path.join(BASE_DIR, "uploads", client_id, "chat_files", str(session_id or "external"))
     os.makedirs(dest_dir, exist_ok=True)
 
     local_filename = f"downloaded_{int(time.time())}_{safe_name}"
     save_path = os.path.join(dest_dir, local_filename)
 
-    # Если файл уже существует — не перезаписываем
     if os.path.exists(save_path):
         existing_size = os.path.getsize(save_path)
         local_url = f"/api/chat/uploads/{client_id}/chat_files/{session_id or 'external'}/{local_filename}"
         asyncio.create_task(save_storage_item(
             client_id=client_id,
+            assistant_id=assistant_id,
             category=category,
             file_size=existing_size,
             file_path=local_url,
@@ -865,6 +1326,7 @@ async def download_and_save_file(
 
             asyncio.create_task(save_storage_item(
                 client_id=client_id,
+                assistant_id=assistant_id,
                 category=category,
                 file_size=len(content),
                 file_path=local_url,

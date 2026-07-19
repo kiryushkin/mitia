@@ -2,19 +2,6 @@
     <h1 class="visually-hidden">Интеграции</h1>
     <div class="appearance-grid">
         <div class="appearance-column">
-            <div class="bento-card" id="card-integrations-info">
-                <div class="card-header-flex">
-                    <h3 class="card-title intelligence-title-accent">Интеграции</h3>
-                </div>
-                <div class="settings-form">
-                    <div class="flex-between">
-                        <div class="setting-item">
-                            <p class="intelligence-cover-subtitle">Центр управления каналами</p>
-                            <p class="intelligence-cover-note">Единая система для всех мессенджеров<br>и мгновенных ответов.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
             <div class="bento-card" id="card-widget">
                 <div class="card-header-flex">
                     <div class="integration-brand">
@@ -32,7 +19,7 @@
                     </label>
                 </div>
                 <div class="settings-form">
-                    <p class="intelligence-cover-note mb-10">Превратите сайт в источник заявок 24/7: виджет отвечает мгновенно, фиксирует контакты и не теряет ни одного запроса.</p>
+                    <p class="intelligence-cover-note mb-10">Укажите домен, скопируйте код, вставьте его перед закрывающим тегом на свой сайт, активируете тумблер, сохраните  </body> сайта.</p>
                     <div class="setting-item">
                         <label class="subtitle-card">Домен</label>
                         <input type="text" class="hex-input-full" id="widget-origin-field" placeholder="https://mitia.pro" data-integration="widget" data-field="allowed_origins">
@@ -47,26 +34,13 @@
                             </button>
                         </div>
                     </div>
-                    <div class="flex-between">
-                        <h3 class="subtitle-card-bold">Режим</h3>
-                    </div>
-                    <div class="setting-item flex-between-compact">
-                        <label class="subtitle-card">Ассистент</label>
-                        <label class="switch sm-switch">
-                            <input type="checkbox" id="widget-assistant-enabled-checkbox" data-integration="widget" data-field="assistant_enabled">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div class="setting-item flex-between-compact" id="widget-autoreply-row">
-                        <label class="subtitle-card">Оператор</label>
-                        <label class="switch sm-switch">
-                            <input type="checkbox" id="widget-autoreply-enabled-checkbox" data-integration="widget" data-field="autoreply_enabled">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div id="widget-autoreply-settings" class="setting-item" style="display: none;">
-                        <h3 class="subtitle-card">Текст</h3>
-                        <textarea class="hex-input-full" id="widget-autoreply-message-field" rows="3" placeholder="Например: Оператор скоро ответит вам. Пожалуйста, подождите." data-integration="widget" data-field="autoreply_message" style="resize: none;"></textarea>
+                    <div class="setting-item integration-mode-picker" data-integration-mode="widget">
+                        <h3 class="subtitle-card-bold">Режим обработки</h3>
+                        <div class="type-switcher" role="group" aria-label="Режим обработки widget">
+                            <button type="button" class="type-btn" data-integration-mode-value="assistant">Ассистент</button>
+                            <button type="button" class="type-btn" data-integration-mode-value="operator">Оператор</button>
+                        </div>
+                        <input type="checkbox" data-integration="widget" data-field="assistant_enabled" hidden>
                     </div>
                 </div>
             </div>
@@ -87,7 +61,7 @@
                     </label>
                 </div>
                 <div class="settings-form">
-                    <p class="intelligence-cover-note mb-10">Соберите всю деловую переписку в единую систему: быстрые ответы, прозрачный контроль и рост конверсии из каждого письма.</p>
+                    <p class="intelligence-cover-note mb-10">Укажите почтовый ящик, пароль приложения и серверы IMAP/SMTP, затем включите интеграцию.</p>
                     <div class="setting-item">
                         <label class="subtitle-card">Электронная почта</label>
                         <input type="text" class="hex-input-full" placeholder="assistant@mitia.pro" data-integration="email" data-field="email_address" autocomplete="username" name="email_user" autocorrect="off" spellcheck="false" tabindex="2">
@@ -118,46 +92,13 @@
                         <label class="subtitle-card">SMTP сервер</label>
                         <input type="text" class="hex-input-full" placeholder="smtp.sweb.ru" data-integration="email" data-field="smtp_server" spellcheck="false">
                     </div>
-                    <div class="flex-between">
-                        <h3 class="subtitle-card-bold">Режим</h3>
-                    </div>
-                    <div class="setting-item flex-between-compact">
-                        <label class="subtitle-card">Ассистент</label>
-                        <label class="switch sm-switch">
-                            <input type="checkbox" id="email-assistant-enabled-checkbox" data-integration="email" data-field="assistant_enabled">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div class="setting-item flex-between-compact" id="email-autoreply-row">
-                        <label class="subtitle-card">Оператор</label>
-                        <label class="switch sm-switch">
-                            <input type="checkbox" id="email-autoreply-enabled-checkbox" data-integration="email" data-field="autoreply_enabled">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div id="email-autoreply-settings" class="setting-item" style="display: none;">
-                        <h3 class="subtitle-card">Текст</h3>
-                        <textarea class="hex-input-full" id="email-autoreply-message-field" rows="3" placeholder="Например: Оператор скоро ответит вам. Пожалуйста, подождите." data-integration="email" data-field="autoreply_message" style="resize: none;"></textarea>
-                    </div>
-                    
-                    <div class="settings-form">
-                        <div class="setting-item flex-between-compact">
-                            <h3 class="subtitle-card-bold">Синхронизировать письма</h3>
-                            <label class="switch">
-                                <input type="checkbox" id="email-sync-history-checkbox" data-integration="email" data-field="sync_history">
-                                <span class="slider round"></span>
-                            </label>
+                    <div class="setting-item integration-mode-picker" data-integration-mode="email">
+                        <h3 class="subtitle-card-bold">Режим обработки</h3>
+                        <div class="type-switcher" role="group" aria-label="Режим обработки email">
+                            <button type="button" class="type-btn" data-integration-mode-value="assistant">Ассистент</button>
+                            <button type="button" class="type-btn" data-integration-mode-value="operator">Оператор</button>
                         </div>
-                        <div id="email-sync-progress-container" class="sync-progress-box mt-15" style="display: none; background: var(--bg-light); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color);">
-                            <div class="flex-between mb-10">
-                                <span class="subtitle-card" style="margin-bottom: 0;">Синхронизация...</span>
-                                <span class="subtitle-card-bold" id="email-sync-percent" style="margin-bottom: 0; color: var(--accent-color);">0%</span>
-                            </div>
-                            <div class="progress-bar-bg" style="height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden;">
-                                <div class="progress-bar-fill" id="email-sync-bar" style="width: 0%; height: 100%; background: var(--accent-color); transition: width 0.3s ease;"></div>
-                            </div>
-                            <p class="setting-hint mt-10" id="email-sync-status-text" style="margin-bottom: 0;">Подготовка...</p>
-                        </div>
+                        <input type="checkbox" data-integration="email" data-field="assistant_enabled" hidden>
                     </div>
                 </div>
             </div>
@@ -180,7 +121,7 @@
                     </label>
                 </div>
                 <div class="settings-form">
-                    <p class="intelligence-cover-note mb-10">Включите канал MAX в воронку: отвечайте быстрее конкурентов и доводите диалоги до целевого действия.</p>
+                    <p class="intelligence-cover-note mb-10">Создайте бота в MAX, вставьте его токен и включите интеграцию.</p>
                     <div class="setting-item">
                         <label class="subtitle-card">Токен бота</label>
                         <div class="password-input-wrapper">
@@ -199,27 +140,13 @@
                             </button>
                         </div>
                     </div>
-
-                    <div class="flex-between">
-                        <h3 class="subtitle-card-bold">Режим</h3>
-                    </div>
-                    <div class="setting-item flex-between-compact">
-                        <label class="subtitle-card">Ассистент</label>
-                        <label class="switch sm-switch">
-                            <input type="checkbox" data-integration="max" data-field="assistant_enabled">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div class="setting-item flex-between-compact" id="max-autoreply-row">
-                        <label class="subtitle-card">Оператор</label>
-                        <label class="switch sm-switch">
-                            <input type="checkbox" id="max-autoreply-enabled-checkbox" data-integration="max" data-field="autoreply_enabled">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div id="max-autoreply-settings" class="setting-item" style="display: none;">
-                        <h3 class="subtitle-card">Текст</h3>
-                        <textarea class="hex-input-full" id="max-autoreply-message-field" rows="3" placeholder="Например: Я передал ваш вопрос оператору. Пожалуйста, оставьте контакты, мы свяжемся с вами" data-integration="max" data-field="autoreply_message" style="resize: none;"></textarea>
+                    <div class="setting-item integration-mode-picker" data-integration-mode="max">
+                        <h3 class="subtitle-card-bold">Режим обработки</h3>
+                        <div class="type-switcher" role="group" aria-label="Режим обработки max">
+                            <button type="button" class="type-btn" data-integration-mode-value="assistant">Ассистент</button>
+                            <button type="button" class="type-btn" data-integration-mode-value="operator">Оператор</button>
+                        </div>
+                        <input type="checkbox" data-integration="max" data-field="assistant_enabled" hidden>
                     </div>
                 </div>
             </div>
@@ -240,7 +167,7 @@
                     </label>
                 </div>
                 <div class="settings-form">
-                    <p class="intelligence-cover-note mb-10">Telegram дает скорость и вовлеченность: автоматизируйте первую линию и усиливайте продажи без потери качества.</p>
+                    <p class="intelligence-cover-note mb-10">Создайте бота через @BotFather, вставьте токен и включите интеграцию.</p>
 
                     <div class="setting-item">
                         <label class="subtitle-card">Токен бота</label>
@@ -260,28 +187,52 @@
                             </button>
                         </div>
                     </div>
-                    <div class="flex-between">
-                        <h3 class="subtitle-card-bold">Режим</h3>
-                    </div> 
-                    <div class="setting-item flex-between-compact">
-                        <label class="subtitle-card">Ассистент</label>
-                        <label class="switch sm-switch">
-                            <input type="checkbox" id="tg-assistant-enabled-checkbox" data-integration="telegram" data-field="assistant_enabled">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div class="setting-item flex-between-compact" id="tg-autoreply-row">
-                        <label class="subtitle-card">Оператор</label>
-                        <label class="switch sm-switch">
-                            <input type="checkbox" id="tg-autoreply-enabled-checkbox" data-integration="telegram" data-field="autoreply_enabled">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div id="tg-autoreply-settings" class="setting-item" style="display: none;">
-                        <h3 class="subtitle-card">Текст</h3>
-                        <textarea class="hex-input-full" id="tg-autoreply-message-field" rows="3" placeholder="Например: Оператор скоро ответит вам. Пожалуйста, подождите." data-integration="telegram" data-field="autoreply_message" style="resize: none;"></textarea>
+                    <div class="setting-item integration-mode-picker" data-integration-mode="telegram">
+                        <h3 class="subtitle-card-bold">Режим обработки</h3>
+                        <div class="type-switcher" role="group" aria-label="Режим обработки telegram">
+                            <button type="button" class="type-btn" data-integration-mode-value="assistant">Ассистент</button>
+                            <button type="button" class="type-btn" data-integration-mode-value="operator">Оператор</button>
+                        </div>
+                        <input type="checkbox" data-integration="telegram" data-field="assistant_enabled" hidden>
                     </div>
 
+                </div>
+            </div>
+            <div class="bento-card" id="card-ok">
+                <div class="card-header-flex">
+                    <div class="integration-brand">
+                        <div class="integration-logo-box">
+                            <img src="/api/chat/img/icon_ok.svg" alt="Одноклассники">
+                        </div>
+                        <div class="integration-title-group">
+                            <h3 class="card-title">Одноклассники</h3>
+                            <span class="status-badge disconnected" id="ok-status">Не подключено</span>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" data-integration="ok" data-field="enabled">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="settings-form">
+                    <p class="intelligence-cover-note mb-10">Включите сообщения в группе OK, получите ключ Bot API и вставьте его сюда. Webhook подключится автоматически после сохранения.</p>
+                    <div class="setting-item">
+                        <label class="subtitle-card">Ключ доступа Bot API</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="ok-access-token-input" class="hex-input-full" placeholder="tkn..." data-integration="ok" data-field="access_token" spellcheck="false" autocomplete="off">
+                            <button type="button" class="toggle-password-btn" data-target="access_token" title="Показать/скрыть ключ">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><g class="eye-open"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></g><g class="eye-slash"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></g></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="setting-item integration-mode-picker" data-integration-mode="ok">
+                        <h3 class="subtitle-card-bold">Режим обработки</h3>
+                        <div class="type-switcher" role="group" aria-label="Режим обработки Одноклассники">
+                            <button type="button" class="type-btn" data-integration-mode-value="assistant">Ассистент</button>
+                            <button type="button" class="type-btn" data-integration-mode-value="operator">Оператор</button>
+                        </div>
+                        <input type="checkbox" data-integration="ok" data-field="assistant_enabled" hidden>
+                    </div>
                 </div>
             </div>
             <div class="bento-card" id="card-vk">
@@ -301,7 +252,7 @@
                     </label>
                 </div>
                 <div class="settings-form">
-                    <p class="intelligence-cover-note mb-10">ВКонтакте — мощный поток обращений: принимайте сообщения в одном окне и превращайте интерес в сделки.</p>
+                    <p class="intelligence-cover-note mb-10">Укажите ключ сообщества, ID, код подтверждения и секретный ключ, затем включите интеграцию.</p>
                     <div class="setting-item">
                         <label class="subtitle-card">Ключ доступа</label>
                         <div class="password-input-wrapper">
@@ -360,27 +311,24 @@
                             </button>
                         </div>
                     </div>
+                    <div class="setting-item widget-code-section">
+                        <label class="subtitle-card">Callback API</label>
+                        <div class="code-snippet-container">
+                            <code id="vk-callback-url">https://mitia.pro/api/chat/vk/webhook</code>
+                            <button type="button" class="action-btn sm btn-full-width" id="copy-vk-callback-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                Скопировать
+                            </button>
+                        </div>
+                    </div>
 
-                    <div class="flex-between">
-                        <h3 class="subtitle-card-bold">Режим</h3>
-                    </div>
-                    <div class="setting-item flex-between-compact">
-                        <label class="subtitle-card">Ассистент</label>
-                        <label class="switch sm-switch">
-                            <input type="checkbox" id="vk-assistant-enabled-checkbox" data-integration="vk" data-field="assistant_enabled">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div class="setting-item flex-between-compact" id="vk-autoreply-row">
-                        <label class="subtitle-card">Оператор</label>
-                        <label class="switch sm-switch">
-                            <input type="checkbox" id="vk-autoreply-enabled-checkbox" data-integration="vk" data-field="autoreply_enabled">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div id="vk-autoreply-settings" class="setting-item" style="display: none;">
-                        <h3 class="subtitle-card">Текст</h3>
-                        <textarea class="hex-input-full" id="vk-autoreply-message-field" rows="3" placeholder="Например: Оператор скоро ответит вам. Пожалуйста, подождите." data-integration="vk" data-field="autoreply_message" style="resize: none;"></textarea>
+                    <div class="setting-item integration-mode-picker" data-integration-mode="vk">
+                        <h3 class="subtitle-card-bold">Режим обработки</h3>
+                        <div class="type-switcher" role="group" aria-label="Режим обработки vk">
+                            <button type="button" class="type-btn" data-integration-mode-value="assistant">Ассистент</button>
+                            <button type="button" class="type-btn" data-integration-mode-value="operator">Оператор</button>
+                        </div>
+                        <input type="checkbox" data-integration="vk" data-field="assistant_enabled" hidden>
                     </div>
                 </div>
             </div>
@@ -403,13 +351,18 @@
                     </label>
                 </div>
                 <div class="settings-form">
-                    <p class="intelligence-cover-note mb-10">HeadHunter — прямой доступ к кандидатам: ускорьте найм, отвечайте первыми и закрывайте вакансии сильнее рынка.</p>
+                    <p class="intelligence-cover-note mb-10">Авторизуйтесь через hh.ru, выберите режим обработки и сохраните изменения.</p>
                     <div class="setting-item">
                         <label class="subtitle-card">Аккаунт</label>
                         <input type="text" class="hex-input-full" data-integration="hh" data-field="account_name" placeholder="Не подключен" readonly>
                     </div>
-                    <div class="setting-item mt-10">
-                        <button type="button" class="action-btn sm btn-full-width" id="hh-connect-btn">Подключить через hh.ru</button>
+                    <div class="setting-item integration-mode-picker" data-integration-mode="hh">
+                        <h3 class="subtitle-card-bold">Режим обработки</h3>
+                        <div class="type-switcher" role="group" aria-label="Режим обработки hh">
+                            <button type="button" class="type-btn" data-integration-mode-value="assistant">Ассистент</button>
+                            <button type="button" class="type-btn" data-integration-mode-value="operator">Оператор</button>
+                        </div>
+                        <input type="checkbox" data-integration="hh" data-field="assistant_enabled" hidden>
                     </div>
                 </div>
             </div>
@@ -430,7 +383,7 @@
                     </label>
                 </div>
                 <div class="settings-form">
-                    <p class="intelligence-cover-note mb-10">Авито приносит горячие обращения: системно обрабатывайте каждый диалог и повышайте выручку за счет скорости ответа.</p>
+                    <p class="intelligence-cover-note mb-10">Укажите Client ID и Client Secret из кабинета Авито, затем включите интеграцию.</p>
                     <div class="setting-item">
                         <label class="subtitle-card">Client ID</label>
                         <div class="password-input-wrapper">
@@ -467,22 +420,13 @@
                             </button>
                         </div>
                     </div>
-                    <div class="setting-item flex-between mt-10">
-                        <label class="subtitle-card">Синхронизировать сообщения</label>
-                        <label class="switch">
-                            <input type="checkbox" id="avito-sync-history-checkbox" data-integration="avito" data-field="sync_history">
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                    <div id="avito-sync-progress-container" class="sync-progress-box mt-15" style="display: none; background: var(--bg-light); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color);">
-                        <div class="flex-between mb-10">
-                            <span class="subtitle-card" style="margin-bottom: 0;">Синхронизация...</span>
-                            <span class="subtitle-card-bold" id="avito-sync-percent" style="margin-bottom: 0; color: var(--accent-color);">0%</span>
+                    <div class="setting-item integration-mode-picker" data-integration-mode="avito">
+                        <h3 class="subtitle-card-bold">Режим обработки</h3>
+                        <div class="type-switcher" role="group" aria-label="Режим обработки avito">
+                            <button type="button" class="type-btn" data-integration-mode-value="assistant">Ассистент</button>
+                            <button type="button" class="type-btn" data-integration-mode-value="operator">Оператор</button>
                         </div>
-                        <div class="progress-bar-bg" style="height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden;">
-                            <div class="progress-bar-fill" id="avito-sync-bar" style="width: 0%; height: 100%; background: var(--accent-color); transition: width 0.3s ease;"></div>
-                        </div>
-                        <p class="setting-hint mt-10" id="avito-sync-status-text" style="margin-bottom: 0;">Подготовка...</p>
+                        <input type="checkbox" data-integration="avito" data-field="assistant_enabled" hidden>
                     </div>
                 </div>
             </div>

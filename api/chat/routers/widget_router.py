@@ -1,6 +1,7 @@
 import re
+import html
 import httpx
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, unquote
 from fastapi import APIRouter, Request, HTTPException, Depends
 from ..core.config import log
 from .admin_router import verify_token
@@ -31,17 +32,17 @@ async def _fetch_page(url: str, timeout: float = 10.0) -> str | None:
         return None
 
 
-def _find_widget_script(html: str, client_id: str = None) -> bool:
-    """Проверяет, есть ли скрипт виджета в HTML."""
-    for pattern in WIDGET_SCRIPT_PATTERNS:
-        if pattern.search(html):
-            if client_id:
-                # Проверяем, что в HTML есть упоминание этого client_id рядом со скриптом или в параметрах
-                if client_id in html:
-                    return True
-                continue
-            return True
-    return False
+def _find_widget_script(page_html: str, client_id: str = None, assistant_id: str = None) -> bool:
+    """Проверяет код виджета с учетом client_id и выбранного assistant_id."""
+    normalized_html = html.unescape(page_html or "")
+    decoded_html = unquote(normalized_html)
+    if not any(pattern.search(normalized_html) for pattern in WIDGET_SCRIPT_PATTERNS):
+        return False
+    if client_id and client_id not in decoded_html:
+        return False
+    if assistant_id and assistant_id not in decoded_html:
+        return False
+    return True
 
 
 def _extract_links(html: str, base_url: str) -> list[str]:
@@ -67,18 +68,18 @@ def _extract_links(html: str, base_url: str) -> list[str]:
 
 
 @router.post("/setup")
-async def widget_setup(request: Request, client_id: str, token_data: dict = Depends(verify_token)):
+async def widget_setup(request: Request, client_id: str, assistant_id: str | None = None, token_data: dict = Depends(verify_token)):
     """Сохранение настроек виджета (enabled, domain)."""
     if token_data['sub'] != client_id and token_data['sub'] != 'admin':
         raise HTTPException(status_code=403, detail="Access denied")
 
     data = await request.json()
-    await save_integration_settings(client_id, "widget", data)
+    await save_integration_settings(client_id, "widget", data, assistant_id=assistant_id)
     return {"status": "success"}
 
 
 @router.post("/verify")
-async def widget_verify(request: Request, client_id: str, token_data: dict = Depends(verify_token)):
+async def widget_verify(request: Request, client_id: str, assistant_id: str | None = None, token_data: dict = Depends(verify_token)):
     """Проверяет наличие скрипта виджета на сайте пользователя.
     
     Сначала проверяет главную страницу (домен из настроек).
@@ -98,11 +99,12 @@ async def widget_verify(request: Request, client_id: str, token_data: dict = Dep
         domain = 'https://' + domain
     domain = domain.rstrip('/')
 
-    log.info(f"Widget verification started for {client_id} at {domain}")
+    target_widget_id = assistant_id or client_id
+    log.info(f"Widget verification started for {client_id}:{target_widget_id} at {domain}")
 
     # Шаг 1: проверяем главную страницу
     homepage_html = await _fetch_page(domain)
-    if homepage_html and _find_widget_script(homepage_html, client_id):
+    if homepage_html and _find_widget_script(homepage_html, client_id, assistant_id):
         log.info(f"Widget script found on homepage: {domain}")
         return {
             "status": "ok",
@@ -118,7 +120,7 @@ async def widget_verify(request: Request, client_id: str, token_data: dict = Dep
 
         for link in links:
             page_html = await _fetch_page(link)
-            if page_html and _find_widget_script(page_html, client_id):
+            if page_html and _find_widget_script(page_html, client_id, assistant_id):
                 log.info(f"Widget script found on: {link}")
                 return {
                     "status": "ok",

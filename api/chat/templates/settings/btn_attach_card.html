@@ -1,27 +1,25 @@
-<!-- КНОПКА ВЛОЖЕНИЯ -->
 <div class="bento-card" id="card-btn-attach-design">
     <div class="card-header-flex">
-        <div class="card-title-group" onclick="window.toggleCardCollapse(this)">
-            <div class="collapse-icon"></div>
-            <h3 class="card-title">Кнопка вложения</h3>
+        <div class="card-title-group">
+            <h3 class="card-title">Скрепка</h3>
         </div>
-        <!-- Иконки -->
         <div class="card-actions-mini">
-            <button class="icon-btn-sm" onclick="window.resetAttachBtnToDefault()" title="Восстановить дизайн">
+            <button class="menu-dots-btn" onclick="window.resetAttachBtnToDefault()" title="Восстановить дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
             </button>
-            <button class="icon-btn-sm" onclick="window.randomizeAttachBtnDesign()" title="Магический дизайн">
+            <button class="menu-dots-btn" onclick="window.randomizeAttachBtnDesign()" title="Магический дизайн">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+            </button>
+            <button class="icon-btn-sm btn-attach-collapse-btn" onclick="window.toggleCardCollapse(this)" title="Свернуть/развернуть карточку" aria-label="Свернуть/развернуть карточку">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
         </div>
     </div>
-    <!-- Параметры кнопки вложения -->
+    <p class="card-description">Прикрепление файла</p>
     <div class="settings-form">
-        <!-- СТАТУС КНОПКИ ВЛОЖЕНИЯ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Статус</h3>
         </div>
-        <!-- Отображение на сайте кнопки вложения-->
         <div class="setting-item-compact">
             <div class="flex-between">
                 <label class="subtitle-card">Отображение на сайте</label>
@@ -31,11 +29,9 @@
                 </label>
             </div>
         </div>
-        <!-- ГЕОМЕТРИЯ КНОПКИ ВЛОЖЕНИЯ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Геометрия</h3>
         </div>
-        <!-- Скругление кнопки вложениЯ -->
         <div class="setting-item">
             <label class="subtitle-card">Скругление</label>
             <div class="range-with-val">
@@ -43,13 +39,10 @@
                 <span class="range-value" id="btn-attach-radius-val"></span>
             </div>
         </div>
-        <!-- ИКОНКА КНОПКИ ВЛОЖЕНИЯ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Иконка</h3>
         </div>
-        <!-- Параметры иконки кнопки вложения -->
         <div class="settings-form-mini">
-            <!-- Цвет иконки кнопки вложения -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -60,7 +53,6 @@
                     <input type="text" id="btn-attach-icon-hex" class="color_hex hex-input-full" data-setting="theme.btn_attach_icon_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность иконки кнопки вложения -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -69,7 +61,6 @@
                 </div>
             </div>
         </div>
-        <!-- ИКОНКА КНОПКИ ВЛОЖЕНИЯ ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Иконка при наведении</h3>
             <label class="switch sm-switch">
@@ -77,9 +68,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры иконки кнопки вложения при наведении -->
         <div id="btn-attach-icon-h-settings" class="settings-form-mini">
-            <!-- Цвет иконки кнопки вложения при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -90,7 +79,6 @@
                     <input type="text" id="btn-attach-icon-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_attach_icon_color_h" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность иконки кнопки вложения при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -99,7 +87,6 @@
                 </div>
             </div>
         </div>
-        <!-- ФОН КНОПКИ ВЛОЖЕНИЯ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Фон</h3>
             <label class="switch sm-switch">
@@ -107,9 +94,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры фона кнопки вложения -->
         <div id="btn-attach-bg-settings" class="settings-form-mini">
-            <!-- Цвет фона кнопки вложения -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -120,7 +105,6 @@
                     <input type="text" id="btn-attach-bg-hex" class="color_hex hex-input-full" data-setting="theme.btn_attach_bg_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность фона кнопки вложения -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -129,7 +113,6 @@
                 </div>
             </div>
         </div>
-        <!-- ФОН КНОПКИ ВЛОЖЕНИЯ ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Фон при наведении</h3>
             <label class="switch sm-switch">
@@ -137,9 +120,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры фона кнопки вложения при наведении -->
         <div id="btn-attach-bg-h-settings" class="settings-form-mini">
-            <!-- Цвет фона кнопки вложения при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -150,7 +131,6 @@
                     <input type="text" id="btn-attach-bg-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_attach_bg_color_h" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность фона кнопки вложения при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -159,7 +139,6 @@
                 </div>
             </div>
         </div>
-        <!-- ОБВОДКА КНОПКИ ВЛОЖЕНИЯ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Обводка</h3>
             <label class="switch sm-switch">
@@ -167,9 +146,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры обводки кнопки вложения -->
         <div id="btn-attach-border-settings" class="settings-form-mini">
-            <!-- Цвет обводки кнопки вложения -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -180,7 +157,6 @@
                     <input type="text" id="btn-attach-border-hex" class="color_hex hex-input-full" data-setting="theme.btn_attach_border_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность обводки кнопки вложения -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -188,7 +164,6 @@
                     <span class="range-value" id="btn-attach-border-opacity-val"></span>
                 </div>
             </div>
-            <!-- Толщина обводки кнопки вложения -->
             <div class="setting-item">
                 <label class="subtitle-card">Толщина</label>
                 <div class="range-with-val">
@@ -197,7 +172,6 @@
                 </div>
             </div>
         </div>
-        <!-- ОБВОДКА КНОПКИ ВЛОЖЕНИЯ ПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Обводка при наведении</h3>
             <label class="switch sm-switch">
@@ -205,9 +179,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры обводки кнопки вложения при наведении -->
         <div id="btn-attach-border-h-settings" class="settings-form-mini">
-            <!-- Цвет обводки кнопки вложения при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -218,7 +190,6 @@
                     <input type="text" id="btn-attach-border-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_attach_border_color_h" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность обводки кнопки вложения при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -226,7 +197,6 @@
                     <span class="range-value" id="btn-attach-border-h-opacity-val"></span>
                 </div>
             </div>
-            <!-- Толщина обводки кнопки вложения при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Толщина</label>
                 <div class="range-with-val">
@@ -235,7 +205,6 @@
                 </div>
             </div>
         </div>
-        <!-- ТЕНЬ КНОПКИ ВЛОЖЕНИЯ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Тень</h3>
             <label class="switch sm-switch">
@@ -243,9 +212,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры тени кнопки вложения -->
         <div id="btn-attach-shadow-settings" class="settings-form-mini">
-            <!-- Цвет тени кнопки вложения -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -256,7 +223,6 @@
                     <input type="text" id="btn-attach-shadow-hex" class="color_hex hex-input-full" data-setting="theme.btn_attach_shadow_color" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность тени кнопки вложения -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -264,7 +230,6 @@
                     <span class="range-value" id="btn-attach-shadow-opacity-val"></span>
                 </div>
             </div>
-            <!-- Размытие тени кнопки вложения -->
             <div class="setting-item">
                 <label class="subtitle-card">Размытие</label>
                 <div class="range-with-val">
@@ -273,7 +238,6 @@
                 </div>
             </div>
         </div>
-        <!-- ТЕНЬ КНОПКИ ВЛОЖЕНИЯПРИ НАВЕДЕНИИ -->
         <div class="flex-between">
             <h3 class="subtitle-card-bold white">Тень при наведении</h3>
             <label class="switch sm-switch">
@@ -281,9 +245,7 @@
                 <span class="slider round"></span>
             </label>
         </div>
-        <!-- Параметры тени кнопки вложения при наведении -->
         <div id="btn-attach-shadow-h-settings" class="settings-form-mini">
-            <!-- Цвет тени кнопки вложения при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Цвет</label>
                 <div class="color-input-group">
@@ -294,7 +256,6 @@
                     <input type="text" id="btn-attach-shadow-h-hex" class="color_hex hex-input-full" data-setting="theme.btn_attach_shadow_color_h" placeholder="Прозрачный">
                 </div>
             </div>
-            <!-- Прозрачность тени кнопки вложения при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Прозрачность</label>
                 <div class="range-with-val">
@@ -302,7 +263,6 @@
                     <span class="range-value" id="btn-attach-shadow-h-opacity-val"></span>
                 </div>
             </div>
-            <!-- Размытие тени кнопки вложения при наведении -->
             <div class="setting-item">
                 <label class="subtitle-card">Размытие</label>
                 <div class="range-with-val">

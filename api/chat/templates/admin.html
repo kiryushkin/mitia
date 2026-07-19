@@ -5,34 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="format-detection" content="telephone=no">
-  
   <title>Панель управления — MITIA</title>
   <meta name="description" content="Панель управления вашими ИИ-ассистентами MITIA. Настройка сценариев, аналитика диалогов и управление интеграциями.">
   <meta name="keywords" content="MITIA, админ-панель, управление ИИ, чат-боты, аналитика">
   <meta name="author" content="MITIA">
-  
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://mitia.pro/admin">
   <meta property="og:title" content="MITIA — Панель управления">
   <meta property="og:description" content="Управляйте вашими ИИ-ассистентами в реальном времени.">
   <meta property="og:image" content="https://mitia.pro/api/chat/static/img/og-image.jpg">
-   
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
   <meta property="twitter:url" content="https://mitia.pro/admin">
   <meta property="twitter:title" content="MITIA — Панель управления">
   <meta property="twitter:description" content="Управляйте вашими ИИ-ассистентами в реальном времени.">
   <meta property="twitter:image" content="https://mitia.pro/api/chat/static/img/og-image.jpg">
-  
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  
   <link rel="canonical" href="https://mitia.pro/admin">
-  <link rel="icon" href="/api/chat/img/favicon.svg?v=2" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/api/chat/img/favicon.svg?v=2">
-  
+  <link rel="icon" href="/api/chat/img/favicon.png?v=7" type="image/png">
+  <link rel="apple-touch-icon" href="/api/chat/img/favicon.png?v=7" type="image/png">
   <!-- JSON-LD -->
   <script type="application/ld+json">
   {
@@ -48,23 +42,26 @@
     }
   }
   </script>
-  
   <base href="/api/chat/static/js/">
-  
   <!-- Style -->
   <link rel="stylesheet" href="/api/chat/static/css/admin.css?v=2">
-  <link rel="stylesheet" href="/api/chat/static/css/dashboard.css">
-  <link rel="stylesheet" href="/api/chat/static/css/settings.css">
-  <link rel="stylesheet" href="/api/chat/static/css/storage.css">
-  <link rel="stylesheet" href="/api/chat/chat-widget.css">
-  
+  <link rel="stylesheet" href="/api/chat/static/css/dashboard.css?v=114">
+  <link rel="stylesheet" href="/api/chat/static/css/settings.css?v=2">
+  <link rel="stylesheet" href="/api/chat/static/css/storage.css?v=2">
+  <link rel="stylesheet" href="/api/chat/chat-widget.css?v=2">
   <!-- Scripts -->
   <script src="/api/chat/static/js/chart.min.js" defer></script>
   <script src="/api/chat/static/js/marked.min.js" defer></script>
   <script src="/api/chat/static/js/purify.min.js" defer></script>
-  <script type="module" src="/api/chat/static/js/admin.js?v=101" defer></script>
-  <script src="http://127.0.0.1:5007/api/chat/chat-widget.js?client_id=mitia_assistant" defer></script>
-
+  <script type="module" src="/api/chat/static/js/admin.js?v=121" defer></script>
+  <script>
+    window.MITYA_CONFIG = {
+    clientId: 'usr_138d227f7f19',
+    assistantId: 'main',
+    serverUrl: 'https://mitia.pro'
+    };
+    </script>
+    <script src="https://mitia.pro/api/chat/chat-widget.js?client_id=usr_138d227f7f19&assistant_id=main" data-client="usr_138d227f7f19" data-assistant-id="main" defer></script>
 </head>
 
 <body class="admin-panel">
@@ -90,11 +87,14 @@
                 <button class="nav-item" data-tab="assistant" title="Интеллект">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
                 </button>
-                <button class="nav-item" data-tab="integrations" title="Интеграции">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                </button>
                 <button class="nav-item" data-tab="settings" title="Внешний вид">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+                <button class="nav-item" data-tab="integrations" title="Интеграции">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                    </svg>
                 </button>
                 <button class="nav-item has-notify" data-tab="dialogs" title="Диалоги">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
@@ -106,14 +106,203 @@
                         <rect x="16" y="8" width="3" height="10" rx="1.5"></rect>
                     </svg>
                 </button>
+                <button class="nav-item" id="global-assistants-delete-btn" title="Удалить выбранных ассистентов" aria-label="Удалить выбранных ассистентов" hidden>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18"></path>
+                        <path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6"></path>
+                        <rect x="6.5" y="6" width="11" height="15" rx="1.8"></rect>
+                        <path d="M10 10v7"></path>
+                        <path d="M14 10v7"></path>
+                    </svg>
+                </button>
             </nav>
             <div class="sidebar-footer">
                 <button class="nav-item" id="global-save-btn" title="Сохранить изменения">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                 </button>
-                <button onclick="window.logout()" class="nav-item" title="Выйти">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                </button>
+            </div>
+            <div class="sidebar-storage-actions" aria-hidden="true">
+                <div class="sidebar-storage-top">
+                    <div class="assistants-sidebar-top-row">
+                        <button class="nav-item" id="storage-sidebar-back-btn" title="Назад в профиль" aria-label="Назад в профиль">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 12H9"></path>
+                                <path d="M13 7l-5 5 5 5"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="storage-sidebar-delete-row">
+                    <button class="nav-item" id="storage-sidebar-delete-btn" title="Удалить выбранные файлы" aria-label="Удалить выбранные файлы" hidden disabled style="display:none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 6h18"></path>
+                            <path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6"></path>
+                            <rect x="6.5" y="6" width="11" height="15" rx="1.8"></rect>
+                            <path d="M10 10v7"></path>
+                            <path d="M14 10v7"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="sidebar-storage-bottom assistants-sidebar-bottom-row">
+                    <button class="nav-item" id="storage-sidebar-edit-btn" title="Режим выбора файлов" aria-label="Режим выбора файлов">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M5 12h14"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="sidebar-analytics-actions" aria-hidden="true">
+                <div class="sidebar-storage-top">
+                    <button class="nav-item" id="analytics-sidebar-back-btn" title="Назад" aria-label="Назад">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 12H9"></path>
+                            <path d="M13 7l-5 5 5 5"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="sidebar-storage-bottom">
+                    <button class="nav-item" id="analytics-sidebar-filters-btn" title="Фильтры" aria-label="Фильтры" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="4" y1="6" x2="20" y2="6"></line>
+                            <circle cx="9" cy="6" r="1.7"></circle>
+                            <line x1="4" y1="12" x2="20" y2="12"></line>
+                            <circle cx="15" cy="12" r="1.7"></circle>
+                            <line x1="4" y1="18" x2="20" y2="18"></line>
+                            <circle cx="11" cy="18" r="1.7"></circle>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="sidebar-dialog-actions" aria-hidden="true">
+                <div class="sidebar-storage-top">
+                    <button class="nav-item" id="dialog-sidebar-back-btn" title="Назад к списку" aria-label="Назад к списку">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 12H9"></path>
+                            <path d="M13 7l-5 5 5 5"></path>
+                        </svg>
+                    </button>
+                    <button class="nav-item dialog-sidebar-client-avatar" id="dialog-sidebar-client-avatar" type="button" title="Карточка клиента" aria-label="Открыть карточку клиента"></button>
+                </div>
+                <div class="sidebar-storage-bottom">
+                    <button class="nav-item" id="dialog-sidebar-save-btn" title="Сохранить изменения" aria-label="Сохранить изменения">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="sidebar-assistants-actions" aria-hidden="true">
+                <div class="sidebar-storage-top">
+                    <div class="assistants-sidebar-top-row">
+                        <button class="nav-item" id="assistants-sidebar-back-btn" title="Назад" aria-label="Назад">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 12H9"></path>
+                                <path d="M13 7l-5 5 5 5"></path>
+                            </svg>
+                        </button>
+                        <button class="nav-item" id="assistants-sidebar-create-btn" title="Создать ассистента" aria-label="Создать ассистента">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 5v14"></path>
+                                <path d="M5 12h14"></path>
+                            </svg>
+                        </button>
+                        <button class="nav-item" id="assistants-sidebar-edit-btn" title="Режим выбора ассистентов" aria-label="Режим выбора ассистентов">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true" style="transform: rotate(-45deg);">
+                                <path d="M12 3L20 21L12 17L4 21Z"></path>
+                            </svg>
+                        </button>
+                        <button class="nav-item" id="assistants-sidebar-delete-btn" title="Удалить выбранных ассистентов" aria-label="Удалить выбранных ассистентов" disabled>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18"></path>
+                                <path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6"></path>
+                                <rect x="6.5" y="6" width="11" height="15" rx="1.8"></rect>
+                                <path d="M10 10v7"></path>
+                                <path d="M14 10v7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="sidebar-storage-bottom assistants-sidebar-bottom-row">
+                    <button class="nav-item" id="assistants-sidebar-save-btn" title="Сохранить выбранного ассистента" aria-label="Сохранить выбранного ассистента">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    </button>
+                    <button onclick="window.logout()" class="nav-item" id="assistants-sidebar-logout-btn" title="Выйти" aria-label="Выйти">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="sidebar-integrations-actions" aria-hidden="true">
+                <div class="sidebar-storage-top">
+                    <button class="nav-item active" data-tab="integrations" id="integrations-sidebar-active-btn" title="Интеграции" aria-label="Интеграции">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        </svg>
+                    </button>
+                    <button class="nav-item" id="integrations-sidebar-back-btn" title="Назад в профиль" aria-label="Назад в профиль">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 12H9"></path>
+                            <path d="M13 7l-5 5 5 5"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="sidebar-storage-bottom">
+                    <button class="nav-item" id="integrations-sidebar-save-btn" title="Сохранить изменения" aria-label="Сохранить изменения">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    </button>
+                    <button onclick="window.logout()" class="nav-item" id="integrations-sidebar-logout-btn" title="Выйти" aria-label="Выйти">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="sidebar-news-actions" aria-hidden="true">
+                <div class="sidebar-storage-top">
+                    <button class="nav-item" id="news-sidebar-back-btn" title="Назад в профиль" aria-label="Назад в профиль">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 12H9"></path>
+                            <path d="M13 7l-5 5 5 5"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="sidebar-storage-bottom">
+                    <button class="nav-item" id="news-sidebar-read-btn" title="Отметить всё прочитанным" aria-label="Отметить всё прочитанным">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path><path d="m22 10-7 7-1.5-1.5"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="sidebar-tariffs-actions" aria-hidden="true">
+                <div class="sidebar-storage-top">
+                    <button class="nav-item" id="tariffs-sidebar-back-btn" title="Назад в профиль" aria-label="Назад в профиль">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 12H9"></path>
+                            <path d="M13 7l-5 5 5 5"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="sidebar-storage-bottom">
+                    <a class="nav-item" id="tariffs-sidebar-offer-btn" href="/offer" target="_blank" rel="noopener noreferrer" title="Публичная оферта" aria-label="Открыть публичную оферту">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M8 9h2"></path></svg>
+                    </a>
+                </div>
+            </div>
+            <div class="sidebar-transactions-actions" aria-hidden="true">
+                <div class="sidebar-storage-top">
+                    <button class="nav-item active" id="transactions-sidebar-active-btn" title="История операций" aria-label="История операций">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="9"></circle>
+                            <path d="M12 7v5l3 2"></path>
+                        </svg>
+                    </button>
+                    <button class="nav-item" id="transactions-sidebar-back-btn" title="Назад в профиль" aria-label="Назад в профиль">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 12H9"></path>
+                            <path d="M13 7l-5 5 5 5"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="sidebar-storage-bottom">
+                    <button onclick="window.logout()" class="nav-item" id="transactions-sidebar-logout-btn" title="Выйти" aria-label="Выйти">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    </button>
+                </div>
             </div>
         </aside>
     </template>
@@ -240,6 +429,26 @@
             </div>
         </div>
     </template>
-
+    <template id="tmpl-assistant-create-alert">
+        <div class="custom-alert-overlay">
+            <div class="custom-alert">
+                <div class="alert-icon-box success-bg">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </div>
+                <h3 class="alert-title">Новый ассистент</h3>
+                <p class="alert-text">Укажите имя и роль нового ассистента.</p>
+                <div class="alert-input-wrapper mt-20">
+                    <input type="text" class="hex-input-full assistant-create-input" id="assistant-create-name" placeholder="Например: Митя" autocomplete="off">
+                </div>
+                <div class="alert-input-wrapper mt-15">
+                    <input type="text" class="hex-input-full assistant-create-input" id="assistant-create-role" placeholder="Например: AI-консультант" autocomplete="off">
+                </div>
+                <div class="alert-buttons mt-25">
+                    <button class="alert-btn alert-btn-secondary" id="assistant-create-cancel">Отмена</button>
+                    <button class="alert-btn alert-btn-primary success-bg" id="assistant-create-confirm">Создать</button>
+                </div>
+            </div>
+        </div>
+    </template>
 </body>
 </html>

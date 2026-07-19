@@ -4,6 +4,7 @@ import time
 import glob
 from io import BytesIO
 from typing import Optional, List
+from urllib.parse import urlparse, parse_qs, unquote
 
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Request
 from fastapi.responses import JSONResponse
@@ -23,13 +24,78 @@ from ...services.db_service import (
     mark_storage_items_deleted
 )
 from ...services.clients import reload_client_config
+from ...services.security.access_control import ensure_client_access, normalize_client_id
+from ...services.upload_limits import read_upload_limited
 from .deps import verify_token
 
 
 def _normalize_url_for_compare(url: Optional[str]) -> str:
     if not url or not isinstance(url, str):
         return ""
-    return url.split("?")[0].split("#")[0].strip()
+
+    raw = str(url).strip()
+    if not raw:
+        return ""
+
+    def _extract_from_query(query: str) -> str:
+        if not query:
+            return ""
+        params = parse_qs(query, keep_blank_values=False)
+        for key in ("file_url", "file", "path", "file_path", "url"):
+            values = params.get(key)
+            if not values:
+                continue
+            value = values[0]
+            if not value:
+                continue
+            try:
+                return unquote(value)
+            except Exception:
+                return value
+        return ""
+
+    try:
+        parsed = urlparse(raw)
+        from_query = _extract_from_query(parsed.query)
+        if from_query:
+            return _normalize_url_for_compare(from_query)
+
+        path = (parsed.path or "").strip()
+        if path:
+            return path
+    except Exception:
+        pass
+
+    clean = raw.split("#", 1)[0]
+    path_part, _, query_part = clean.partition("?")
+    from_query = _extract_from_query(query_part)
+    if from_query:
+        return _normalize_url_for_compare(from_query)
+
+    return path_part.strip()
+
+
+def _basename_for_compare(url: Optional[str]) -> str:
+    normalized = _normalize_url_for_compare(url)
+    if not normalized:
+        return ""
+    parts = [p for p in normalized.replace("\\", "/").split("/") if p]
+    return parts[-1] if parts else ""
+
+
+def _stem_for_compare(url: Optional[str]) -> str:
+    base = _basename_for_compare(url)
+    if not base:
+        return ""
+    stem, _ = os.path.splitext(base)
+    return stem
+
+
+def _matches_field_marker(url: Optional[str], field_key: str) -> bool:
+    stem = _stem_for_compare(url)
+    if not stem or not field_key:
+        return False
+    return stem.endswith(f"_{field_key}")
 
 
 def _extract_client_id_from_file_url(file_url: Optional[str]) -> Optional[str]:
@@ -54,7 +120,8 @@ async def _clear_file_references_in_config(client_id: str, file_url: str):
         return
 
     normalized_target = _normalize_url_for_compare(file_url)
-    if not normalized_target:
+    target_basename = _basename_for_compare(file_url)
+    if not normalized_target and not target_basename:
         return
 
     from ...services.db_service import ClientConfig as DBClientConfig
@@ -91,12 +158,23 @@ async def _clear_file_references_in_config(client_id: str, file_url: str):
 
         for key in theme_file_keys:
             current = theme.get(key)
-            if _normalize_url_for_compare(current) == normalized_target:
+            current_normalized = _normalize_url_for_compare(current)
+            current_basename = _basename_for_compare(current)
+
+            matches_by_path = bool(normalized_target) and current_normalized == normalized_target
+            matches_by_name = bool(target_basename) and current_basename == target_basename
+            matches_by_field_marker = _matches_field_marker(file_url, key)
+            if matches_by_path or matches_by_name or matches_by_field_marker:
                 theme[key] = None
                 changed = True
 
         current_knowledge_url = bot_settings.get("knowledge_file_url")
-        if _normalize_url_for_compare(current_knowledge_url) == normalized_target:
+        knowledge_normalized = _normalize_url_for_compare(current_knowledge_url)
+        knowledge_basename = _basename_for_compare(current_knowledge_url)
+        knowledge_matches_by_path = bool(normalized_target) and knowledge_normalized == normalized_target
+        knowledge_matches_by_name = bool(target_basename) and knowledge_basename == target_basename
+        knowledge_matches_by_field_marker = _matches_field_marker(file_url, "knowledge_file_url")
+        if knowledge_matches_by_path or knowledge_matches_by_name or knowledge_matches_by_field_marker:
             bot_settings["knowledge_file_url"] = ""
             bot_settings["knowledge_file_name"] = ""
             changed = True
@@ -164,6 +242,28 @@ def delete_old_file(file_url: Optional[str]):
             log.error(f"[CLEANUP] Error deleting file {file_path}: {e}")
 
 
+def _sanitize_filename_stem(name: Optional[str]) -> str:
+    raw = str(name or "").strip()
+    stem = os.path.splitext(raw)[0].strip() or "file"
+    safe = "".join(c for c in stem if c.isalnum() or c in "._- ")
+    safe = "_".join(safe.split())
+    return (safe or "file")[:80]
+
+
+def _extract_original_name_from_temp_filename(temp_filename: str) -> str:
+    base = os.path.basename(str(temp_filename or "").strip())
+    name_part, ext = os.path.splitext(base)
+
+    original_stem = ""
+    if "__" in name_part:
+        original_stem = name_part.split("__", 1)[1].strip("_")
+
+    if not original_stem:
+        original_stem = "file"
+
+    return f"{original_stem}{ext}"
+
+
 def process_image(content: bytes, max_width: int = 1200) -> bytes:
     """Сжимает изображение и конвертирует в WebP."""
     if not HAS_PILLOW:
@@ -202,6 +302,14 @@ def move_temp_file(temp_url: str, client_id: str, subfolder: str, field_id: str)
             log.warning(f"Move Temp: File not found at {temp_path}")
             return temp_url
 
+        client_scope = str(client_id or '').strip()
+        assistant_scope = None
+        if '/' in client_scope:
+            parts = [part for part in client_scope.split('/') if part]
+            if len(parts) >= 2:
+                client_scope = parts[0]
+                assistant_scope = parts[1]
+
         file_size = os.path.getsize(temp_path)
 
         folder_map = {
@@ -219,28 +327,31 @@ def move_temp_file(temp_url: str, client_id: str, subfolder: str, field_id: str)
         target_folder = folder_map.get(field_id, subfolder)
 
         ext = os.path.splitext(filename)[1]
-        new_filename = f"file_{client_id}_{field_id}{ext}"
+        assistant_name_part = f"_{assistant_scope}" if assistant_scope else ""
+        new_filename = f"file_{client_scope}{assistant_name_part}_{field_id}{ext}"
 
-        dest_dir = os.path.join(BASE_DIR, "uploads", client_id, target_folder)
+        dest_dir = os.path.join(BASE_DIR, "uploads", client_scope, target_folder)
         os.makedirs(dest_dir, exist_ok=True)
         dest_path = os.path.join(dest_dir, new_filename)
 
         shutil.copy2(temp_path, dest_path)
         os.remove(temp_path)
 
-        final_url = f"/api/chat/uploads/{client_id}/{target_folder}/{new_filename}"
+        final_url = f"/api/chat/uploads/{client_scope}/{target_folder}/{new_filename}"
 
         log.info(f"[STORAGE] Moved temp file to permanent: {dest_path} ({file_size} bytes)")
 
         if file_size > 0:
             import asyncio
             category = "knowledge" if field_id == "knowledge_file_url" else "appearance"
+            display_name = _extract_original_name_from_temp_filename(filename)
             asyncio.create_task(save_storage_item(
-                client_id=client_id,
+                client_id=client_scope,
+                assistant_id=assistant_scope,
                 category=category,
                 file_size=file_size,
                 file_path=final_url,
-                file_name=new_filename
+                file_name=display_name
             ))
 
         return final_url
@@ -257,18 +368,41 @@ async def delete_file_api(request: Request, token_data: dict = Depends(verify_to
     if not file_url:
         return {"status": "error", "message": "No URL provided"}
 
-    delete_old_file(file_url)
-
     target_client_id = _extract_client_id_from_file_url(file_url)
     token_sub = token_data.get("sub")
 
-    if token_sub != "admin":
-        if not target_client_id or target_client_id != token_sub:
-            raise HTTPException(status_code=403, detail="Access denied")
+    if not target_client_id:
+        log.warning("[STORAGE_AUDIT] delete denied: reason=invalid_url user=%s", token_sub)
+        raise HTTPException(status_code=404, detail="File not found")
 
-    if target_client_id:
-        await _clear_file_references_in_config(target_client_id, file_url)
+    normalized_client_id = normalize_client_id(target_client_id)
+    try:
+        ensure_client_access(token_data, normalized_client_id)
+    except HTTPException:
+        log.warning(
+            "[STORAGE_AUDIT] delete denied: reason=forbidden tenant=%s user=%s file=%s",
+            normalized_client_id,
+            token_sub,
+            file_url
+        )
+        raise
 
+    log.info(
+        "[STORAGE_AUDIT] delete requested tenant=%s user=%s file=%s",
+        normalized_client_id,
+        token_sub,
+        file_url
+    )
+
+    delete_old_file(file_url)
+    await _clear_file_references_in_config(normalized_client_id, file_url)
+
+    log.info(
+        "[STORAGE_AUDIT] delete success tenant=%s user=%s file=%s",
+        normalized_client_id,
+        token_sub,
+        file_url
+    )
     return {"status": "success"}
 
 
@@ -283,7 +417,7 @@ async def upload_avatar(client_id: str, file: UploadFile = File(...), token_data
         if not file.content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="File must be an image")
 
-        content = await file.read()
+        content = await read_upload_limited(file)
         file_size = len(content)
 
         ext = os.path.splitext(file.filename)[1]
@@ -312,6 +446,8 @@ async def upload_avatar(client_id: str, file: UploadFile = File(...), token_data
                     if old_path and os.path.exists(old_path):
                         old_avatar_size = os.path.getsize(old_path)
 
+        net_increase = max(file_size - old_avatar_size, 0)
+
         # Check storage limit
         from ...core.config import TARIFF_RULES as _TARIFF_RULES
         from ...services.db_service import User as DBUser
@@ -319,9 +455,16 @@ async def upload_avatar(client_id: str, file: UploadFile = File(...), token_data
             user = (await db.execute(select(DBUser).where(DBUser.client_id == client_id))).scalar_one_or_none()
             if user:
                 tariff = _TARIFF_RULES.get(user.tariff_name.lower(), _TARIFF_RULES['start'])
-                storage_limit = tariff.get('storage_limit', 1 * 1024 * 1024 * 1024)
-                net_increase = file_size - old_avatar_size
+                from ...services.assistants_service import get_effective_account_limits
+                limits = get_effective_account_limits(user)
+                storage_limit = limits.get('storage_limit', 1 * 1024 * 1024 * 1024)
+
                 if user.used_storage + net_increase > storage_limit:
+                    try:
+                        from ...services.notification_service import notify_storage_limit_exceeded
+                        await notify_storage_limit_exceeded(client_id, dedupe_key=f"storage-limit-files:{client_id}:{storage_limit}")
+                    except Exception:
+                        pass
                     raise HTTPException(status_code=403, detail="Storage limit exceeded")
 
         with open(save_path, "wb") as buffer:
@@ -368,25 +511,44 @@ async def upload_avatar(client_id: str, file: UploadFile = File(...), token_data
                     log.info(f"[CLEANUP] Deleted old avatar: {old_path}")
 
         return {"status": "success", "avatar_url": avatar_url}
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         log.error(f"Avatar upload error: {e}\n{traceback.format_exc()}")
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+        return JSONResponse(status_code=500, content={"status": "error", "message": "Avatar upload failed"})
 
 
 @router.post("/upload-file")
-async def upload_file(client_id: str, file: UploadFile = File(...), field_id: str = "default", token_data: dict = Depends(verify_token)):
+async def upload_file(client_id: str, file: UploadFile = File(...), field_id: str = "default", assistant_id: str | None = None, token_data: dict = Depends(verify_token)):
     """Загрузка файла во временную папку с перезаписью для конкретного поля."""
     try:
         if token_data['sub'] != client_id and token_data['sub'] != 'admin':
             raise HTTPException(status_code=403, detail="Access denied")
 
-        content = await file.read()
+        content = await read_upload_limited(file)
+
+        # Проверка свободного места в хранилище
+        from ...services.db_service import User as DBUser
+        from ...services.assistants_service import get_effective_account_limits
+        async with AsyncSessionLocal() as db:
+            user = (await db.execute(select(DBUser).where(DBUser.client_id == client_id))).scalar_one_or_none()
+            if user:
+                limits = get_effective_account_limits(user)
+                storage_limit = limits.get('storage_limit', 1 * 1024 * 1024 * 1024)
+                used = int(user.used_storage or 0)
+                free = storage_limit - used
+                if len(content) > free:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Недостаточно места в хранилище. Свободно: {free // (1024*1024)} МБ, требуется: {len(content) // (1024*1024)} МБ"
+                    )
 
         temp_dir = os.path.join(BASE_DIR, "uploads", "temp")
         os.makedirs(temp_dir, exist_ok=True)
 
-        pattern = os.path.join(temp_dir, f"temp_{client_id}_{field_id}.*")
+        assistant_suffix = f"_{assistant_id}" if assistant_id else ""
+        pattern = os.path.join(temp_dir, f"temp_{client_id}{assistant_suffix}_{field_id}.*")
         for old_temp in glob.glob(pattern):
             try:
                 os.remove(old_temp)
@@ -394,14 +556,16 @@ async def upload_file(client_id: str, file: UploadFile = File(...), field_id: st
             except:
                 pass
 
-        ext = os.path.splitext(file.filename)[1].lower()
-        is_image = file.content_type and file.content_type.startswith('image/') and not file.filename.endswith('.svg')
+        original_name = file.filename or "file"
+        original_stem = _sanitize_filename_stem(original_name)
+        ext = os.path.splitext(original_name)[1].lower()
+        is_image = file.content_type and file.content_type.startswith('image/') and not original_name.endswith('.svg')
 
         if is_image:
             content = process_image(content)
-            filename = f"temp_{client_id}_{field_id}.webp"
+            filename = f"temp_{client_id}{assistant_suffix}_{field_id}__{original_stem}.webp"
         else:
-            filename = f"temp_{client_id}_{field_id}{ext}"
+            filename = f"temp_{client_id}{assistant_suffix}_{field_id}__{original_stem}{ext}"
 
         save_path = os.path.join(temp_dir, filename)
 
@@ -415,9 +579,11 @@ async def upload_file(client_id: str, file: UploadFile = File(...), field_id: st
             "original_name": file.filename,
             "is_temp": True
         }
+    except HTTPException:
+        raise
     except Exception as e:
         log.error(f"Upload Error: {e}")
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+        return JSONResponse(status_code=500, content={"status": "error", "message": "File upload failed"})
 
 
 @router.delete("/upload/temp/{filename}")
@@ -439,13 +605,15 @@ async def delete_temp_file_endpoint(filename: str, token_data: dict = Depends(ve
         else:
             log.warning(f"[CLEANUP] Temp file not found: {temp_path}")
             return {"status": "success", "message": "File already deleted or not found"}
+    except HTTPException:
+        raise
     except Exception as e:
         log.error(f"Delete Temp Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/delete-temp-file")
-async def delete_temp_file(client_id: str, field_id: str, token_data: dict = Depends(verify_token)):
+async def delete_temp_file(client_id: str, field_id: str, assistant_id: str | None = None, token_data: dict = Depends(verify_token)):
     """Безопасное удаление временного файла по ID поля."""
     try:
         if token_data['sub'] != client_id and token_data['sub'] != 'admin':
@@ -453,7 +621,8 @@ async def delete_temp_file(client_id: str, field_id: str, token_data: dict = Dep
 
         temp_dir = os.path.join(BASE_DIR, "uploads", "temp")
 
-        pattern = os.path.join(temp_dir, f"temp_{client_id}_{field_id}.*")
+        assistant_suffix = f"_{assistant_id}" if assistant_id else ""
+        pattern = os.path.join(temp_dir, f"temp_{client_id}{assistant_suffix}_{field_id}.*")
         deleted_count = 0
         for f in glob.glob(pattern):
             try:
@@ -464,6 +633,9 @@ async def delete_temp_file(client_id: str, field_id: str, token_data: dict = Dep
                 pass
 
         return {"status": "success", "deleted": deleted_count}
+    except HTTPException as e:
+        log.error(f"Delete Temp Error: {e}")
+        return JSONResponse(status_code=e.status_code, content={"status": "error", "message": e.detail})
     except Exception as e:
         log.error(f"Delete Temp Error: {e}")
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})

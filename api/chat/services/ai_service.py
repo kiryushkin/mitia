@@ -340,7 +340,7 @@ async def ask_ai(messages_raw: List[Dict], client_config=None, model_name=None, 
                     from io import BytesIO
                     ext = att_name.split('.')[-1].lower()
                     att_text = ""
-                    if ext in ['txt', 'md', 'json', 'robots', 'txt']:
+                    if ext in ['txt', 'md', 'json', 'csv', 'yml', 'yaml', 'robots']:
                         att_text = file_bytes.decode('utf-8', errors='ignore')
                     elif ext == 'pdf':
                         import pdfplumber
@@ -350,6 +350,25 @@ async def ask_ai(messages_raw: List[Dict], client_config=None, model_name=None, 
                         import docx
                         doc = docx.Document(BytesIO(file_bytes))
                         att_text = "\n".join([p.text for p in doc.paragraphs])
+                    elif ext == 'xlsx':
+                        import openpyxl
+                        wb = openpyxl.load_workbook(BytesIO(file_bytes), read_only=True, data_only=True)
+                        rows = []
+                        for sheet in wb.worksheets:
+                            for row in sheet.iter_rows(values_only=True):
+                                rows.append('\t'.join(str(c or '') for c in row))
+                        att_text = '\n'.join(rows)
+                    elif ext in ('ppt', 'pptx'):
+                        from pptx import Presentation
+                        prs = Presentation(BytesIO(file_bytes))
+                        slides = []
+                        for slide in prs.slides:
+                            texts = []
+                            for shape in slide.shapes:
+                                if shape.has_text_frame:
+                                    texts.append(shape.text)
+                            slides.append('\n'.join(texts))
+                        att_text = '\n\n'.join(slides)
                     
                     if att_text:
                         user_attachments_content += f"\n--- ТЕКСТ ИЗ ФАЙЛА '{att_name}' ---\n{att_text}\n--- КОНЕЦ ФАЙЛА '{att_name}' ---\n"
@@ -395,7 +414,7 @@ async def ask_ai(messages_raw: List[Dict], client_config=None, model_name=None, 
             if os.path.exists(file_path):
                 ext = file_path.split('.')[-1].lower()
                 raw_text = ""
-                if ext in ['txt', 'md', 'json']:
+                if ext in ['txt', 'md', 'json', 'csv', 'yml', 'yaml']:
                     with open(file_path, 'r', encoding='utf-8') as f: raw_text = f.read()
                 elif ext == 'pdf':
                     import pdfplumber
@@ -405,10 +424,10 @@ async def ask_ai(messages_raw: List[Dict], client_config=None, model_name=None, 
                     import docx
                     doc = docx.Document(file_path)
                     raw_text = "\n".join([p.text for p in doc.paragraphs])
-                
+
                 if raw_text:
                     # Используем векторный поиск
-                    vector_db = VectorService(client_id)
+                    vector_db = VectorService(f"{client_id}:{assistant_id or 'main'}")
                     # Простая проверка: если в индексе нет данных, индексируем
                     if not vector_db.chunks:
                         await vector_db.add_texts([raw_text])
@@ -424,19 +443,6 @@ async def ask_ai(messages_raw: List[Dict], client_config=None, model_name=None, 
                         # Если ничего не нашли, но файл есть - берем начало файла как fallback
                         file_content = f"\n### [ГЛАВНЫЙ РЕГЛАМЕНТ (НАЧАЛО)]:\n{raw_text[:2000]}\n"
                 
-                # ДОПОЛНИТЕЛЬНО: Поиск по проиндексированному сайту
-                if bot_settings.get('enable_site_search') and final_site_url:
-                    try:
-                        from .site_indexer import get_indexer_for_client
-                        indexer = get_indexer_for_client(client_id, final_site_url)
-                        site_context = await indexer.search(user_query, limit=3)
-                        if site_context:
-                            file_content += "\n### [ИНФОРМАЦИЯ С САЙТА]:\n"
-                            for res in site_context:
-                                file_content += f"Источник: {res['url']}\nТекст: {res['content'][:1000]}\n---\n"
-                            log.info(f"[SiteSearch] Found {len(site_context)} pages for {client_id}")
-                    except Exception as se:
-                        log.error(f"Site Search Error: {se}")
             else:
                 log.warning(f"Knowledge file NOT FOUND at path: {file_path}")
         except Exception as e: log.error(f"File Error: {e}")
@@ -527,7 +533,8 @@ async def ask_ai(messages_raw: List[Dict], client_config=None, model_name=None, 
                         
                         link = val
                         if m_name == 'WhatsApp' and mode == 'user':
-                            link = f"https://wa.me/{re.sub(r'\D', '', val)}"
+                            phone_digits = re.sub(r'\D', '', val)
+                            link = f"https://wa.me/{phone_digits}"
                         elif m_name == 'Telegram' and mode == 'user':
                             link = f"https://t.me/{val.replace('@', '')}"
                         elif m_name == 'VK Messenger' and mode == 'user':
@@ -680,20 +687,25 @@ async def ask_ai(messages_raw: List[Dict], client_config=None, model_name=None, 
             "4. ЗАПРЕЩЕНО использовать любые эмодзи (📅, 🕒) в графике.\n"
         )
 
-    # 3. СТУПЕНЬ: БАЗА ЗНАНИЙ САЙТА (RAG)
+    # 3. СТУПЕНЬ: ПРОИНДЕКСИРОВАННЫЕ СТРАНИЦЫ САЙТА (ПРИОРИТЕТ №3)
     site_context = ""
     if bot_settings.get('enable_site_search', True):
         try:
-            from .site_indexer import SiteIndexer
-            site_url = bot_settings.get('site_url') or contacts.get('website')
-            if site_url:
-                indexer = SiteIndexer(site_url, client_id)
-                user_query = next((m['content'] for m in reversed(messages) if m['role'] == 'user'), "")
-                if user_query:
-                    results = await indexer.search(user_query, limit=3)
-                    if results:
-                        site_context = "\n### [ИНФОРМАЦИЯ С САЙТА (ПРИОРИТЕТ №3)]:\n" + "\n".join([f"- {r['title']}: {r['snippet']}" for r in results])
-        except Exception as e: log.error(f"RAG Error: {e}")
+            from .site_indexer import get_indexer_for_client
+            # Основной URL хранится в карточке ассистента. Поля bot_settings и contacts
+            # поддерживаются только для обратной совместимости.
+            site_url = final_site_url or bot_settings.get('site_url') or contacts.get('website')
+            user_query = next((m['content'] for m in reversed(messages) if m['role'] == 'user'), "")
+            if site_url and user_query:
+                indexer = get_indexer_for_client(client_id, site_url, assistant_id=assistant_id)
+                results = await indexer.search(user_query, limit=3)
+                if results:
+                    site_context = "\n### [ПРОИНДЕКСИРОВАННЫЕ СТРАНИЦЫ САЙТА (ПРИОРИТЕТ №3)]:\n" + "\n".join(
+                        f"Источник: {r['title']} ({r['url']})\nТекст: {r['snippet']}" for r in results
+                    )
+                    log.info(f"[SiteSearch] Found {len(results)} pages for {client_id}:{assistant_id or 'main'}")
+        except Exception as e:
+            log.error(f"RAG Error for {client_id}:{assistant_id or 'main'}: {e}")
 
     # ПАРАМЕТРЫ ДНК
     dna_rules = []
@@ -738,19 +750,12 @@ async def ask_ai(messages_raw: List[Dict], client_config=None, model_name=None, 
     length = bot_settings.get('dna_length', 'short')
     dna_rules.append("Отвечай коротко и по делу." if length == 'short' else "Отвечай максимально подробно и развернуто.")
 
-    # 6. Креативность (temperature)
-    temp = bot_settings.get('temperature', 0.5)
+    # 6. Вариативность речи не должна разрешать выдумывать факты о бизнесе.
     try:
-        temp_float = float(temp)
-    except:
-        temp_float = 0.5
-        
-    if temp_float <= 0.3:
-        dna_rules.append("Придерживайся строго предоставленных инструкций и базы знаний. Если ответа нет — вежливо сообщи об этом, не выдумывай информацию.")
-    elif temp_float >= 0.8:
-        dna_rules.append("Тебе разрешено проявлять творческий подход и фантазию, если в базе знаний нет прямого ответа.")
-    else:
-        dna_rules.append("Старайся придерживаться базы знаний, но допускается небольшая вариативность в речи для естественности.")
+        temp_float = min(max(float(bot_settings.get('temperature', 0.3)), 0.0), 0.3)
+    except (TypeError, ValueError):
+        temp_float = 0.3
+    dna_rules.append("Формулируй ответ естественно, но используй только предоставленные источники. Если прямого ответа нет — сообщи об этом и не выдумывай информацию.")
 
     # 7. Использование эмодзи (dna_emojis)
     # Если True или 'none' (старый дефолт) — разрешаем
@@ -795,9 +800,13 @@ async def ask_ai(messages_raw: List[Dict], client_config=None, model_name=None, 
     system_content += "3. Телефон должен содержать минимум 10-11 цифр. Если цифр меньше — это ошибка.\n"
     system_content += "4. Если формат неверный, вежливо укажи на ошибку и попроси уточнить данные. Не делай вид, что всё в порядке.\n\n"
     
-    system_content += "### [ПРИОРИТЕТ ДАННЫХ]\n"
+    system_content += "### [СТРОГИЙ ПОРЯДОК ИСТОЧНИКОВ]\n"
     system_content += f"Последнее обновление: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(client_config.get('updated_at', time.time()) if is_dict else client_config.raw.get('updated_at', time.time())))}.\n"
-    system_content += "1. Если данные в истории диалога противоречат этому промпту — игнорируй историю и отвечай по новым данным.\n\n"
+    system_content += "1. База знаний из загруженного файла — основной источник для услуг, тарифов, цен и условий.\n"
+    system_content += "2. Заполненные карточки (контакты, соцсети, почта, телефоны, адреса, график) — единственный источник этих реквизитов.\n"
+    system_content += "3. Проиндексированные страницы сайта — используй только после первых двух источников и только как дополнение.\n"
+    system_content += "4. Если источники не содержат точного факта, цены, условия или контакта — прямо скажи, что данных нет, и предложи связаться с менеджером. Никогда не предполагай и не создавай данные.\n"
+    system_content += "5. Если данные в истории диалога противоречат этому промпту — игнорируй историю и отвечай по новым данным.\n\n"
     
     # Собираем в порядке приоритета
     if file_content: system_content += file_content
@@ -841,6 +850,14 @@ async def ask_ai(messages_raw: List[Dict], client_config=None, model_name=None, 
     system_content += "- Если пользователь спрашивает 'РЕКВИЗИТЫ', выводи полные данные из секции РЕКВИЗИТЫ выше.\n"
     system_content += "- Если пользователь спрашивает 'РЕЖИМ РАБОТЫ' или 'ГРАФИК', отвечай строго по секции РЕЖИМ РАБОТЫ выше.\n"
     system_content += "- ТЕБЕ РАЗРЕШЕНО поддерживать легкую беседу (приветствия, вопросы о погоде, настроении, кто ты такой). Отвечай вежливо и кратко, используя свои внутренние знания, но после ответа ОБЯЗАТЕЛЬНО делай мягкий переход к услугам компании.\n"
+
+    # Приветствие — только в самом начале диалога. Если ассистент уже отвечал в этой
+    # переписке, повторно здороваться нельзя (частая жалоба: бот "здоровается каждый раз").
+    already_greeted = any(m.get('role') == 'assistant' for m in messages)
+    if already_greeted:
+        system_content += "- КРИТИЧЕСКИ ВАЖНО: диалог уже идёт, ты здоровался ранее. НЕ здоровайся повторно ('Здравствуйте', 'Добрый день', 'Привет' и т.п.) и не представляйся заново. Сразу отвечай по существу вопроса.\n"
+    else:
+        system_content += "- Это начало диалога: поздоровайся один раз, коротко и естественно, без формальных штампов.\n"
     
     system_content += "\nКРИТИЧЕСКОЕ ПРАВИЛО: Твои знания о БИЗНЕСЕ ограничены СТРОГО предоставленным РЕГЛАМЕНТОМ, ФАЙЛАМИ, КОНТАКТАМИ, ГРАФИКОМ РАБОТЫ и САЙТОМ. Если в них нет прямого ответа — КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО выдумывать факты. Вместо этого вежливо сообщи, что информация не указана. Всегда отдавай приоритет информации из РЕГЛАМЕНТА (Приоритет №1). Если там нет ответа, смотри ПРОФИЛЬ (Приоритет №2), затем ГРАФИК РАБОТЫ, затем САЙТ (Приоритет №3)."
 
@@ -920,6 +937,36 @@ async def ask_ai(messages_raw: List[Dict], client_config=None, model_name=None, 
 
 
     # 6. ВЫЗОВ МОДЕЛИ
+    vision_file_ids = []
+    # Для vision передаём только файлы текущего сообщения, не загружаем историю повторно.
+    for attachment in attachments or []:
+        content_type = str(attachment.get('content_type') or attachment.get('type') or '').lower()
+        attachment_name = str(attachment.get('name') or attachment.get('file_name') or '')
+        is_image = content_type.startswith('image/') or attachment_name.lower().endswith(('.jpg', '.jpeg', '.png', '.tiff', '.bmp'))
+        local_url = attachment.get('local_url')
+        if not is_image or not local_url or '/api/chat/uploads/' not in local_url:
+            continue
+        relative_path = local_url.split('/api/chat/uploads/', 1)[1]
+        image_path = os.path.join(BASE_DIR, 'uploads', *relative_path.split('/'))
+        if not os.path.isfile(image_path) or os.path.getsize(image_path) > 15 * 1024 * 1024:
+            continue
+        try:
+            from .gigachat_service import upload_gigachat_file
+            file_id = await upload_gigachat_file(
+                image_path,
+                attachment_name or os.path.basename(image_path),
+                content_type or 'image/jpeg',
+            )
+            if file_id:
+                vision_file_ids.append(file_id)
+                break
+        except Exception as error:
+            log.warning('Vision upload skipped for %s: %s', attachment_name, error)
+
+    if vision_file_ids and messages:
+        messages[-1]['attachments'] = vision_file_ids
+        messages[-1]['content'] += '\n\n[Системная заметка: проанализируй прикреплённое изображение и отвечай только по тому, что на нём действительно видно.]'
+
     rules = kwargs.get('rules', {})
     
     # Определяем модель на основе настроек бота и ограничений тарифа
@@ -927,15 +974,16 @@ async def ask_ai(messages_raw: List[Dict], client_config=None, model_name=None, 
     available_models = rules.get('available_models', ['GigaChat'])
     default_model = rules.get('model', 'GigaChat')
 
-    # Маппинг для удобства
-    if 'yandex' in selected_model:
+    # Анализ изображений доступен через Files API только в мультимодальной GigaChat-Pro.
+    if vision_file_ids:
+        target_model = 'GigaChat-Pro'
+    elif 'yandex' in selected_model:
         target_model = 'yandexgpt/latest'
     else:
-        # Временно используем только Lite версию (GigaChat) для всех запросов GigaChat
         target_model = 'GigaChat'
 
     # Если выбранная модель не разрешена тарифом, откатываемся на дефолтную для тарифа
-    if target_model not in available_models:
+    if target_model not in available_models and not vision_file_ids:
         log.warning(f"Model {target_model} not allowed for tariff. Falling back to {default_model}")
         target_model = default_model
 
@@ -1029,6 +1077,7 @@ async def ask_ai(messages_raw: List[Dict], client_config=None, model_name=None, 
 
         # Собираем "Золотой реестр" для агента
         registry_parts = []
+        if file_content: registry_parts.append(file_content)
         if contact_info: registry_parts.append(contact_info)
         if working_hours_info: registry_parts.append(working_hours_info)
         if site_context: registry_parts.append(site_context)

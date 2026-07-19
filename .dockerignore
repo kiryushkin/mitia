@@ -1,0 +1,47 @@
+# VCS
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+env/
+ENV/
+
+# Node
+node_modules/
+api/chat/widget_src/node_modules/
+
+# Секреты и локальное окружение
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Логи
+*.log
+*.log.*
+api/chat/mitia.log*
+logs/
+api/chat/logs/
+
+# Пользовательские данные и кэши (монтируются как volume, в образе не нужны)
+api/chat/uploads/
+api/chat/vector_indices/
+api/chat/static/tts_cache/
+
+# Бэкапы и мусор ОС
+*.backup
+*.bak
+*.orig
+*-backups/
+**/.DS_Store
+Thumbs.db
+
+# Тесты (не нужны в проде)
+api/chat/tests/

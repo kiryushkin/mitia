@@ -1,3 +1,5 @@
+import { getWidgetStorageScope } from '../core/config';
+
 /**
  * Обновляет позицию приветственного облака относительно кнопки.
  * ПОЛНАЯ КОПИЯ ИЗ ОРИГИНАЛА (строки 4240-4274).
@@ -59,9 +61,13 @@ export function initWelcomeBubble(els, config, openChat) {
 
     if (!els.welcome) return;
     
+    const storageScope = getWidgetStorageScope(config);
+    const lastClosedKey = `mitya_welcome_last_closed_${storageScope}`;
+    const showCountKey = `mitya_welcome_show_count_${storageScope}`;
+
     if (config.ignore_welcome_limits) {
-      localStorage.removeItem('mitya_welcome_last_closed');
-      sessionStorage.removeItem('mitya_welcome_show_count');
+      localStorage.removeItem(lastClosedKey);
+      sessionStorage.removeItem(showCountKey);
       console.log('[ChatWidget] Welcome limits reset');
     }
 
@@ -84,8 +90,8 @@ export function initWelcomeBubble(els, config, openChat) {
       const currentRetryCount = parseInt(config.theme?.welcome_retry_count || config.welcome_retry_count || 0);
       const currentRetryDelaySec = parseInt(config.theme?.welcome_retry_delay_sec || config.welcome_retry_delay_sec || 0);
 
-      const lastClosed = localStorage.getItem('mitya_welcome_last_closed');
-      const showCount = parseInt(sessionStorage.getItem('mitya_welcome_show_count') || '0');
+      const lastClosed = localStorage.getItem(lastClosedKey);
+      const showCount = parseInt(sessionStorage.getItem(showCountKey) || '0');
 
       if (currentRetryCount > 0 && showCount >= currentRetryCount) {
         console.log('[ChatWidget] Welcome bubble limit reached:', showCount, '/', currentRetryCount);
@@ -109,7 +115,7 @@ export function initWelcomeBubble(els, config, openChat) {
         setTimeout(() => {
           els.welcome.classList.add('show', 'is-visible');
           const newCount = showCount + 1;
-          sessionStorage.setItem('mitya_welcome_show_count', newCount.toString());
+          sessionStorage.setItem(showCountKey, newCount.toString());
           console.log('[ChatWidget] Welcome bubble SHOWING. Count now:', newCount, 'Limit:', currentRetryCount || '∞');
         }, 50);
       }
@@ -123,7 +129,7 @@ export function initWelcomeBubble(els, config, openChat) {
         if (closeBtn) {
           e.preventDefault();
           e.stopPropagation();
-          localStorage.setItem('mitya_welcome_last_closed', Date.now().toString());
+          localStorage.setItem(lastClosedKey, Date.now().toString());
           els.welcome.classList.remove('is-visible', 'show');
           
           // Уведомляем админку о закрытии облака (для выключения тумблера предпросмотра)

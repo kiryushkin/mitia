@@ -1544,28 +1544,61 @@ export function applyTheme(theme, config, els, shadow, data = {}) {
     });
 
     if (data.welcome_msg !== undefined && els.messagesContainer) {
-        let welcomeMsgEl = Array.from(els.messagesContainer.children).find(msg => 
-            msg.classList.contains('is-welcome')
-        );
-        
-        if (data.welcome_msg && data.welcome_msg.trim() !== '') {
-            if (welcomeMsgEl) {
-                const textEl = welcomeMsgEl.querySelector('.message-text');
-                if (textEl) textEl.innerHTML = renderMarkdown(data.welcome_msg, config, true);
-            } else {
-                // Если приветствия нет в DOM, создаем его на лету
-                import('./messages').then(m => {
-                    m.addMessage(data.welcome_msg, 'bot', { noScroll: true, isWelcome: true }, config, els).then(newEl => {
-                        if (newEl && els.messagesContainer) {
-                            // Вставляем в самое начало контейнера
-                            els.messagesContainer.prepend(newEl);
-                        }
-                    });
-                });
-            }
+        const welcomeText = data.welcome_msg.trim();
+        els._pendingWelcomeText = welcomeText;
+        const welcomeVersion = (els._welcomeMessageVersion || 0) + 1;
+        els._welcomeMessageVersion = welcomeVersion;
+
+        const welcomeMessages = () => Array.from(els.messagesContainer.querySelectorAll('.message.is-welcome'));
+        const updateWelcome = (message) => {
+            const textEl = message.querySelector('.message-text');
+            if (textEl) textEl.innerHTML = renderMarkdown(welcomeText, config, true);
+        };
+
+        const existingMessages = welcomeMessages();
+        const welcomeMsgEl = existingMessages.shift();
+        // Старые параллельные предпросмотры могли создать дубли: оставляем только один.
+        existingMessages.forEach(message => message.remove());
+
+        if (!welcomeText) {
+            if (welcomeMsgEl) welcomeMsgEl.remove();
         } else if (welcomeMsgEl) {
-            // Если текст стерли в админке, удаляем пузырь из чата
-            welcomeMsgEl.remove();
+            updateWelcome(welcomeMsgEl);
+        } else if (!els._isCreatingWelcomeMessage) {
+            els._isCreatingWelcomeMessage = true;
+            import('./messages').then(async (messages) => {
+                // Пока загружался модуль, настройки могли измениться или элемент мог быть создан
+                // другим вызовом applyTheme.
+                if (els._welcomeMessageVersion !== welcomeVersion || !els.messagesContainer) return;
+
+                const currentMessages = welcomeMessages();
+                const currentWelcome = currentMessages.shift();
+                currentMessages.forEach(message => message.remove());
+                if (currentWelcome) {
+                    updateWelcome(currentWelcome);
+                    return;
+                }
+
+                const newEl = await messages.addMessage(
+                    welcomeText,
+                    'bot',
+                    { noScroll: true, isWelcome: true },
+                    config,
+                    els
+                );
+                if (newEl && els.messagesContainer && els._welcomeMessageVersion === welcomeVersion) {
+                    els.messagesContainer.prepend(newEl);
+                } else if (newEl) {
+                    newEl.remove();
+                }
+            }).finally(() => {
+                els._isCreatingWelcomeMessage = false;
+                // Если во время динамического импорта пришло более новое значение,
+                // запускаем его отрисовку уже после снятия блокировки.
+                if (els._pendingWelcomeText && !welcomeMessages().length) {
+                    applyTheme({}, config, els, shadow, { welcome_msg: els._pendingWelcomeText });
+                }
+            });
         }
     }
 
